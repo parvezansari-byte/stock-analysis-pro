@@ -4,25 +4,21 @@ import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+import importlib.util
 
-st.set_page_config(page_title="Stock Analysis Pro V3 Groww + Fundamental Master", layout="wide")
+st.set_page_config(page_title="Stock Analysis Pro V3.1 Streamlit Safe", layout="wide")
 
 # =========================================================
-# FINAL STOCK ANALYSIS PRO APP V3 GROWW + FUNDAMENTAL MASTER VERSION
+# FINAL V3.1 STREAMLIT SAFE GROWW PATCH
 # Single-file Streamlit App
-# Uses Streamlit Secrets for Groww credentials
-# Features:
-# - Groww API auth via Streamlit secrets
-# - Technical analysis from Groww (primary) or yfinance fallback
-# - Fundamental analysis from uploaded CSV master (primary) or yfinance fallback
-# - Analyze single stock
-# - Analyze Groww holdings
-# - Portfolio ranking dashboard
-# - Optional safe manual order console
+# - Crash-proof startup on Streamlit Cloud
+# - NO hard dependency on growwapi at startup
+# - Groww integration loads only when package exists + user enables it
+# - App remains live even if growwapi fails
 # =========================================================
 
 # -----------------------------
-# FORMATTERS / HELPERS
+# SAFE HELPERS
 # -----------------------------
 def safe_num(x, default=np.nan):
     try:
@@ -175,7 +171,17 @@ def groww_to_yahoo_symbol(symbol):
 
 
 # -----------------------------
-# YFINANCE FALLBACK
+# SAFE PACKAGE CHECK (NO CRASH)
+# -----------------------------
+def is_growwapi_available():
+    try:
+        return importlib.util.find_spec("growwapi") is not None
+    except Exception:
+        return False
+
+
+# -----------------------------
+# YFINANCE SAFE DATA
 # -----------------------------
 @st.cache_data(ttl=900, show_spinner=False)
 def fetch_history_yf(ticker, period):
@@ -227,17 +233,30 @@ def safe_ticker(ticker):
 
 
 # -----------------------------
-# GROWW CLIENT
+# GROWW SAFE LAZY INIT
 # -----------------------------
-def init_groww_client():
+def init_groww_client_safe(enable_groww=False):
+    """
+    NEVER crashes app.
+    Imports growwapi only when explicitly needed and available.
+    """
+    if not enable_groww:
+        return None, None, "Groww disabled by user"
+
+    if not is_growwapi_available():
+        return None, None, "growwapi package not installed or failed in Streamlit build"
+
     try:
         from growwapi import GrowwAPI
     except Exception as e:
-        return None, None, f"growwapi package not installed: {e}"
+        return None, None, f"growwapi import failed: {e}"
 
-    api_key = st.secrets.get("GROWW_API_KEY", None)
-    api_secret = st.secrets.get("GROWW_API_SECRET", None)
-    access_token = st.secrets.get("GROWW_ACCESS_TOKEN", None)
+    try:
+        api_key = st.secrets.get("GROWW_API_KEY", None)
+        api_secret = st.secrets.get("GROWW_API_SECRET", None)
+        access_token = st.secrets.get("GROWW_ACCESS_TOKEN", None)
+    except Exception as e:
+        return None, None, f"Streamlit Secrets read failed: {e}"
 
     if not access_token and api_key and api_secret:
         try:
@@ -310,21 +329,12 @@ def extract_symbol_from_holding(item):
     return None
 
 
-# -----------------------------
-# GROWW HISTORICAL DATA (PRIMARY TECH SOURCE)
-# -----------------------------
 def period_to_days(period):
     mapping = {"6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
     return mapping.get(period, 365)
 
 
 def parse_candle_rows(rows):
-    """
-    Flexible parser for different possible Groww candle shapes.
-    Expected possible row formats:
-    [ts, open, high, low, close, volume]
-    or dicts with keys like timestamp/open/high/low/close/volume
-    """
     parsed = []
     for r in rows:
         try:
@@ -357,10 +367,9 @@ def parse_candle_rows(rows):
 
 
 def fetch_history_groww(client, ticker, period):
-    """
-    Flexible method attempts because SDK versions can differ.
-    We try common historical data method names.
-    """
+    if client is None:
+        return pd.DataFrame(), "Groww client unavailable", None
+
     symbol = yahoo_to_groww_symbol(ticker)
     days = period_to_days(period)
     from_date = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
@@ -377,7 +386,6 @@ def fetch_history_groww(client, ticker, period):
     for m in method_candidates:
         fn = getattr(client, m, None)
         if callable(fn):
-            # Try a few likely signatures
             attempts = [
                 {"exchange": "NSE", "segment": "CASH", "trading_symbol": symbol, "interval": "DAY", "from_date": from_date, "to_date": to_date},
                 {"exchange": "NSE", "segment": "CASH", "trading_symbol": symbol, "interval": "1d", "from_date": from_date, "to_date": to_date},
@@ -403,7 +411,7 @@ def fetch_history_groww(client, ticker, period):
 
 
 # -----------------------------
-# FUNDAMENTAL MASTER (PRIMARY)
+# FUNDAMENTAL MASTER + FALLBACK
 # -----------------------------
 def normalize_master_columns(df):
     df = df.copy()
@@ -435,9 +443,6 @@ def get_master_row(master_df, ticker):
     return rows.iloc[0].to_dict()
 
 
-# -----------------------------
-# YFINANCE FUNDAMENTAL FALLBACK
-# -----------------------------
 def get_financial_value(df, label_candidates):
     try:
         if df is None or df.empty:
@@ -524,9 +529,6 @@ def fundamental_from_yf(ticker_symbol):
     operating_margin = safe_num(info.get("operatingMargins"))
     pe = safe_num(info.get("trailingPE"))
     pb = safe_num(info.get("priceToBook"))
-    roce = np.nan
-    promoter = np.nan
-    pledge = np.nan
 
     market_cap = info.get("marketCap", fast_info.get("marketCap") if isinstance(fast_info, dict) else None)
     current_price = info.get("currentPrice", info.get("regularMarketPrice", None))
@@ -567,7 +569,7 @@ def fundamental_from_yf(ticker_symbol):
         "quarterly_sales_yoy": q_sales_yoy,
         "quarterly_profit_yoy": q_profit_yoy,
         "roe": roe * 100 if not pd.isna(roe) else np.nan,
-        "roce": roce,
+        "roce": np.nan,
         "debt_to_equity": debt_to_equity,
         "opm": operating_margin * 100 if not pd.isna(operating_margin) else np.nan,
         "npm": profit_margin * 100 if not pd.isna(profit_margin) else np.nan,
@@ -576,18 +578,14 @@ def fundamental_from_yf(ticker_symbol):
         "cfo_vs_pat": cfo_vs_pat,
         "pe": pe,
         "pb": pb,
-        "promoter_holding": promoter,
-        "pledge": pledge,
+        "promoter_holding": np.nan,
+        "pledge": np.nan,
         "source": "yfinance fallback",
     }
 
 
-# -----------------------------
-# FUNDAMENTAL SCORING (MASTER FIRST)
-# -----------------------------
 def build_fundamental_data(ticker, master_df=None):
     row = get_master_row(master_df, ticker) if master_df is not None else None
-
     if row:
         data = {
             "company": row.get("company", ticker),
@@ -622,7 +620,6 @@ def build_fundamental_data(ticker, master_df=None):
     score += score_range(data.get("sales_growth_3y"), [(20, 12), (15, 10), (10, 8), (5, 4)])
     score += score_range(data.get("profit_growth_3y"), [(20, 12), (15, 10), (10, 8), (5, 4)])
     score += score_range(data.get("quarterly_profit_yoy"), [(20, 8), (10, 6), (5, 4), (0, 2)])
-
     score += score_range(data.get("roe"), [(20, 12), (15, 10), (10, 7), (5, 4)])
     score += score_range(data.get("roce"), [(20, 8), (15, 6), (10, 4), (5, 2)])
 
@@ -793,10 +790,7 @@ def technical_analysis(df):
     rr = reward / risk if risk > 0 else 1.0
     risk_reward_score = 5 if rr >= 2 else 3 if rr >= 1.2 else 1
 
-    technical_score = min(
-        trend_score + ma_score + structure_score + volume_score + rsi_score + macd_score + rs_score + risk_reward_score,
-        100,
-    )
+    technical_score = min(trend_score + ma_score + structure_score + volume_score + rsi_score + macd_score + rs_score + risk_reward_score, 100)
 
     return {
         "df": df,
@@ -822,7 +816,7 @@ def technical_analysis(df):
 
 
 # -----------------------------
-# SINGLE STOCK ANALYSIS ENGINE
+# ANALYSIS ENGINE
 # -----------------------------
 def fetch_price_history(client, ticker, period, prefer_groww=True):
     if prefer_groww and client is not None:
@@ -849,23 +843,15 @@ def analyze_symbol(ticker, period="1y", master_df=None, groww_client=None, prefe
     final_score = round((fdata["fundamental_score"] * 0.60) + (tdata["technical_score"] * 0.40), 2)
     verdict = final_rating(final_score)
 
-    return {
-        "fdata": fdata,
-        "tdata": tdata,
-        "final_score": final_score,
-        "verdict": verdict,
-        "price_source": price_source,
-    }
+    return {"fdata": fdata, "tdata": tdata, "final_score": final_score, "verdict": verdict, "price_source": price_source}
 
 
-# -----------------------------
-# ORDER SAFE MODE
-# -----------------------------
 def place_groww_order_safe(client, symbol, qty, transaction="BUY"):
+    if client is None:
+        return None, "Groww client unavailable"
     try:
         groww_symbol = yahoo_to_groww_symbol(symbol)
-        methods = ["place_order", "create_order"]
-        for m in methods:
+        for m in ["place_order", "create_order"]:
             fn = getattr(client, m, None)
             if callable(fn):
                 try:
@@ -889,15 +875,9 @@ def place_groww_order_safe(client, symbol, qty, transaction="BUY"):
         return None, str(e)
 
 
-# -----------------------------
-# CHART
-# -----------------------------
 def create_chart(df, ticker):
     fig = go.Figure()
-    fig.add_trace(go.Candlestick(
-        x=df.index,
-        open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="Price"
-    ))
+    fig.add_trace(go.Candlestick(x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="Price"))
     fig.add_trace(go.Scatter(x=df.index, y=df["EMA20"], mode="lines", name="EMA20"))
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], mode="lines", name="SMA50"))
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA200"], mode="lines", name="SMA200"))
@@ -908,8 +888,8 @@ def create_chart(df, ticker):
 # -----------------------------
 # UI
 # -----------------------------
-st.title("📊 STOCK ANALYSIS PRO APP V3 - GROWW + FUNDAMENTAL MASTER")
-st.caption("Groww API from Streamlit Secrets | Technical via Groww प्राथमिक | Fundamentals via CSV Master प्राथमिक")
+st.title("📊 STOCK ANALYSIS PRO APP V3.1 - STREAMLIT SAFE GROWW PATCH")
+st.caption("Crash-proof Streamlit version | Groww optional | yfinance fallback always live")
 
 with st.sidebar:
     st.header("⚙️ Settings")
@@ -920,26 +900,23 @@ with st.sidebar:
     uploaded_file = st.file_uploader("Upload CSV (optional)", type=["csv"])
 
     st.subheader("🔗 Groww Connection")
-    prefer_groww = st.checkbox("Prefer Groww for Technical Data", value=True)
-    use_groww_features = st.checkbox("Enable Groww Holdings / Positions / Orders", value=True)
+    prefer_groww = st.checkbox("Prefer Groww for Technical Data", value=False)
+    use_groww_features = st.checkbox("Enable Groww Holdings / Positions / Orders", value=False)
 
     run = st.button("🚀 Analyze Stock", use_container_width=True)
     analyze_holdings_btn = st.button("📦 Analyze My Groww Holdings", use_container_width=True, disabled=not use_groww_features)
     show_positions_btn = st.button("📍 Show Groww Positions", use_container_width=True, disabled=not use_groww_features)
 
     st.markdown("---")
-    st.info("Use Indian tickers like RELIANCE.NS, TCS.NS, INFY.NS")
+    st.info("Safe default: Groww OFF. Turn it ON only after app is stable.")
 
-# Load master CSV
 master_df, master_err = load_fundamental_master(uploaded_file) if uploaded_file is not None else (None, None)
 
-# Init Groww from Streamlit secrets
-client, access_token, groww_error = init_groww_client()
-
-if client is not None:
-    st.success("✅ Groww connected successfully from Streamlit Secrets")
+# SAFE startup status only (no Groww init here)
+if is_growwapi_available():
+    st.success("✅ growwapi package detected")
 else:
-    st.warning(f"Groww not connected: {groww_error}")
+    st.info("ℹ️ growwapi not available or build failed. App will still run with yfinance + CSV mode.")
 
 if master_df is not None:
     st.success(f"✅ Fundamental master loaded: {len(master_df)} rows")
@@ -949,18 +926,24 @@ else:
     st.info("No fundamental CSV uploaded. App will use yfinance fallback for fundamentals.")
 
 # -----------------------------
-# SINGLE STOCK ANALYSIS
+# SINGLE STOCK ANALYSIS (ALWAYS WORKS WITHOUT GROWW)
 # -----------------------------
 if run:
-    if not ticker:
-        st.error("Please enter a valid stock ticker.")
-        st.stop()
+    groww_client = None
+    groww_status = "Disabled"
 
-    with st.spinner("Running full stock analysis..."):
-        result = analyze_symbol(ticker, period, master_df=master_df, groww_client=client, prefer_groww=prefer_groww)
+    if prefer_groww:
+        groww_client, _, groww_err = init_groww_client_safe(enable_groww=True)
+        if groww_client is not None:
+            groww_status = "Connected"
+        else:
+            groww_status = f"Fallback to yfinance ({groww_err})"
+
+    with st.spinner("Running stock analysis..."):
+        result = analyze_symbol(ticker, period, master_df=master_df, groww_client=groww_client, prefer_groww=prefer_groww)
 
     if result is None:
-        st.error("No price data found from Groww or yfinance. Check ticker format.")
+        st.error("No price data found. Please check ticker format like RELIANCE.NS")
         st.stop()
 
     fdata = result["fdata"]
@@ -973,22 +956,20 @@ if run:
     c2.metric("Fundamental Score", f"{fdata['fundamental_score']}/100")
     c3.metric("Technical Score", f"{tdata['technical_score']}/100")
     c4.metric("Final Score", f"{final_score}/100")
-    c5.metric("Price Source", result["price_source"])
+    c5.metric("Groww Status", groww_status)
 
-    st.markdown(
-        f"<div style='padding:12px;border-radius:12px;background:{verdict_color(verdict)};color:white;font-weight:700;text-align:center;'>FINAL VERDICT: {verdict}</div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"<div style='padding:12px;border-radius:12px;background:{verdict_color(verdict)};color:white;font-weight:700;text-align:center;'>FINAL VERDICT: {verdict}</div>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
     left, right = st.columns([1, 2])
     with left:
         st.subheader("🏢 Company Snapshot")
         snapshot = pd.DataFrame({
-            "Field": ["Company", "Sector", "Industry", "Market Cap", "52W High", "52W Low", "PE", "PB", "Fundamental Source"],
+            "Field": ["Company", "Sector", "Industry", "Market Cap", "52W High", "52W Low", "PE", "PB", "Fundamental Source", "Price Source"],
             "Value": [
                 fdata.get("company", ticker), fdata.get("sector", "N/A"), fdata.get("industry", "N/A"), format_num(fdata.get("market_cap")),
-                format_num(fdata.get("52w_high")), format_num(fdata.get("52w_low")), format_num(fdata.get("pe")), format_num(fdata.get("pb")), fdata.get("source", "N/A")
+                format_num(fdata.get("52w_high")), format_num(fdata.get("52w_low")), format_num(fdata.get("pe")), format_num(fdata.get("pb")),
+                fdata.get("source", "N/A"), result["price_source"]
             ]
         })
         st.dataframe(snapshot, use_container_width=True, hide_index=True)
@@ -1038,106 +1019,68 @@ if run:
             ]
         }), use_container_width=True, hide_index=True)
 
-    st.subheader("🧠 Final Decision Engine")
-    decision_df = pd.DataFrame({
-        "Field": ["Fundamental Weight", "Technical Weight", "Combined Score", "Final Verdict", "Suggested Horizon", "Risk Note"],
-        "Value": [
-            "60%", "40%", f"{final_score}/100", verdict,
-            "Long-term / Positional" if final_score >= 65 else "Watchlist / Avoid",
-            "Model-based analysis only. Validate with latest results, management commentary, and market conditions."
-        ]
-    })
-    st.dataframe(decision_df, use_container_width=True, hide_index=True)
-
-    st.subheader("📋 Client Summary (Copy Ready)")
+    st.subheader("📋 Client Summary")
     summary = f"""
 STOCK ANALYSIS REPORT - {ticker}
-
 Company: {fdata.get('company', ticker)}
-Sector: {fdata.get('sector', 'N/A')}
-Current Price: {format_num(fdata.get('current_price'))}
-Price Data Source: {result['price_source']}
-Fundamental Data Source: {fdata.get('source', 'N/A')}
-
+Fundamental Source: {fdata.get('source', 'N/A')}
+Price Source: {result['price_source']}
 Fundamental Score: {fdata['fundamental_score']}/100
 Technical Score: {tdata['technical_score']}/100
-Final Combined Score: {final_score}/100
+Final Score: {final_score}/100
 Final Verdict: {verdict}
-
 Entry Zone: {tdata['entry_zone']}
 Stop Loss: {format_num(tdata['stop_loss'])}
 Target 1: {format_num(tdata['target1'])}
 Target 2: {format_num(tdata['target2'])}
-
-Note: Model-driven screening tool. Validate with latest results before investment.
 """
-    st.text_area("Copy this summary", summary, height=300)
+    st.text_area("Copy summary", summary, height=220)
 
 # -----------------------------
-# GROWW HOLDINGS / POSITIONS / ORDER PANEL
+# GROWW PANEL (ONLY WHEN ENABLED)
 # -----------------------------
 if use_groww_features:
     st.markdown("---")
-    st.header("🔗 Groww Portfolio + Execution Panel")
+    st.header("🔗 Groww Portfolio + Execution Panel (Safe Lazy Load)")
+
+    client, _, groww_error = init_groww_client_safe(enable_groww=True)
 
     if client is None:
-        st.error("Groww not connected. Add API credentials in Streamlit Secrets.")
+        st.error(f"Groww not connected: {groww_error}")
         st.code('GROWW_API_KEY = "your_api_key"\nGROWW_API_SECRET = "your_api_secret"\n# OR\nGROWW_ACCESS_TOKEN = "your_access_token"', language="toml")
+        st.info("App remains fully usable without Groww. Use stock analysis in yfinance + CSV mode.")
     else:
-        st.success("Groww features enabled successfully")
+        st.success("✅ Groww connected successfully")
 
         if analyze_holdings_btn:
-            with st.spinner("Fetching Groww holdings and running full analysis..."):
+            with st.spinner("Fetching Groww holdings and analyzing..."):
                 holdings, err, method = get_groww_holdings(client)
-
             if err and not holdings:
                 st.error(f"Unable to fetch holdings: {err}")
             else:
-                st.success(f"Holdings fetched via method: {method}")
+                st.success(f"Holdings fetched via: {method}")
                 if holdings:
-                    st.subheader("📦 Raw Groww Holdings")
                     st.dataframe(pd.DataFrame(holdings), use_container_width=True)
-
-                    st.subheader("📊 Full Analysis of Groww Holdings")
                     rows = []
                     progress = st.progress(0)
-
                     for idx, h in enumerate(holdings):
-                        yahoo_symbol = extract_symbol_from_holding(h)
-                        if yahoo_symbol:
-                            result = analyze_symbol(yahoo_symbol, "1y", master_df=master_df, groww_client=client, prefer_groww=prefer_groww)
-                            if result:
+                        sym = extract_symbol_from_holding(h)
+                        if sym:
+                            r = analyze_symbol(sym, "1y", master_df=master_df, groww_client=client, prefer_groww=prefer_groww)
+                            if r:
                                 rows.append({
-                                    "Ticker": yahoo_symbol,
-                                    "Fundamental Score": result["fdata"]["fundamental_score"],
-                                    "Technical Score": result["tdata"]["technical_score"],
-                                    "Final Score": result["final_score"],
-                                    "Verdict": result["verdict"],
-                                    "Price Source": result["price_source"],
-                                    "Fundamental Source": result["fdata"].get("source", "N/A"),
+                                    "Ticker": sym,
+                                    "Fundamental Score": r["fdata"]["fundamental_score"],
+                                    "Technical Score": r["tdata"]["technical_score"],
+                                    "Final Score": r["final_score"],
+                                    "Verdict": r["verdict"],
                                 })
                         progress.progress((idx + 1) / max(len(holdings), 1))
-
                     if rows:
                         df_port = pd.DataFrame(rows).sort_values("Final Score", ascending=False)
                         st.dataframe(df_port, use_container_width=True, hide_index=True)
-
-                        strong = df_port[df_port["Final Score"] >= 75]
-                        weak = df_port[df_port["Final Score"] < 65]
-
-                        c1, c2, c3 = st.columns(3)
-                        c1.metric("Total Holdings Analyzed", len(df_port))
-                        c2.metric("Strong Holdings (75+)", len(strong))
-                        c3.metric("Weak / Review (<65)", len(weak))
-
-                        st.subheader("📝 Portfolio Advisory Summary")
-                        st.text_area(
-                            "Copy portfolio summary",
-                            f"Portfolio analyzed: {len(df_port)} holdings\nStrong holdings (75+): {len(strong)}\nWeak/review holdings (<65): {len(weak)}\nTop stock: {df_port.iloc[0]['Ticker']} ({df_port.iloc[0]['Final Score']}/100)\nUse strong holdings for add-on-dips strategy and review weak holdings for trim/exit decisions.",
-                            height=180,
-                        )
                     else:
-                        st.warning("Holdings fetched, but symbol mapping failed for analysis. Check raw holdings structure and patch mapping if needed.")
+                        st.warning("Holdings fetched, but symbol mapping failed.")
                 else:
                     st.info("No holdings found.")
 
@@ -1147,47 +1090,42 @@ if use_groww_features:
             if err and not positions:
                 st.error(f"Unable to fetch positions: {err}")
             else:
-                st.success(f"Positions fetched via method: {method}")
+                st.success(f"Positions fetched via: {method}")
                 if positions:
                     st.dataframe(pd.DataFrame(positions), use_container_width=True)
                 else:
                     st.info("No open positions found.")
 
-        st.markdown("---")
-        st.subheader("🛒 Safe Manual Order Console (Use Carefully)")
-        st.warning("Streamlit Cloud is good for dashboarding. For serious live order execution, Groww Cloud / VPS / static IP backend is recommended.")
-
-        enable_orders = st.checkbox("I understand the risk and want to enable manual order section", value=False)
+        st.subheader("🛒 Safe Manual Order Console")
+        enable_orders = st.checkbox("Enable manual order section", value=False)
         if enable_orders:
-            order_symbol = st.text_input("Order Symbol (Yahoo format)", value="RELIANCE.NS").strip().upper()
+            order_symbol = st.text_input("Order Symbol", value="RELIANCE.NS").strip().upper()
             qty = st.number_input("Quantity", min_value=1, value=1, step=1)
             transaction = st.selectbox("Transaction", ["BUY", "SELL"])
-            confirm_order = st.checkbox("I confirm I want to place a real order")
-
+            confirm_order = st.checkbox("I confirm real order placement")
             if st.button("🚨 Place Real Order"):
                 if not confirm_order:
-                    st.error("Please tick confirmation checkbox first.")
+                    st.error("Please confirm first.")
                 else:
-                    result = analyze_symbol(order_symbol, "1y", master_df=master_df, groww_client=client, prefer_groww=prefer_groww)
-                    if result and result["final_score"] < 65:
-                        st.error(f"Order blocked: stock score below threshold ({result['final_score']}/100)")
+                    r = analyze_symbol(order_symbol, "1y", master_df=master_df, groww_client=client, prefer_groww=prefer_groww)
+                    if r and r["final_score"] < 65:
+                        st.error(f"Order blocked: score below threshold ({r['final_score']}/100)")
                     else:
-                        with st.spinner("Attempting order placement..."):
-                            resp, err = place_groww_order_safe(client, order_symbol, qty, transaction)
+                        resp, err = place_groww_order_safe(client, order_symbol, qty, transaction)
                         if err:
-                            st.error(f"Order failed / SDK mismatch: {err}")
+                            st.error(f"Order failed: {err}")
                         else:
-                            st.success("Order request sent successfully")
+                            st.success("Order request sent")
                             st.write(resp)
 
 # -----------------------------
-# INFO BLOCK
+# FOOTER HELP
 # -----------------------------
 st.markdown("---")
-st.subheader("📁 Recommended Fundamental Master CSV Format")
-st.code(
-    "symbol,company,sector,industry,market_cap,current_price,52w_high,52w_low,sales_growth_3y,profit_growth_3y,quarterly_sales_yoy,quarterly_profit_yoy,roe,roce,debt_to_equity,opm,npm,cfo,fcf,cfo_vs_pat,pe,pb,promoter_holding,pledge\nRELIANCE,Reliance Industries,Energy,Refining,1000000000000,2900,3100,2200,12.5,14.2,10.2,11.4,9.8,12.3,0.42,18.5,9.2,80000,45000,105,24.6,2.1,50.3,0\nTCS,Tata Consultancy Services,IT Services,Software,1200000000000,4200,4590,3300,14.8,16.9,12.1,13.5,42.1,52.4,0,26.2,19.8,50000,42000,110,31.2,12.4,72.4,0",
-    language="csv",
-)
-
-st.info("V3 Best Practice: Use Groww for technical/portfolio/orders + your Fundamental Master CSV for Indian stock quality data. If CSV not uploaded, app auto-falls back to yfinance fundamentals.")
+st.subheader("📌 Streamlit Safe Notes")
+st.markdown("""
+- V3.1 does **not** require Groww at startup.
+- If `growwapi` is missing or broken, the app still works in **yfinance + CSV mode**.
+- Turn ON Groww only after the base app is stable.
+- For serious live execution, prefer **Groww Cloud / VPS / static IP backend**.
+""")
