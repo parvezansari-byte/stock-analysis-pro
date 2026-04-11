@@ -3,1129 +3,610 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
-import importlib.util
+import os
 
-st.set_page_config(page_title="Stock Analysis Pro V3.1 Streamlit Safe", layout="wide")
+st.set_page_config(
+    page_title="NSE STOCK INTELLIGENCE PRO",
+    page_icon="📈",
+    layout="wide"
+)
 
-# =========================================================
-# FINAL V3.1 STREAMLIT SAFE GROWW PATCH
-# Single-file Streamlit App
-# - Crash-proof startup on Streamlit Cloud
-# - NO hard dependency on growwapi at startup
-# - Groww integration loads only when package exists + user enables it
-# - App remains live even if growwapi fails
-# =========================================================
+# =========================
+# DEFAULT NSE STOCK LIST
+# =========================
+DEFAULT_NSE_STOCKS = [
+    "RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "SBIN", "LT",
+    "ITC", "HINDUNILVR", "BHARTIARTL", "KOTAKBANK", "ASIANPAINT",
+    "AXISBANK", "MARUTI", "SUNPHARMA", "TITAN", "ULTRACEMCO", "BAJFINANCE",
+    "NESTLEIND", "WIPRO", "HCLTECH", "NTPC", "POWERGRID", "ONGC", "TATAMOTORS"
+]
 
-# -----------------------------
-# SAFE HELPERS
-# -----------------------------
-def safe_num(x, default=np.nan):
+# =========================
+# HELPERS
+# =========================
+def to_ns_symbol(symbol: str) -> str:
+    symbol = symbol.strip().upper()
+    if symbol.endswith(".NS"):
+        return symbol
+    return f"{symbol}.NS"
+
+@st.cache_data(ttl=3600)
+def get_stock_data(symbol, period="2y", interval="1d"):
+    ticker = yf.Ticker(to_ns_symbol(symbol))
+    df = ticker.history(period=period, interval=interval, auto_adjust=False)
+    if df.empty:
+        return pd.DataFrame()
+    df = df.reset_index()
+    return df
+
+@st.cache_data(ttl=3600)
+def get_stock_info(symbol):
     try:
-        if x is None:
-            return default
-        if pd.isna(x):
-            return default
-        return float(x)
+        ticker = yf.Ticker(to_ns_symbol(symbol))
+        info = ticker.info
+        return info
+    except Exception:
+        return {}
+
+def safe_get(info, key, default=np.nan):
+    try:
+        return info.get(key, default)
     except Exception:
         return default
 
-
-def format_num(x):
-    try:
-        if x is None or pd.isna(x):
-            return "N/A"
-        return f"{float(x):,.2f}"
-    except Exception:
-        return "N/A"
-
-
-def format_pct(x):
-    try:
-        if x is None or pd.isna(x):
-            return "N/A"
-        return f"{float(x):.2f}%"
-    except Exception:
-        return "N/A"
-
-
-def cagr(start, end, years):
-    try:
-        if start <= 0 or end <= 0 or years <= 0:
-            return np.nan
-        return ((end / start) ** (1 / years) - 1) * 100
-    except Exception:
-        return np.nan
-
-
-def flatten_columns(df):
-    try:
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
-        return df
-    except Exception:
-        return df
-
-
-def normalize_history(df):
-    if df is None or df.empty:
-        return pd.DataFrame()
-    df = flatten_columns(df.copy())
-    required = ["Open", "High", "Low", "Close", "Volume"]
-    for col in required:
-        if col not in df.columns:
-            if col == "Volume":
-                df[col] = 0
-            else:
-                return pd.DataFrame()
-    return df.dropna(subset=["Close"]).copy()
-
-
+# =========================
+# TECHNICAL INDICATORS
+# =========================
 def compute_rsi(series, period=14):
     delta = series.diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
-    avg_gain = gain.rolling(period).mean()
-    avg_loss = loss.rolling(period).mean()
-    rs = avg_gain / avg_loss.replace(0, np.nan)
+    gain = delta.clip(lower=0).rolling(period).mean()
+    loss = (-delta.clip(upper=0)).rolling(period).mean()
+    rs = gain / loss.replace(0, np.nan)
     rsi = 100 - (100 / (1 + rs))
-    return rsi.bfill().fillna(50)
-
+    return rsi
 
 def compute_macd(series, fast=12, slow=26, signal=9):
     ema_fast = series.ewm(span=fast, adjust=False).mean()
     ema_slow = series.ewm(span=slow, adjust=False).mean()
     macd = ema_fast - ema_slow
-    signal_line = macd.ewm(span=signal, adjust=False).mean()
-    hist = macd - signal_line
-    return macd, signal_line, hist
+    macd_signal = macd.ewm(span=signal, adjust=False).mean()
+    hist = macd - macd_signal
+    return macd, macd_signal, hist
 
+def compute_bollinger(series, window=20, num_std=2):
+    sma = series.rolling(window).mean()
+    std = series.rolling(window).std()
+    upper = sma + num_std * std
+    lower = sma - num_std * std
+    return sma, upper, lower
 
-def add_indicators(df):
+def compute_atr(df, period=14):
+    high_low = df["High"] - df["Low"]
+    high_close = np.abs(df["High"] - df["Close"].shift())
+    low_close = np.abs(df["Low"] - df["Close"].shift())
+    tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    atr = tr.rolling(period).mean()
+    return atr
+
+def add_technical_indicators(df):
     df = df.copy()
+    df["SMA20"] = df["Close"].rolling(20).mean()
+    df["SMA50"] = df["Close"].rolling(50).mean()
+    df["SMA200"] = df["Close"].rolling(200).mean()
     df["EMA20"] = df["Close"].ewm(span=20, adjust=False).mean()
-    df["SMA50"] = df["Close"].rolling(50, min_periods=1).mean()
-    df["SMA200"] = df["Close"].rolling(200, min_periods=1).mean()
+    df["EMA50"] = df["Close"].ewm(span=50, adjust=False).mean()
     df["RSI14"] = compute_rsi(df["Close"], 14)
-    macd, signal, hist = compute_macd(df["Close"])
+
+    macd, macd_signal, macd_hist = compute_macd(df["Close"])
     df["MACD"] = macd
-    df["MACD_SIGNAL"] = signal
-    df["MACD_HIST"] = hist
-    df["VOL20"] = df["Volume"].rolling(20, min_periods=1).mean()
+    df["MACD_SIGNAL"] = macd_signal
+    df["MACD_HIST"] = macd_hist
+
+    bb_mid, bb_upper, bb_lower = compute_bollinger(df["Close"])
+    df["BB_MID"] = bb_mid
+    df["BB_UPPER"] = bb_upper
+    df["BB_LOWER"] = bb_lower
+
+    df["ATR14"] = compute_atr(df, 14)
+    df["VOL20"] = df["Volume"].rolling(20).mean()
+    df["52W_HIGH"] = df["High"].rolling(252).max()
+    df["52W_LOW"] = df["Low"].rolling(252).min()
+
     return df
 
-
-def detect_support_resistance(df, lookback=60):
-    recent = df.tail(min(lookback, len(df)))
-    return safe_num(recent["Low"].min()), safe_num(recent["High"].max())
-
-
-def score_range(value, bands):
-    if value is None or pd.isna(value):
-        return 0
-    for threshold, score in bands:
-        if value >= threshold:
-            return score
-    return 0
-
-
-def final_rating(score):
-    if score >= 85:
-        return "STRONG BUY CANDIDATE"
-    elif score >= 75:
-        return "BUY ON DIPS / ACCUMULATE"
-    elif score >= 65:
-        return "WATCHLIST / SELECTIVE BUY"
-    elif score >= 50:
-        return "AVOID FOR NOW"
-    return "REJECT / WEAK"
-
-
-def verdict_color(verdict):
-    if "STRONG BUY" in verdict:
-        return "#16a34a"
-    if "BUY" in verdict:
-        return "#22c55e"
-    if "WATCHLIST" in verdict:
-        return "#eab308"
-    return "#ef4444"
-
-
-def yahoo_to_groww_symbol(ticker):
-    if not ticker:
-        return ""
-    if ticker.endswith(".NS"):
-        return ticker.replace(".NS", "")
-    if ticker.endswith(".BO"):
-        return ticker.replace(".BO", "")
-    return ticker
-
-
-def groww_to_yahoo_symbol(symbol):
-    if not symbol:
-        return ""
-    symbol = str(symbol).strip().upper()
-    if symbol.endswith(".NS") or symbol.endswith(".BO"):
-        return symbol
-    return f"{symbol}.NS"
-
-
-# -----------------------------
-# SAFE PACKAGE CHECK (NO CRASH)
-# -----------------------------
-def is_growwapi_available():
-    try:
-        return importlib.util.find_spec("growwapi") is not None
-    except Exception:
-        return False
-
-
-# -----------------------------
-# YFINANCE SAFE DATA
-# -----------------------------
-@st.cache_data(ttl=900, show_spinner=False)
-def fetch_history_yf(ticker, period):
-    attempts = [
-        {"auto_adjust": True, "repair": True},
-        {"auto_adjust": False, "repair": True},
-        {"auto_adjust": True, "repair": False},
-    ]
-    for a in attempts:
-        try:
-            df = yf.download(ticker, period=period, interval="1d", progress=False, threads=False, **a)
-            df = normalize_history(df)
-            if not df.empty:
-                return df
-        except Exception:
-            continue
-    return pd.DataFrame()
-
-
-@st.cache_data(ttl=900, show_spinner=False)
-def fetch_benchmark_cached(period="6mo"):
-    try:
-        df = yf.download("^NSEI", period=period, interval="1d", progress=False, auto_adjust=True, threads=False)
-        return normalize_history(df)
-    except Exception:
-        return pd.DataFrame()
-
-
-@st.cache_data(ttl=900, show_spinner=False)
-def fetch_fast_info_cached(ticker):
-    try:
-        tk = yf.Ticker(ticker)
-        fi = getattr(tk, "fast_info", None)
-        if fi:
-            try:
-                return dict(fi)
-            except Exception:
-                return fi
-        return {}
-    except Exception:
-        return {}
-
-
-def safe_ticker(ticker):
-    try:
-        return yf.Ticker(ticker)
-    except Exception:
-        return None
-
-
-# -----------------------------
-# GROWW SAFE LAZY INIT
-# -----------------------------
-def init_groww_client_safe(enable_groww=False):
-    """
-    NEVER crashes app.
-    Imports growwapi only when explicitly needed and available.
-    """
-    if not enable_groww:
-        return None, None, "Groww disabled by user"
-
-    if not is_growwapi_available():
-        return None, None, "growwapi package not installed or failed in Streamlit build"
-
-    try:
-        from growwapi import GrowwAPI
-    except Exception as e:
-        return None, None, f"growwapi import failed: {e}"
-
-    try:
-        api_key = st.secrets.get("GROWW_API_KEY", None)
-        api_secret = st.secrets.get("GROWW_API_SECRET", None)
-        access_token = st.secrets.get("GROWW_ACCESS_TOKEN", None)
-    except Exception as e:
-        return None, None, f"Streamlit Secrets read failed: {e}"
-
-    if not access_token and api_key and api_secret:
-        try:
-            access_token = GrowwAPI.get_access_token(api_key=api_key, secret=api_secret)
-        except Exception as e:
-            return None, None, f"Access token generation failed: {e}"
-
-    if not access_token:
-        return None, None, "Add GROWW_API_KEY + GROWW_API_SECRET OR GROWW_ACCESS_TOKEN in Streamlit Secrets"
-
-    try:
-        try:
-            client = GrowwAPI(access_token)
-        except Exception:
-            client = GrowwAPI(access_token=access_token)
-        return client, access_token, None
-    except Exception as e:
-        return None, None, f"Groww init failed: {e}"
-
-
-def try_methods(client, method_names, *args, **kwargs):
-    last_error = None
-    for name in method_names:
-        fn = getattr(client, name, None)
-        if callable(fn):
-            try:
-                return fn(*args, **kwargs), None, name
-            except Exception as e:
-                last_error = str(e)
-                continue
-    return None, last_error or "No compatible method found", None
-
-
-def extract_list_from_response(resp):
-    if resp is None:
-        return []
-    if isinstance(resp, list):
-        return resp
-    if isinstance(resp, dict):
-        for key in ["data", "holdings", "positions", "items", "results", "candles"]:
-            if key in resp and isinstance(resp[key], list):
-                return resp[key]
-    return []
-
-
-def get_groww_holdings(client):
-    resp, err, method = try_methods(client, ["get_holdings_for_user", "get_holdings", "holdings"], timeout=5)
-    if resp is not None:
-        return extract_list_from_response(resp), None, method
-    return [], err, None
-
-
-def get_groww_positions(client):
-    resp, err, method = try_methods(client, ["get_positions_for_user", "get_positions", "positions"])
-    if resp is not None:
-        return extract_list_from_response(resp), None, method
-    return [], err, None
-
-
-def extract_symbol_from_holding(item):
-    if not isinstance(item, dict):
-        return None
-    candidates = [
-        item.get("tradingSymbol"), item.get("trading_symbol"), item.get("symbol"), item.get("ticker"),
-        item.get("nseSymbol"), item.get("exchangeSymbol"), item.get("instrumentSymbol")
-    ]
-    for c in candidates:
-        if c:
-            return groww_to_yahoo_symbol(str(c))
-    return None
-
-
-def period_to_days(period):
-    mapping = {"6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
-    return mapping.get(period, 365)
-
-
-def parse_candle_rows(rows):
-    parsed = []
-    for r in rows:
-        try:
-            if isinstance(r, (list, tuple)) and len(r) >= 6:
-                ts = r[0]
-                o, h, l, c, v = r[1], r[2], r[3], r[4], r[5]
-            elif isinstance(r, dict):
-                ts = r.get("timestamp") or r.get("time") or r.get("date")
-                o = r.get("open")
-                h = r.get("high")
-                l = r.get("low")
-                c = r.get("close")
-                v = r.get("volume", 0)
-            else:
-                continue
-
-            ts_val = pd.to_datetime(ts, unit="s", errors="coerce") if isinstance(ts, (int, float)) else pd.to_datetime(ts, errors="coerce")
-            if pd.isna(ts_val):
-                continue
-
-            parsed.append([ts_val, safe_num(o), safe_num(h), safe_num(l), safe_num(c), safe_num(v, 0)])
-        except Exception:
-            continue
-
-    if not parsed:
-        return pd.DataFrame()
-
-    df = pd.DataFrame(parsed, columns=["Date", "Open", "High", "Low", "Close", "Volume"]).set_index("Date")
-    return normalize_history(df)
-
-
-def fetch_history_groww(client, ticker, period):
-    if client is None:
-        return pd.DataFrame(), "Groww client unavailable", None
-
-    symbol = yahoo_to_groww_symbol(ticker)
-    days = period_to_days(period)
-    from_date = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
-    to_date = datetime.utcnow().strftime("%Y-%m-%d")
-
-    method_candidates = [
-        "get_historical_candle_data",
-        "get_historical_data",
-        "get_historical_candles",
-        "historical_data",
-        "get_candles",
-    ]
-
-    for m in method_candidates:
-        fn = getattr(client, m, None)
-        if callable(fn):
-            attempts = [
-                {"exchange": "NSE", "segment": "CASH", "trading_symbol": symbol, "interval": "DAY", "from_date": from_date, "to_date": to_date},
-                {"exchange": "NSE", "segment": "CASH", "trading_symbol": symbol, "interval": "1d", "from_date": from_date, "to_date": to_date},
-                {"trading_symbol": symbol, "interval": "DAY", "from_date": from_date, "to_date": to_date},
-                {"symbol": symbol, "interval": "DAY", "from_date": from_date, "to_date": to_date},
-            ]
-            for kwargs in attempts:
-                try:
-                    resp = fn(**kwargs)
-                    if isinstance(resp, dict):
-                        rows = resp.get("candles") or resp.get("data") or resp.get("results") or []
-                    elif isinstance(resp, list):
-                        rows = resp
-                    else:
-                        rows = []
-                    df = parse_candle_rows(rows)
-                    if not df.empty:
-                        return df, None, m
-                except Exception:
-                    continue
-
-    return pd.DataFrame(), "No compatible Groww historical candle method worked", None
-
-
-# -----------------------------
-# FUNDAMENTAL MASTER + FALLBACK
-# -----------------------------
-def normalize_master_columns(df):
-    df = df.copy()
-    df.columns = [str(c).strip().lower() for c in df.columns]
-    return df
-
-
-def load_fundamental_master(uploaded_file):
-    if uploaded_file is None:
-        return None, "No CSV uploaded"
-    try:
-        df = pd.read_csv(uploaded_file)
-        df = normalize_master_columns(df)
-        if "symbol" not in df.columns:
-            return None, "CSV must contain a 'symbol' column"
-        df["symbol"] = df["symbol"].astype(str).str.strip().str.upper()
-        return df, None
-    except Exception as e:
-        return None, str(e)
-
-
-def get_master_row(master_df, ticker):
-    if master_df is None or master_df.empty:
-        return None
-    symbol = yahoo_to_groww_symbol(ticker).upper()
-    rows = master_df[master_df["symbol"] == symbol]
-    if rows.empty:
-        return None
-    return rows.iloc[0].to_dict()
-
-
-def get_financial_value(df, label_candidates):
-    try:
-        if df is None or df.empty:
-            return None
-        for label in label_candidates:
-            if label in df.index:
-                vals = pd.Series(df.loc[label]).dropna().values
-                if len(vals) > 0:
-                    return vals[0]
-        return None
-    except Exception:
-        return None
-
-
-def growth_from_statement(df, label_candidates, years=3):
-    try:
-        if df is None or df.empty:
-            return np.nan
-        for label in label_candidates:
-            if label in df.index:
-                row = pd.Series(df.loc[label]).dropna()
-                if len(row) >= years + 1:
-                    vals = row.iloc[: years + 1][::-1]
-                    start = safe_num(vals.iloc[0])
-                    end = safe_num(vals.iloc[-1])
-                    return cagr(start, end, years)
-        return np.nan
-    except Exception:
-        return np.nan
-
-
-def get_quarterly_growth(df, label_candidates):
-    try:
-        if df is None or df.empty:
-            return np.nan
-        for label in label_candidates:
-            if label in df.index:
-                row = pd.Series(df.loc[label]).dropna()
-                if len(row) >= 4:
-                    latest = safe_num(row.iloc[0])
-                    year_ago = safe_num(row.iloc[3])
-                    if not pd.isna(year_ago) and year_ago != 0:
-                        return ((latest - year_ago) / abs(year_ago)) * 100
-        return np.nan
-    except Exception:
-        return np.nan
-
-
-def fundamental_from_yf(ticker_symbol):
-    ticker_obj = safe_ticker(ticker_symbol)
-    info = {}
-    fast_info = fetch_fast_info_cached(ticker_symbol)
-
-    try:
-        info = ticker_obj.info if ticker_obj else {}
-        if not isinstance(info, dict):
-            info = {}
-    except Exception:
-        info = {}
-
-    try:
-        income = ticker_obj.financials if ticker_obj else pd.DataFrame()
-    except Exception:
-        income = pd.DataFrame()
-
-    try:
-        cashflow = ticker_obj.cashflow if ticker_obj else pd.DataFrame()
-    except Exception:
-        cashflow = pd.DataFrame()
-
-    try:
-        q_income = ticker_obj.quarterly_financials if ticker_obj else pd.DataFrame()
-    except Exception:
-        q_income = pd.DataFrame()
-
-    revenue_3y = growth_from_statement(income, ["Total Revenue", "Operating Revenue"], years=3)
-    profit_3y = growth_from_statement(income, ["Net Income", "Net Income Common Stockholders", "Normalized Income"], years=3)
-    q_sales_yoy = get_quarterly_growth(q_income, ["Total Revenue", "Operating Revenue"])
-    q_profit_yoy = get_quarterly_growth(q_income, ["Net Income", "Net Income Common Stockholders", "Normalized Income"])
-
-    roe = safe_num(info.get("returnOnEquity"))
-    debt_to_equity = safe_num(info.get("debtToEquity"))
-    profit_margin = safe_num(info.get("profitMargins"))
-    operating_margin = safe_num(info.get("operatingMargins"))
-    pe = safe_num(info.get("trailingPE"))
-    pb = safe_num(info.get("priceToBook"))
-
-    market_cap = info.get("marketCap", fast_info.get("marketCap") if isinstance(fast_info, dict) else None)
-    current_price = info.get("currentPrice", info.get("regularMarketPrice", None))
-    if current_price in [None, ""] and isinstance(fast_info, dict):
-        current_price = fast_info.get("lastPrice", None)
-
-    fifty_two_high = info.get("fiftyTwoWeekHigh", None)
-    fifty_two_low = info.get("fiftyTwoWeekLow", None)
-    if isinstance(fast_info, dict):
-        fifty_two_high = fifty_two_high if fifty_two_high is not None else fast_info.get("yearHigh", None)
-        fifty_two_low = fifty_two_low if fifty_two_low is not None else fast_info.get("yearLow", None)
-
-    sector = info.get("sector", "N/A")
-    industry = info.get("industry", "N/A")
-    long_name = info.get("longName", info.get("shortName", ticker_symbol))
-
-    cfo = get_financial_value(cashflow, ["Operating Cash Flow", "Total Cash From Operating Activities"])
-    fcf = get_financial_value(cashflow, ["Free Cash Flow"])
-    net_income_latest = get_financial_value(income, ["Net Income", "Net Income Common Stockholders", "Normalized Income"])
-
-    cfo_vs_pat = np.nan
-    try:
-        if cfo is not None and net_income_latest not in [None, 0]:
-            cfo_vs_pat = (safe_num(cfo) / abs(safe_num(net_income_latest))) * 100
-    except Exception:
-        cfo_vs_pat = np.nan
-
-    return {
-        "company": long_name,
-        "sector": sector,
-        "industry": industry,
-        "market_cap": market_cap,
-        "current_price": current_price,
-        "52w_high": fifty_two_high,
-        "52w_low": fifty_two_low,
-        "sales_growth_3y": revenue_3y,
-        "profit_growth_3y": profit_3y,
-        "quarterly_sales_yoy": q_sales_yoy,
-        "quarterly_profit_yoy": q_profit_yoy,
-        "roe": roe * 100 if not pd.isna(roe) else np.nan,
-        "roce": np.nan,
-        "debt_to_equity": debt_to_equity,
-        "opm": operating_margin * 100 if not pd.isna(operating_margin) else np.nan,
-        "npm": profit_margin * 100 if not pd.isna(profit_margin) else np.nan,
-        "cfo": cfo,
-        "fcf": fcf,
-        "cfo_vs_pat": cfo_vs_pat,
-        "pe": pe,
-        "pb": pb,
-        "promoter_holding": np.nan,
-        "pledge": np.nan,
-        "source": "yfinance fallback",
-    }
-
-
-def build_fundamental_data(ticker, master_df=None):
-    row = get_master_row(master_df, ticker) if master_df is not None else None
-    if row:
-        data = {
-            "company": row.get("company", ticker),
-            "sector": row.get("sector", "N/A"),
-            "industry": row.get("industry", "N/A"),
-            "market_cap": safe_num(row.get("market_cap")),
-            "current_price": safe_num(row.get("current_price")),
-            "52w_high": safe_num(row.get("52w_high")),
-            "52w_low": safe_num(row.get("52w_low")),
-            "sales_growth_3y": safe_num(row.get("sales_growth_3y")),
-            "profit_growth_3y": safe_num(row.get("profit_growth_3y")),
-            "quarterly_sales_yoy": safe_num(row.get("quarterly_sales_yoy")),
-            "quarterly_profit_yoy": safe_num(row.get("quarterly_profit_yoy")),
-            "roe": safe_num(row.get("roe")),
-            "roce": safe_num(row.get("roce")),
-            "debt_to_equity": safe_num(row.get("debt_to_equity")),
-            "opm": safe_num(row.get("opm")),
-            "npm": safe_num(row.get("npm")),
-            "cfo": safe_num(row.get("cfo")),
-            "fcf": safe_num(row.get("fcf")),
-            "cfo_vs_pat": safe_num(row.get("cfo_vs_pat")),
-            "pe": safe_num(row.get("pe")),
-            "pb": safe_num(row.get("pb")),
-            "promoter_holding": safe_num(row.get("promoter_holding")),
-            "pledge": safe_num(row.get("pledge")),
-            "source": "fundamental master CSV",
-        }
-    else:
-        data = fundamental_from_yf(ticker)
-
+# =========================
+# SCORING
+# =========================
+def fundamental_score(info):
     score = 0
-    score += score_range(data.get("sales_growth_3y"), [(20, 12), (15, 10), (10, 8), (5, 4)])
-    score += score_range(data.get("profit_growth_3y"), [(20, 12), (15, 10), (10, 8), (5, 4)])
-    score += score_range(data.get("quarterly_profit_yoy"), [(20, 8), (10, 6), (5, 4), (0, 2)])
-    score += score_range(data.get("roe"), [(20, 12), (15, 10), (10, 7), (5, 4)])
-    score += score_range(data.get("roce"), [(20, 8), (15, 6), (10, 4), (5, 2)])
+    details = {}
 
-    dte = data.get("debt_to_equity")
-    if not pd.isna(dte):
-        if dte <= 0.5:
-            score += 10
-        elif dte <= 1.0:
-            score += 7
-        elif dte <= 2.0:
-            score += 4
+    roe = safe_get(info, "returnOnEquity", np.nan)
+    if pd.notna(roe):
+        roe_pct = roe * 100 if roe < 5 else roe
+        points = 10 if roe_pct > 15 else 5 if roe_pct > 8 else 0
+        score += points
+        details["ROE"] = points
     else:
-        score += 3
+        details["ROE"] = 0
 
-    score += score_range(data.get("opm"), [(20, 8), (15, 6), (10, 4), (5, 2)])
-    score += score_range(data.get("npm"), [(15, 6), (10, 4), (5, 2)])
-
-    cfo_pat = data.get("cfo_vs_pat")
-    if not pd.isna(cfo_pat):
-        if cfo_pat >= 100:
-            score += 8
-        elif cfo_pat >= 80:
-            score += 6
-        elif cfo_pat >= 60:
-            score += 3
+    pe = safe_get(info, "trailingPE", np.nan)
+    if pd.notna(pe):
+        points = 10 if 0 < pe < 25 else 5 if pe < 40 else 0
+        score += points
+        details["PE"] = points
     else:
-        score += 2
+        details["PE"] = 0
 
-    promoter = data.get("promoter_holding")
-    if not pd.isna(promoter):
-        if promoter >= 50:
-            score += 5
-        elif promoter >= 35:
-            score += 3
+    pb = safe_get(info, "priceToBook", np.nan)
+    if pd.notna(pb):
+        points = 10 if 0 < pb < 4 else 5 if pb < 8 else 0
+        score += points
+        details["PB"] = points
     else:
-        score += 2
+        details["PB"] = 0
 
-    pledge = data.get("pledge")
-    if not pd.isna(pledge):
-        if pledge == 0:
-            score += 5
-        elif pledge <= 5:
-            score += 3
+    debt_to_equity = safe_get(info, "debtToEquity", np.nan)
+    if pd.notna(debt_to_equity):
+        points = 10 if debt_to_equity < 80 else 5 if debt_to_equity < 150 else 0
+        score += points
+        details["DebtToEquity"] = points
     else:
-        score += 2
+        details["DebtToEquity"] = 0
 
-    pe = data.get("pe")
-    if not pd.isna(pe):
-        if pe <= 20:
-            score += 6
-        elif pe <= 35:
-            score += 4
-        elif pe <= 50:
-            score += 2
+    profit_margin = safe_get(info, "profitMargins", np.nan)
+    if pd.notna(profit_margin):
+        pm_pct = profit_margin * 100 if profit_margin < 5 else profit_margin
+        points = 10 if pm_pct > 10 else 5 if pm_pct > 5 else 0
+        score += points
+        details["ProfitMargin"] = points
     else:
-        score += 2
+        details["ProfitMargin"] = 0
 
-    pb = data.get("pb")
-    if not pd.isna(pb):
-        if pb <= 3:
-            score += 4
-        elif pb <= 6:
-            score += 2
+    operating_margin = safe_get(info, "operatingMargins", np.nan)
+    if pd.notna(operating_margin):
+        om_pct = operating_margin * 100 if operating_margin < 5 else operating_margin
+        points = 10 if om_pct > 15 else 5 if om_pct > 8 else 0
+        score += points
+        details["OperatingMargin"] = points
     else:
-        score += 1
+        details["OperatingMargin"] = 0
 
-    data["fundamental_score"] = min(score, 100)
-    return data
+    revenue_growth = safe_get(info, "revenueGrowth", np.nan)
+    if pd.notna(revenue_growth):
+        rg_pct = revenue_growth * 100 if revenue_growth < 5 else revenue_growth
+        points = 10 if rg_pct > 10 else 5 if rg_pct > 5 else 0
+        score += points
+        details["RevenueGrowth"] = points
+    else:
+        details["RevenueGrowth"] = 0
 
+    earnings_growth = safe_get(info, "earningsGrowth", np.nan)
+    if pd.notna(earnings_growth):
+        eg_pct = earnings_growth * 100 if earnings_growth < 5 else earnings_growth
+        points = 10 if eg_pct > 10 else 5 if eg_pct > 5 else 0
+        score += points
+        details["EarningsGrowth"] = points
+    else:
+        details["EarningsGrowth"] = 0
 
-# -----------------------------
-# TECHNICAL ANALYSIS
-# -----------------------------
-def technical_analysis(df):
-    df = add_indicators(df)
+    current_ratio = safe_get(info, "currentRatio", np.nan)
+    if pd.notna(current_ratio):
+        points = 10 if current_ratio > 1.5 else 5 if current_ratio > 1 else 0
+        score += points
+        details["CurrentRatio"] = points
+    else:
+        details["CurrentRatio"] = 0
+
+    dividend_yield = safe_get(info, "dividendYield", np.nan)
+    if pd.notna(dividend_yield):
+        dy_pct = dividend_yield * 100 if dividend_yield < 5 else dividend_yield
+        points = 10 if dy_pct > 1 else 5 if dy_pct > 0 else 0
+        score += points
+        details["DividendYield"] = points
+    else:
+        details["DividendYield"] = 0
+
+    return min(score, 100), details
+
+def technical_score(df):
+    if df.empty or len(df) < 220:
+        return 0, {}
+
     latest = df.iloc[-1]
+    score = 0
+    details = {}
 
-    price = safe_num(latest["Close"])
-    ema20 = safe_num(latest["EMA20"])
-    sma50 = safe_num(latest["SMA50"])
-    sma200 = safe_num(latest["SMA200"])
-    rsi = safe_num(latest["RSI14"])
-    macd = safe_num(latest["MACD"])
-    macd_signal = safe_num(latest["MACD_SIGNAL"])
-    volume = safe_num(latest["Volume"], 0)
-    vol20 = safe_num(latest["VOL20"], 0)
-
-    support, resistance = detect_support_resistance(df, 60)
-
-    trend_score = 0
-    trend_label = "Neutral"
-    if price > ema20 and price > sma50 and price > sma200 and sma50 > sma200:
-        trend_score = 20
-        trend_label = "Strong Bullish"
-    elif price > sma50 and price > sma200:
-        trend_score = 15
-        trend_label = "Bullish"
-    elif price > sma200:
-        trend_score = 10
-        trend_label = "Mild Bullish"
-    elif price < sma200:
-        trend_score = 4
-        trend_label = "Weak / Bearish"
-
-    ma_score = 0
-    if price > ema20:
-        ma_score += 5
-    if price > sma50:
-        ma_score += 5
-    if price > sma200:
-        ma_score += 5
-
-    structure_score = 0
-    if not pd.isna(support) and not pd.isna(resistance):
-        if price >= resistance * 0.98:
-            structure_score = 15
-        elif price >= (support + resistance) / 2:
-            structure_score = 10
-        else:
-            structure_score = 6
-
-    volume_score = 0
-    if vol20 > 0:
-        if volume >= 1.5 * vol20:
-            volume_score = 15
-        elif volume >= 1.1 * vol20:
-            volume_score = 10
-        else:
-            volume_score = 5
+    # Trend
+    if latest["Close"] > latest["SMA200"]:
+        score += 15
+        details["Above200DMA"] = 15
     else:
-        volume_score = 3
+        details["Above200DMA"] = 0
 
-    rsi_score = 10 if rsi >= 60 else 7 if rsi >= 50 else 4 if rsi >= 40 else 2
-    macd_score = 10 if macd > macd_signal else 4
+    if latest["SMA50"] > latest["SMA200"]:
+        score += 15
+        details["GoldenStructure"] = 15
+    else:
+        details["GoldenStructure"] = 0
 
-    rs_score = 5
-    stock_ret = np.nan
-    nifty_ret = np.nan
-    try:
-        nifty = fetch_benchmark_cached("6mo")
-        if not nifty.empty and len(df) >= 2:
-            stock_look = min(90, len(df) - 1)
-            nifty_look = min(90, len(nifty) - 1)
-            stock_ret = ((df["Close"].iloc[-1] / df["Close"].iloc[-(stock_look + 1)]) - 1) * 100
-            nifty_ret = ((nifty["Close"].iloc[-1] / nifty["Close"].iloc[-(nifty_look + 1)]) - 1) * 100
-            if stock_ret > nifty_ret + 5:
-                rs_score = 10
-            elif stock_ret > nifty_ret:
-                rs_score = 8
-            elif stock_ret > nifty_ret - 5:
-                rs_score = 5
-            else:
-                rs_score = 2
-    except Exception:
-        rs_score = 5
+    # Momentum
+    rsi = latest["RSI14"]
+    if 55 <= rsi <= 70:
+        score += 10
+        details["RSI"] = 10
+    elif 45 <= rsi < 55:
+        score += 5
+        details["RSI"] = 5
+    else:
+        details["RSI"] = 0
 
-    stop_loss = support if not pd.isna(support) else sma50
-    if pd.isna(stop_loss):
-        stop_loss = price * 0.92
+    if latest["MACD"] > latest["MACD_SIGNAL"]:
+        score += 10
+        details["MACD"] = 10
+    else:
+        details["MACD"] = 0
 
-    target1 = resistance if not pd.isna(resistance) else price * 1.08
-    if target1 <= price:
-        target1 = price * 1.06
-    target2 = max(target1 * 1.08, price * 1.12)
+    # Volume
+    if latest["Volume"] > 1.5 * latest["VOL20"]:
+        score += 15
+        details["VolumeBreakout"] = 15
+    elif latest["Volume"] > latest["VOL20"]:
+        score += 8
+        details["VolumeBreakout"] = 8
+    else:
+        details["VolumeBreakout"] = 0
 
-    risk = max(price - stop_loss, 0.01)
-    reward = max(target1 - price, 0.01)
-    rr = reward / risk if risk > 0 else 1.0
-    risk_reward_score = 5 if rr >= 2 else 3 if rr >= 1.2 else 1
+    # 52W High Proximity
+    if latest["52W_HIGH"] > 0:
+        dist = ((latest["52W_HIGH"] - latest["Close"]) / latest["52W_HIGH"]) * 100
+        if dist < 10:
+            score += 10
+            details["Near52WHigh"] = 10
+        elif dist < 20:
+            score += 5
+            details["Near52WHigh"] = 5
+        else:
+            details["Near52WHigh"] = 0
+    else:
+        details["Near52WHigh"] = 0
 
-    technical_score = min(trend_score + ma_score + structure_score + volume_score + rsi_score + macd_score + rs_score + risk_reward_score, 100)
+    # Bollinger
+    if latest["Close"] > latest["BB_MID"]:
+        score += 10
+        details["BBPosition"] = 10
+    else:
+        details["BBPosition"] = 0
 
-    return {
-        "df": df,
-        "price": price,
-        "ema20": ema20,
-        "sma50": sma50,
-        "sma200": sma200,
-        "rsi": rsi,
-        "macd": macd,
-        "macd_signal": macd_signal,
-        "support": support,
-        "resistance": resistance,
-        "trend": trend_label,
-        "stock_ret_90d": stock_ret,
-        "nifty_ret_90d": nifty_ret,
-        "entry_zone": f"{price * 0.98:.2f} - {price * 1.01:.2f}",
-        "stop_loss": stop_loss,
-        "target1": target1,
-        "target2": target2,
-        "rr": rr,
-        "technical_score": technical_score,
-    }
+    # EMA structure
+    if latest["EMA20"] > latest["EMA50"]:
+        score += 10
+        details["EMAAlignment"] = 10
+    else:
+        details["EMAAlignment"] = 0
 
+    # Risk / ATR
+    atr_pct = (latest["ATR14"] / latest["Close"]) * 100 if latest["Close"] > 0 else np.nan
+    if pd.notna(atr_pct):
+        if atr_pct < 4:
+            score += 5
+            details["ATRRisk"] = 5
+        else:
+            details["ATRRisk"] = 2
+            score += 2
+    else:
+        details["ATRRisk"] = 0
 
-# -----------------------------
-# ANALYSIS ENGINE
-# -----------------------------
-def fetch_price_history(client, ticker, period, prefer_groww=True):
-    if prefer_groww and client is not None:
-        gdf, err, method = fetch_history_groww(client, ticker, period)
-        if not gdf.empty:
-            return gdf, f"Groww ({method})"
-    ydf = fetch_history_yf(ticker, period)
-    if not ydf.empty:
-        return ydf, "yfinance fallback"
-    return pd.DataFrame(), "No data source"
+    return min(score, 100), details
 
+def get_verdict(f_score, t_score, combined):
+    if combined >= 80:
+        return "🔥 STRONG BUY / HIGH QUALITY"
+    elif combined >= 65:
+        return "✅ BUY / WATCHLIST PRIORITY"
+    elif combined >= 50:
+        return "👀 WATCHLIST / NEUTRAL"
+    else:
+        return "⚠️ AVOID / WEAK SETUP"
 
-def analyze_symbol(ticker, period="1y", master_df=None, groww_client=None, prefer_groww=True):
-    hist, price_source = fetch_price_history(groww_client, ticker, period, prefer_groww=prefer_groww)
-    if hist.empty:
-        return None
+# =========================
+# CHARTS
+# =========================
+def make_candlestick_chart(df, symbol):
+    fig = make_subplots(
+        rows=3, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.03,
+        row_heights=[0.6, 0.2, 0.2]
+    )
 
-    fdata = build_fundamental_data(ticker, master_df=master_df)
-    tdata = technical_analysis(hist)
+    fig.add_trace(
+        go.Candlestick(
+            x=df["Date"],
+            open=df["Open"],
+            high=df["High"],
+            low=df["Low"],
+            close=df["Close"],
+            name="Price"
+        ),
+        row=1, col=1
+    )
 
-    if fdata.get("current_price") in [None, ""] or pd.isna(safe_num(fdata.get("current_price"))):
-        fdata["current_price"] = safe_num(hist["Close"].iloc[-1])
+    fig.add_trace(go.Scatter(x=df["Date"], y=df["SMA20"], mode="lines", name="SMA20"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df["Date"], y=df["SMA50"], mode="lines", name="SMA50"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df["Date"], y=df["SMA200"], mode="lines", name="SMA200"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df["Date"], y=df["BB_UPPER"], mode="lines", name="BB Upper"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df["Date"], y=df["BB_LOWER"], mode="lines", name="BB Lower"), row=1, col=1)
 
-    final_score = round((fdata["fundamental_score"] * 0.60) + (tdata["technical_score"] * 0.40), 2)
-    verdict = final_rating(final_score)
+    fig.add_trace(go.Bar(x=df["Date"], y=df["Volume"], name="Volume"), row=2, col=1)
+    fig.add_trace(go.Scatter(x=df["Date"], y=df["RSI14"], mode="lines", name="RSI14"), row=3, col=1)
 
-    return {"fdata": fdata, "tdata": tdata, "final_score": final_score, "verdict": verdict, "price_source": price_source}
-
-
-def place_groww_order_safe(client, symbol, qty, transaction="BUY"):
-    if client is None:
-        return None, "Groww client unavailable"
-    try:
-        groww_symbol = yahoo_to_groww_symbol(symbol)
-        for m in ["place_order", "create_order"]:
-            fn = getattr(client, m, None)
-            if callable(fn):
-                try:
-                    return fn(
-                        trading_symbol=groww_symbol,
-                        quantity=int(qty),
-                        exchange="NSE",
-                        segment="CASH",
-                        product="CNC",
-                        order_type="MARKET",
-                        transaction_type=transaction,
-                    ), None
-                except Exception:
-                    try:
-                        return fn(groww_symbol, int(qty), transaction), None
-                    except Exception as e:
-                        last_error = str(e)
-                        continue
-        return None, locals().get("last_error", "No compatible order method found")
-    except Exception as e:
-        return None, str(e)
-
-
-def create_chart(df, ticker):
-    fig = go.Figure()
-    fig.add_trace(go.Candlestick(x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="Price"))
-    fig.add_trace(go.Scatter(x=df.index, y=df["EMA20"], mode="lines", name="EMA20"))
-    fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], mode="lines", name="SMA50"))
-    fig.add_trace(go.Scatter(x=df.index, y=df["SMA200"], mode="lines", name="SMA200"))
-    fig.update_layout(title=f"{ticker} Price Chart", xaxis_rangeslider_visible=False, height=600)
+    fig.update_layout(
+        title=f"{symbol} - Candlestick + Technicals",
+        xaxis_rangeslider_visible=False,
+        height=850
+    )
     return fig
 
+# =========================
+# DATA TABLES
+# =========================
+def build_fundamental_table(info):
+    rows = [
+        ("Market Cap", safe_get(info, "marketCap")),
+        ("Current Price", safe_get(info, "currentPrice")),
+        ("52W High", safe_get(info, "fiftyTwoWeekHigh")),
+        ("52W Low", safe_get(info, "fiftyTwoWeekLow")),
+        ("P/E", safe_get(info, "trailingPE")),
+        ("Forward P/E", safe_get(info, "forwardPE")),
+        ("P/B", safe_get(info, "priceToBook")),
+        ("ROE", safe_get(info, "returnOnEquity")),
+        ("Debt to Equity", safe_get(info, "debtToEquity")),
+        ("Current Ratio", safe_get(info, "currentRatio")),
+        ("Profit Margin", safe_get(info, "profitMargins")),
+        ("Operating Margin", safe_get(info, "operatingMargins")),
+        ("Revenue Growth", safe_get(info, "revenueGrowth")),
+        ("Earnings Growth", safe_get(info, "earningsGrowth")),
+        ("Dividend Yield", safe_get(info, "dividendYield")),
+        ("Beta", safe_get(info, "beta")),
+        ("Sector", safe_get(info, "sector")),
+        ("Industry", safe_get(info, "industry")),
+    ]
+    return pd.DataFrame(rows, columns=["Metric", "Value"])
 
-# -----------------------------
-# UI
-# -----------------------------
-st.title("📊 STOCK ANALYSIS PRO APP V3.1 - STREAMLIT SAFE GROWW PATCH")
-st.caption("Crash-proof Streamlit version | Groww optional | yfinance fallback always live")
+def format_value(metric, value):
+    if pd.isna(value):
+        return "N/A"
 
-with st.sidebar:
-    st.header("⚙️ Settings")
-    ticker = st.text_input("Enter Stock Ticker", value="RELIANCE.NS").strip().upper()
-    period = st.selectbox("Price History Period", ["6mo", "1y", "2y", "5y"], index=1)
+    percent_metrics = {"ROE", "Profit Margin", "Operating Margin", "Revenue Growth", "Earnings Growth", "Dividend Yield"}
+    if metric in percent_metrics and isinstance(value, (int, float)):
+        if value < 5:
+            return f"{value*100:.2f}%"
+        return f"{value:.2f}%"
 
-    st.subheader("📁 Fundamental Master CSV")
-    uploaded_file = st.file_uploader("Upload CSV (optional)", type=["csv"])
+    if metric == "Market Cap" and isinstance(value, (int, float)):
+        return f"₹ {value:,.0f}"
 
-    st.subheader("🔗 Groww Connection")
-    prefer_groww = st.checkbox("Prefer Groww for Technical Data", value=False)
-    use_groww_features = st.checkbox("Enable Groww Holdings / Positions / Orders", value=False)
+    if isinstance(value, (int, float)):
+        return f"{value:,.2f}"
 
-    run = st.button("🚀 Analyze Stock", use_container_width=True)
-    analyze_holdings_btn = st.button("📦 Analyze My Groww Holdings", use_container_width=True, disabled=not use_groww_features)
-    show_positions_btn = st.button("📍 Show Groww Positions", use_container_width=True, disabled=not use_groww_features)
+    return str(value)
+
+# =========================
+# SCREENER
+# =========================
+@st.cache_data(ttl=3600)
+def run_screener(symbols):
+    results = []
+
+    for symbol in symbols:
+        try:
+            df = get_stock_data(symbol, period="2y")
+            if df.empty or len(df) < 220:
+                continue
+
+            df = add_technical_indicators(df)
+            info = get_stock_info(symbol)
+
+            f_score, _ = fundamental_score(info)
+            t_score, _ = technical_score(df)
+            combined = round(0.6 * f_score + 0.4 * t_score, 2)
+
+            latest = df.iloc[-1]
+            results.append({
+                "Symbol": symbol,
+                "Close": round(latest["Close"], 2),
+                "RSI": round(latest["RSI14"], 2) if pd.notna(latest["RSI14"]) else np.nan,
+                "Above_200DMA": latest["Close"] > latest["SMA200"],
+                "Volume_Breakout": latest["Volume"] > latest["VOL20"],
+                "Fundamental_Score": f_score,
+                "Technical_Score": t_score,
+                "Combined_Score": combined,
+                "Verdict": get_verdict(f_score, t_score, combined)
+            })
+        except Exception:
+            continue
+
+    if not results:
+        return pd.DataFrame()
+
+    out = pd.DataFrame(results).sort_values("Combined_Score", ascending=False).reset_index(drop=True)
+    return out
+
+# =========================
+# SIDEBAR
+# =========================
+st.sidebar.title("📊 NSE STOCK INTELLIGENCE PRO")
+page = st.sidebar.radio(
+    "Select Module",
+    ["Dashboard", "Single Stock Analysis", "NSE Screener", "Top Rankings"]
+)
+
+st.sidebar.markdown("---")
+custom_input = st.sidebar.text_area(
+    "Custom NSE symbols (comma separated)",
+    value=",".join(DEFAULT_NSE_STOCKS[:10])
+)
+custom_symbols = [x.strip().upper() for x in custom_input.split(",") if x.strip()]
+
+# =========================
+# DASHBOARD
+# =========================
+if page == "Dashboard":
+    st.title("📈 NSE STOCK INTELLIGENCE PRO")
+    st.markdown("### Professional Fundamental + Technical Analysis for NSE Stocks")
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Default Universe", len(DEFAULT_NSE_STOCKS))
+    col2.metric("Custom Universe", len(custom_symbols))
+    col3.metric("Last Updated", datetime.now().strftime("%d-%m-%Y %H:%M"))
 
     st.markdown("---")
-    st.info("Safe default: Groww OFF. Turn it ON only after app is stable.")
+    st.subheader("⚡ Quick Screener Snapshot")
 
-master_df, master_err = load_fundamental_master(uploaded_file) if uploaded_file is not None else (None, None)
+    screener_df = run_screener(custom_symbols if custom_symbols else DEFAULT_NSE_STOCKS)
 
-# SAFE startup status only (no Groww init here)
-if is_growwapi_available():
-    st.success("✅ growwapi package detected")
-else:
-    st.info("ℹ️ growwapi not available or build failed. App will still run with yfinance + CSV mode.")
+    if screener_df.empty:
+        st.warning("No screener data available.")
+    else:
+        st.dataframe(screener_df, use_container_width=True)
 
-if master_df is not None:
-    st.success(f"✅ Fundamental master loaded: {len(master_df)} rows")
-elif uploaded_file is not None and master_err:
-    st.error(f"Fundamental CSV error: {master_err}")
-else:
-    st.info("No fundamental CSV uploaded. App will use yfinance fallback for fundamentals.")
+        csv = screener_df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "⬇️ Download Screener CSV",
+            data=csv,
+            file_name="nse_screener_snapshot.csv",
+            mime="text/csv"
+        )
 
-# -----------------------------
-# SINGLE STOCK ANALYSIS (ALWAYS WORKS WITHOUT GROWW)
-# -----------------------------
-if run:
-    groww_client = None
-    groww_status = "Disabled"
+        st.subheader("🏆 Top 5 Ranked Stocks")
+        st.dataframe(screener_df.head(5), use_container_width=True)
 
-    if prefer_groww:
-        groww_client, _, groww_err = init_groww_client_safe(enable_groww=True)
-        if groww_client is not None:
-            groww_status = "Connected"
-        else:
-            groww_status = f"Fallback to yfinance ({groww_err})"
+# =========================
+# SINGLE STOCK ANALYSIS
+# =========================
+elif page == "Single Stock Analysis":
+    st.title("🔍 Single Stock Deep Analysis")
 
-    with st.spinner("Running stock analysis..."):
-        result = analyze_symbol(ticker, period, master_df=master_df, groww_client=groww_client, prefer_groww=prefer_groww)
+    symbol = st.selectbox("Select NSE Stock", custom_symbols if custom_symbols else DEFAULT_NSE_STOCKS)
+    period = st.selectbox("Price History Period", ["6mo", "1y", "2y", "5y"], index=2)
 
-    if result is None:
-        st.error("No price data found. Please check ticker format like RELIANCE.NS")
-        st.stop()
+    df = get_stock_data(symbol, period=period)
+    info = get_stock_info(symbol)
 
-    fdata = result["fdata"]
-    tdata = result["tdata"]
-    final_score = result["final_score"]
-    verdict = result["verdict"]
+    if df.empty:
+        st.error("No data found for this symbol.")
+    else:
+        df = add_technical_indicators(df)
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Current Price", format_num(fdata["current_price"]))
-    c2.metric("Fundamental Score", f"{fdata['fundamental_score']}/100")
-    c3.metric("Technical Score", f"{tdata['technical_score']}/100")
-    c4.metric("Final Score", f"{final_score}/100")
-    c5.metric("Groww Status", groww_status)
+        f_score, f_details = fundamental_score(info)
+        t_score, t_details = technical_score(df)
+        combined = round(0.6 * f_score + 0.4 * t_score, 2)
+        verdict = get_verdict(f_score, t_score, combined)
 
-    st.markdown(f"<div style='padding:12px;border-radius:12px;background:{verdict_color(verdict)};color:white;font-weight:700;text-align:center;'>FINAL VERDICT: {verdict}</div>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+        latest = df.iloc[-1]
 
-    left, right = st.columns([1, 2])
-    with left:
-        st.subheader("🏢 Company Snapshot")
-        snapshot = pd.DataFrame({
-            "Field": ["Company", "Sector", "Industry", "Market Cap", "52W High", "52W Low", "PE", "PB", "Fundamental Source", "Price Source"],
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Current Price", f"₹ {latest['Close']:.2f}")
+        c2.metric("Fundamental Score", f"{f_score}/100")
+        c3.metric("Technical Score", f"{t_score}/100")
+        c4.metric("Combined Score", f"{combined}/100")
+
+        st.success(f"Verdict: {verdict}")
+
+        st.plotly_chart(make_candlestick_chart(df, symbol), use_container_width=True)
+
+        st.markdown("## 📌 Fundamental Metrics")
+        fund_df = build_fundamental_table(info)
+        fund_df["Formatted"] = fund_df.apply(lambda x: format_value(x["Metric"], x["Value"]), axis=1)
+        st.dataframe(fund_df[["Metric", "Formatted"]], use_container_width=True)
+
+        st.markdown("## 🧠 Technical Snapshot")
+        tech_snapshot = pd.DataFrame({
+            "Metric": [
+                "Close", "SMA20", "SMA50", "SMA200", "EMA20", "EMA50",
+                "RSI14", "MACD", "MACD Signal", "ATR14", "20D Avg Volume",
+                "52W High", "52W Low"
+            ],
             "Value": [
-                fdata.get("company", ticker), fdata.get("sector", "N/A"), fdata.get("industry", "N/A"), format_num(fdata.get("market_cap")),
-                format_num(fdata.get("52w_high")), format_num(fdata.get("52w_low")), format_num(fdata.get("pe")), format_num(fdata.get("pb")),
-                fdata.get("source", "N/A"), result["price_source"]
+                latest["Close"], latest["SMA20"], latest["SMA50"], latest["SMA200"],
+                latest["EMA20"], latest["EMA50"], latest["RSI14"], latest["MACD"],
+                latest["MACD_SIGNAL"], latest["ATR14"], latest["VOL20"],
+                latest["52W_HIGH"], latest["52W_LOW"]
             ]
         })
-        st.dataframe(snapshot, use_container_width=True, hide_index=True)
+        st.dataframe(tech_snapshot, use_container_width=True)
 
-    with right:
-        st.subheader("📈 Technical Price Chart")
-        st.plotly_chart(create_chart(tdata["df"], ticker), use_container_width=True)
+        st.markdown("## 🏅 Score Breakdown")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("Fundamental Score Breakdown")
+            st.dataframe(pd.DataFrame(list(f_details.items()), columns=["Metric", "Points"]), use_container_width=True)
+        with c2:
+            st.subheader("Technical Score Breakdown")
+            st.dataframe(pd.DataFrame(list(t_details.items()), columns=["Metric", "Points"]), use_container_width=True)
 
-    st.subheader("📘 Fundamental Analysis")
-    fcol1, fcol2 = st.columns(2)
-    with fcol1:
-        st.dataframe(pd.DataFrame({
-            "Metric": ["Sales Growth 3Y", "Profit Growth 3Y", "Quarterly Sales YoY", "Quarterly Profit YoY", "ROE", "ROCE", "Debt to Equity", "OPM", "NPM"],
-            "Value": [
-                format_pct(fdata.get("sales_growth_3y")), format_pct(fdata.get("profit_growth_3y")), format_pct(fdata.get("quarterly_sales_yoy")),
-                format_pct(fdata.get("quarterly_profit_yoy")), format_pct(fdata.get("roe")), format_pct(fdata.get("roce")),
-                format_num(fdata.get("debt_to_equity")), format_pct(fdata.get("opm")), format_pct(fdata.get("npm"))
-            ]
-        }), use_container_width=True, hide_index=True)
+# =========================
+# SCREENER PAGE
+# =========================
+elif page == "NSE Screener":
+    st.title("🧮 NSE Stock Screener")
 
-    with fcol2:
-        st.dataframe(pd.DataFrame({
-            "Metric": ["Operating Cash Flow", "Free Cash Flow", "CFO vs PAT", "Promoter Holding", "Pledge", "Fundamental Score"],
-            "Value": [
-                format_num(fdata.get("cfo")), format_num(fdata.get("fcf")), format_pct(fdata.get("cfo_vs_pat")),
-                format_pct(fdata.get("promoter_holding")), format_pct(fdata.get("pledge")), f"{fdata['fundamental_score']}/100"
-            ]
-        }), use_container_width=True, hide_index=True)
+    symbols = custom_symbols if custom_symbols else DEFAULT_NSE_STOCKS
+    screener_df = run_screener(symbols)
 
-    st.subheader("📙 Technical Analysis")
-    tcol1, tcol2 = st.columns(2)
-    with tcol1:
-        st.dataframe(pd.DataFrame({
-            "Metric": ["Trend", "EMA20", "SMA50", "SMA200", "RSI(14)", "MACD", "MACD Signal"],
-            "Value": [
-                tdata["trend"], format_num(tdata["ema20"]), format_num(tdata["sma50"]), format_num(tdata["sma200"]),
-                format_num(tdata["rsi"]), format_num(tdata["macd"]), format_num(tdata["macd_signal"])
-            ]
-        }), use_container_width=True, hide_index=True)
-
-    with tcol2:
-        st.dataframe(pd.DataFrame({
-            "Metric": ["Support", "Resistance", "90D Stock Return", "90D Nifty Return", "Entry Zone", "Stop Loss", "Target 1", "Target 2", "Risk/Reward", "Technical Score"],
-            "Value": [
-                format_num(tdata["support"]), format_num(tdata["resistance"]), format_pct(tdata["stock_ret_90d"]), format_pct(tdata["nifty_ret_90d"]),
-                tdata["entry_zone"], format_num(tdata["stop_loss"]), format_num(tdata["target1"]), format_num(tdata["target2"]), f"{tdata['rr']:.2f}", f"{tdata['technical_score']}/100"
-            ]
-        }), use_container_width=True, hide_index=True)
-
-    st.subheader("📋 Client Summary")
-    summary = f"""
-STOCK ANALYSIS REPORT - {ticker}
-Company: {fdata.get('company', ticker)}
-Fundamental Source: {fdata.get('source', 'N/A')}
-Price Source: {result['price_source']}
-Fundamental Score: {fdata['fundamental_score']}/100
-Technical Score: {tdata['technical_score']}/100
-Final Score: {final_score}/100
-Final Verdict: {verdict}
-Entry Zone: {tdata['entry_zone']}
-Stop Loss: {format_num(tdata['stop_loss'])}
-Target 1: {format_num(tdata['target1'])}
-Target 2: {format_num(tdata['target2'])}
-"""
-    st.text_area("Copy summary", summary, height=220)
-
-# -----------------------------
-# GROWW PANEL (ONLY WHEN ENABLED)
-# -----------------------------
-if use_groww_features:
-    st.markdown("---")
-    st.header("🔗 Groww Portfolio + Execution Panel (Safe Lazy Load)")
-
-    client, _, groww_error = init_groww_client_safe(enable_groww=True)
-
-    if client is None:
-        st.error(f"Groww not connected: {groww_error}")
-        st.code('GROWW_API_KEY = "your_api_key"\nGROWW_API_SECRET = "your_api_secret"\n# OR\nGROWW_ACCESS_TOKEN = "your_access_token"', language="toml")
-        st.info("App remains fully usable without Groww. Use stock analysis in yfinance + CSV mode.")
+    if screener_df.empty:
+        st.warning("No screener results available.")
     else:
-        st.success("✅ Groww connected successfully")
+        min_combined = st.slider("Minimum Combined Score", 0, 100, 60)
+        only_above_200 = st.checkbox("Only Price > 200 DMA", value=False)
+        only_volume = st.checkbox("Only Volume Breakout", value=False)
 
-        if analyze_holdings_btn:
-            with st.spinner("Fetching Groww holdings and analyzing..."):
-                holdings, err, method = get_groww_holdings(client)
-            if err and not holdings:
-                st.error(f"Unable to fetch holdings: {err}")
-            else:
-                st.success(f"Holdings fetched via: {method}")
-                if holdings:
-                    st.dataframe(pd.DataFrame(holdings), use_container_width=True)
-                    rows = []
-                    progress = st.progress(0)
-                    for idx, h in enumerate(holdings):
-                        sym = extract_symbol_from_holding(h)
-                        if sym:
-                            r = analyze_symbol(sym, "1y", master_df=master_df, groww_client=client, prefer_groww=prefer_groww)
-                            if r:
-                                rows.append({
-                                    "Ticker": sym,
-                                    "Fundamental Score": r["fdata"]["fundamental_score"],
-                                    "Technical Score": r["tdata"]["technical_score"],
-                                    "Final Score": r["final_score"],
-                                    "Verdict": r["verdict"],
-                                })
-                        progress.progress((idx + 1) / max(len(holdings), 1))
-                    if rows:
-                        df_port = pd.DataFrame(rows).sort_values("Final Score", ascending=False)
-                        st.dataframe(df_port, use_container_width=True, hide_index=True)
-                    else:
-                        st.warning("Holdings fetched, but symbol mapping failed.")
-                else:
-                    st.info("No holdings found.")
+        filtered = screener_df[screener_df["Combined_Score"] >= min_combined]
 
-        if show_positions_btn:
-            with st.spinner("Fetching Groww positions..."):
-                positions, err, method = get_groww_positions(client)
-            if err and not positions:
-                st.error(f"Unable to fetch positions: {err}")
-            else:
-                st.success(f"Positions fetched via: {method}")
-                if positions:
-                    st.dataframe(pd.DataFrame(positions), use_container_width=True)
-                else:
-                    st.info("No open positions found.")
+        if only_above_200:
+            filtered = filtered[filtered["Above_200DMA"] == True]
 
-        st.subheader("🛒 Safe Manual Order Console")
-        enable_orders = st.checkbox("Enable manual order section", value=False)
-        if enable_orders:
-            order_symbol = st.text_input("Order Symbol", value="RELIANCE.NS").strip().upper()
-            qty = st.number_input("Quantity", min_value=1, value=1, step=1)
-            transaction = st.selectbox("Transaction", ["BUY", "SELL"])
-            confirm_order = st.checkbox("I confirm real order placement")
-            if st.button("🚨 Place Real Order"):
-                if not confirm_order:
-                    st.error("Please confirm first.")
-                else:
-                    r = analyze_symbol(order_symbol, "1y", master_df=master_df, groww_client=client, prefer_groww=prefer_groww)
-                    if r and r["final_score"] < 65:
-                        st.error(f"Order blocked: score below threshold ({r['final_score']}/100)")
-                    else:
-                        resp, err = place_groww_order_safe(client, order_symbol, qty, transaction)
-                        if err:
-                            st.error(f"Order failed: {err}")
-                        else:
-                            st.success("Order request sent")
-                            st.write(resp)
+        if only_volume:
+            filtered = filtered[filtered["Volume_Breakout"] == True]
 
-# -----------------------------
-# FOOTER HELP
-# -----------------------------
+        st.dataframe(filtered, use_container_width=True)
+
+        csv = filtered.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "⬇️ Download Filtered Screener CSV",
+            data=csv,
+            file_name="nse_filtered_screener.csv",
+            mime="text/csv"
+        )
+
+# =========================
+# TOP RANKINGS
+# =========================
+elif page == "Top Rankings":
+    st.title("🏆 Top Ranked NSE Stocks")
+
+    symbols = custom_symbols if custom_symbols else DEFAULT_NSE_STOCKS
+    screener_df = run_screener(symbols)
+
+    if screener_df.empty:
+        st.warning("No ranking data available.")
+    else:
+        tab1, tab2, tab3 = st.tabs(["Combined Rank", "Fundamental Rank", "Technical Rank"])
+
+        with tab1:
+            st.dataframe(screener_df.sort_values("Combined_Score", ascending=False), use_container_width=True)
+
+        with tab2:
+            st.dataframe(screener_df.sort_values("Fundamental_Score", ascending=False), use_container_width=True)
+
+        with tab3:
+            st.dataframe(screener_df.sort_values("Technical_Score", ascending=False), use_container_width=True)
+
+# =========================
+# FOOTER
+# =========================
 st.markdown("---")
-st.subheader("📌 Streamlit Safe Notes")
-st.markdown("""
-- V3.1 does **not** require Groww at startup.
-- If `growwapi` is missing or broken, the app still works in **yfinance + CSV mode**.
-- Turn ON Groww only after the base app is stable.
-- For serious live execution, prefer **Groww Cloud / VPS / static IP backend**.
-""")
+st.caption("Built with Streamlit + yfinance for NSE (.NS). For education/research only. Validate before investing.")
