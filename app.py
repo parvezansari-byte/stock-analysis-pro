@@ -4,41 +4,70 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from datetime import datetime
 
 # =========================================================
 # PAGE CONFIG
 # =========================================================
 st.set_page_config(
-    page_title="NSE Stock Analysis Pro V2.1 ELITE",
+    page_title="NSE Stock Intelligence Pro V3 ULTRA",
     page_icon="📈",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # =========================================================
-# STYLING
+# THEME / STYLES
 # =========================================================
 st.markdown("""
 <style>
     .main-title {
-        font-size: 2.3rem;
+        font-size: 2.4rem;
         font-weight: 800;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.15rem;
     }
     .sub-title {
-        color: #6b7280;
+        color: #9CA3AF;
         margin-bottom: 1rem;
+        font-size: 1rem;
+    }
+    .small-note {
+        color: #9CA3AF;
+        font-size: 0.85rem;
+    }
+    .metric-card {
+        padding: 1rem;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# DEFAULT NSE STOCKS
+# DEFAULT NSE UNIVERSE
 # =========================================================
-DEFAULT_NSE_STOCKS = [
-    "RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK",
-    "SBIN", "LT", "ITC", "HINDUNILVR", "BHARTIARTL",
-    "KOTAKBANK", "AXISBANK", "ASIANPAINT", "MARUTI", "SUNPHARMA"
+NIFTY_CORE = [
+    "RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "SBIN", "LT", "ITC",
+    "HINDUNILVR", "BHARTIARTL", "KOTAKBANK", "AXISBANK", "ASIANPAINT", "MARUTI",
+    "SUNPHARMA", "BAJFINANCE", "HCLTECH", "TITAN", "ULTRACEMCO", "NTPC",
+    "POWERGRID", "M&M", "ADANIENT", "WIPRO", "NESTLEIND"
 ]
+
+SECTOR_BANKING = ["HDFCBANK", "ICICIBANK", "SBIN", "KOTAKBANK", "AXISBANK", "INDUSINDBK", "BANKBARODA", "PNB"]
+SECTOR_IT = ["TCS", "INFY", "HCLTECH", "WIPRO", "TECHM", "LTIM", "PERSISTENT", "COFORGE"]
+SECTOR_AUTO = ["MARUTI", "M&M", "TATAMOTORS", "EICHERMOT", "BAJAJ-AUTO", "HEROMOTOCO"]
+SECTOR_PHARMA = ["SUNPHARMA", "DRREDDY", "CIPLA", "DIVISLAB", "LUPIN", "TORNTPHARM"]
+SECTOR_FMCG = ["ITC", "HINDUNILVR", "NESTLEIND", "BRITANNIA", "DABUR", "GODREJCP"]
+
+SECTOR_MAP = {
+    "Nifty Core 25": NIFTY_CORE,
+    "Banking": SECTOR_BANKING,
+    "IT": SECTOR_IT,
+    "Auto": SECTOR_AUTO,
+    "Pharma": SECTOR_PHARMA,
+    "FMCG": SECTOR_FMCG,
+}
 
 # =========================================================
 # HELPERS
@@ -48,18 +77,6 @@ def to_ns_symbol(symbol: str) -> str:
     if symbol.endswith(".NS"):
         return symbol
     return f"{symbol}.NS"
-
-@st.cache_data(ttl=1800)
-def fetch_stock_data(symbol: str, period: str = "1y"):
-    ticker = yf.Ticker(to_ns_symbol(symbol))
-    hist = ticker.history(period=period, auto_adjust=False)
-    if hist.empty:
-        return pd.DataFrame(), {}
-    try:
-        info = ticker.info
-    except Exception:
-        info = {}
-    return hist.copy(), info
 
 def safe_get(info, key, default=np.nan):
     try:
@@ -96,6 +113,21 @@ def format_percent(x):
         return f"{x:.2f}%"
     except:
         return str(x)
+
+# =========================================================
+# DATA FETCHING
+# =========================================================
+@st.cache_data(ttl=1800)
+def fetch_stock_data(symbol: str, period: str = "1y"):
+    ticker = yf.Ticker(to_ns_symbol(symbol))
+    hist = ticker.history(period=period, auto_adjust=False)
+    if hist.empty:
+        return pd.DataFrame(), {}
+    try:
+        info = ticker.info
+    except Exception:
+        info = {}
+    return hist.copy(), info
 
 # =========================================================
 # TECHNICAL INDICATORS
@@ -170,7 +202,7 @@ def add_indicators(df):
     return df
 
 # =========================================================
-# NORMALIZED SCORING ENGINE
+# SCORING ENGINE
 # =========================================================
 def add_score_component(breakdown, label, points_awarded, max_points, available=True):
     breakdown.append({
@@ -182,7 +214,7 @@ def add_score_component(breakdown, label, points_awarded, max_points, available=
 
 def normalize_score(raw_points, max_available_points):
     if max_available_points <= 0:
-        return 50  # neutral fallback when no data is available
+        return 50
     return round((raw_points / max_available_points) * 100, 2)
 
 def calculate_fundamental_score(info):
@@ -288,13 +320,11 @@ def calculate_fundamental_score(info):
         add_score_component(breakdown, "Dividend Yield", 0, 10, False)
 
     normalized = normalize_score(raw_score, max_score_available)
-
-    availability_pct = round((max_score_available / 100) * 100, 2)  # max possible is 100
-    return normalized, raw_score, max_score_available, availability_pct, breakdown
+    return normalized, raw_score, max_score_available, breakdown
 
 def calculate_technical_score(df):
     if df.empty or len(df) < 60:
-        return 50, 0, 0, 0, [{
+        return 50, 0, 0, [{
             "Factor": "Not enough price history",
             "Points": "N/A",
             "Max": "N/A",
@@ -306,7 +336,7 @@ def calculate_technical_score(df):
     max_score_available = 0
     breakdown = []
 
-    # Price above 200 DMA (20)
+    # Price > 200 DMA (20)
     if pd.notna(latest["SMA200"]):
         max_score_available += 20
         pts = 20 if latest["Close"] > latest["SMA200"] else 0
@@ -315,7 +345,7 @@ def calculate_technical_score(df):
     else:
         add_score_component(breakdown, "Price > 200 DMA", 0, 20, False)
 
-    # 50 DMA above 200 DMA (15)
+    # 50 DMA > 200 DMA (15)
     if pd.notna(latest["SMA50"]) and pd.notna(latest["SMA200"]):
         max_score_available += 15
         pts = 15 if latest["SMA50"] > latest["SMA200"] else 0
@@ -373,7 +403,7 @@ def calculate_technical_score(df):
     else:
         add_score_component(breakdown, "Volume Confirmation", 0, 15, False)
 
-    # 52W high proximity (10)
+    # Near 52W high (10)
     if pd.notna(latest["52W_HIGH"]) and latest["52W_HIGH"] > 0:
         max_score_available += 10
         dist = ((latest["52W_HIGH"] - latest["Close"]) / latest["52W_HIGH"]) * 100
@@ -399,20 +429,11 @@ def calculate_technical_score(df):
         add_score_component(breakdown, "Controlled Volatility", 0, 5, False)
 
     normalized = normalize_score(raw_score, max_score_available)
-    availability_pct = round((max_score_available / 100) * 100, 2)
+    return normalized, raw_score, max_score_available, breakdown
 
-    return normalized, raw_score, max_score_available, availability_pct, breakdown
-
-def get_verdict(combined_score):
-    if combined_score >= 80:
-        return "🔥 STRONG BUY / HIGH QUALITY"
-    elif combined_score >= 65:
-        return "✅ BUY / WATCHLIST PRIORITY"
-    elif combined_score >= 50:
-        return "👀 WATCHLIST / NEUTRAL"
-    else:
-        return "⚠️ AVOID / WEAK SETUP"
-
+# =========================================================
+# VERDICT ENGINE
+# =========================================================
 def get_trend_label(df):
     if df.empty or len(df) < 60:
         return "Insufficient Data"
@@ -433,80 +454,137 @@ def get_trend_label(df):
             return "Weak / Sideways"
     return "Sideways"
 
+def get_risk_label(df):
+    if df.empty:
+        return "Unknown"
+    latest = df.iloc[-1]
+    if pd.notna(latest["ATR14"]) and latest["Close"] > 0:
+        atr_pct = (latest["ATR14"] / latest["Close"]) * 100
+        if atr_pct < 2.5:
+            return "Low Risk"
+        elif atr_pct < 4.5:
+            return "Moderate Risk"
+        else:
+            return "High Risk"
+    return "Unknown"
+
+def get_verdict(combined_score):
+    if combined_score >= 80:
+        return "🔥 STRONG BUY / HIGH QUALITY"
+    elif combined_score >= 65:
+        return "✅ BUY / WATCHLIST PRIORITY"
+    elif combined_score >= 50:
+        return "👀 WATCHLIST / NEUTRAL"
+    else:
+        return "⚠️ AVOID / WEAK SETUP"
+
+def get_position_plan(latest_close, df):
+    latest = df.iloc[-1]
+    atr = latest["ATR14"] if pd.notna(latest["ATR14"]) else np.nan
+    sma20 = latest["SMA20"] if pd.notna(latest["SMA20"]) else np.nan
+    sma50 = latest["SMA50"] if pd.notna(latest["SMA50"]) else np.nan
+
+    if pd.notna(atr):
+        stop_loss = round(latest_close - (1.5 * atr), 2)
+        target1 = round(latest_close + (2 * atr), 2)
+        target2 = round(latest_close + (4 * atr), 2)
+    else:
+        stop_loss = round(latest_close * 0.93, 2)
+        target1 = round(latest_close * 1.08, 2)
+        target2 = round(latest_close * 1.15, 2)
+
+    support = round(sma20, 2) if pd.notna(sma20) else "N/A"
+    swing_support = round(sma50, 2) if pd.notna(sma50) else "N/A"
+
+    return {
+        "Support": support,
+        "Swing Support": swing_support,
+        "Stop Loss": stop_loss,
+        "Target 1": target1,
+        "Target 2": target2
+    }
+
 # =========================================================
-# CHART
+# CHARTS
 # =========================================================
-def create_chart(df, symbol):
+def create_price_chart(df, symbol):
+    chart_df = df.tail(250).copy()
+
     fig = make_subplots(
         rows=3, cols=1,
         shared_xaxes=True,
         vertical_spacing=0.04,
-        row_heights=[0.6, 0.2, 0.2]
+        row_heights=[0.62, 0.18, 0.20]
     )
 
     fig.add_trace(
         go.Candlestick(
-            x=df.index,
-            open=df["Open"],
-            high=df["High"],
-            low=df["Low"],
-            close=df["Close"],
+            x=chart_df.index,
+            open=chart_df["Open"],
+            high=chart_df["High"],
+            low=chart_df["Low"],
+            close=chart_df["Close"],
             name="Price"
         ),
         row=1, col=1
     )
 
-    fig.add_trace(go.Scatter(x=df.index, y=df["SMA20"], mode="lines", name="SMA20"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], mode="lines", name="SMA50"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=df.index, y=df["SMA200"], mode="lines", name="SMA200"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=df.index, y=df["BB_UPPER"], mode="lines", name="BB Upper"), row=1, col=1)
-    fig.add_trace(go.Scatter(x=df.index, y=df["BB_LOWER"], mode="lines", name="BB Lower"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df["SMA20"], mode="lines", name="SMA20"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df["SMA50"], mode="lines", name="SMA50"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df["SMA200"], mode="lines", name="SMA200"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df["BB_UPPER"], mode="lines", name="BB Upper"), row=1, col=1)
+    fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df["BB_LOWER"], mode="lines", name="BB Lower"), row=1, col=1)
 
-    fig.add_trace(go.Bar(x=df.index, y=df["Volume"], name="Volume"), row=2, col=1)
+    fig.add_trace(go.Bar(x=chart_df.index, y=chart_df["Volume"], name="Volume"), row=2, col=1)
 
-    fig.add_trace(go.Scatter(x=df.index, y=df["RSI14"], mode="lines", name="RSI14"), row=3, col=1)
+    fig.add_trace(go.Scatter(x=chart_df.index, y=chart_df["RSI14"], mode="lines", name="RSI14"), row=3, col=1)
     fig.add_hline(y=70, line_dash="dash", row=3, col=1)
     fig.add_hline(y=30, line_dash="dash", row=3, col=1)
 
     fig.update_layout(
         title=f"{symbol} - Price + Technical Analysis",
         xaxis_rangeslider_visible=False,
-        height=850,
+        height=860,
         legend=dict(orientation="h")
     )
-
     return fig
 
 # =========================================================
 # SIDEBAR
 # =========================================================
-st.sidebar.title("📊 NSE Stock Analysis Pro")
+st.sidebar.title("📊 NSE Stock Intelligence Pro")
 page = st.sidebar.radio(
     "Choose Module",
-    ["Single Stock Analysis", "Mini Screener", "About"]
+    ["Single Stock Analysis", "Sector Screener", "Top Ranked Watchlist", "About"]
 )
 
 st.sidebar.markdown("---")
-selected_symbol = st.sidebar.selectbox("Quick NSE Pick", DEFAULT_NSE_STOCKS, index=0)
+selected_symbol = st.sidebar.selectbox("Quick NSE Pick", NIFTY_CORE, index=0)
 manual_symbol = st.sidebar.text_input("Or Enter NSE Symbol", value=selected_symbol).upper().strip()
 period = st.sidebar.selectbox("Price History", ["6mo", "1y", "2y", "5y"], index=1)
 
 symbol = manual_symbol if manual_symbol else selected_symbol
 
+st.sidebar.markdown("---")
+st.sidebar.caption("Built for Indian NSE (.NS) stocks")
+
 # =========================================================
 # HEADER
 # =========================================================
-st.markdown('<div class="main-title">📈 NSE Stock Analysis Pro V2.1 ELITE</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Normalized Fundamental + Technical + Scoring + Verdict (NSE Friendly)</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">📈 NSE Stock Intelligence Pro V3 ULTRA</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="sub-title">Production Pack • Fundamental + Technical + Sector Screener + Ranked Watchlist + Trade Plan</div>',
+    unsafe_allow_html=True
+)
 
 # =========================================================
-# SINGLE STOCK ANALYSIS
+# PAGE 1: SINGLE STOCK ANALYSIS
 # =========================================================
 if page == "Single Stock Analysis":
     hist, info = fetch_stock_data(symbol, period)
 
     if hist.empty:
-        st.error("No data found. Please check the NSE symbol (example: RELIANCE, TCS, INFY).")
+        st.error("No data found. Please check NSE symbol (example: RELIANCE, TCS, INFY, AXISBANK).")
     else:
         df = add_indicators(hist)
 
@@ -515,13 +593,14 @@ if page == "Single Stock Analysis":
         price_change = latest["Close"] - prev_close
         price_change_pct = (price_change / prev_close * 100) if prev_close != 0 else 0
 
-        fundamental_score, f_raw, f_max, f_avail, f_breakdown = calculate_fundamental_score(info)
-        technical_score, t_raw, t_max, t_avail, t_breakdown = calculate_technical_score(df)
-
-        # Weighted combined on normalized scores
+        fundamental_score, f_raw, f_max, f_breakdown = calculate_fundamental_score(info)
+        technical_score, t_raw, t_max, t_breakdown = calculate_technical_score(df)
         combined_score = round((0.6 * fundamental_score) + (0.4 * technical_score), 2)
+
         verdict = get_verdict(combined_score)
         trend = get_trend_label(df)
+        risk = get_risk_label(df)
+        plan = get_position_plan(latest["Close"], df)
 
         # Top metrics
         c1, c2, c3, c4 = st.columns(4)
@@ -531,17 +610,24 @@ if page == "Single Stock Analysis":
         c4.metric("Combined Score", f"{combined_score}/100")
 
         st.success(f"Verdict: {verdict}")
-        st.info(f"Trend: **{trend}**")
+        st.info(f"Trend: **{trend}** | Risk: **{risk}**")
 
-        # Data quality note
-        dq1, dq2 = st.columns(2)
-        dq1.caption(f"Fundamental data availability: {f_max}/100 score-points available")
-        dq2.caption(f"Technical data availability: {t_max}/100 score-points available")
+        d1, d2 = st.columns(2)
+        d1.caption(f"Fundamental data availability: {f_max}/100 score-points available")
+        d2.caption(f"Technical data availability: {t_max}/100 score-points available")
 
-        # Chart
-        st.plotly_chart(create_chart(df.tail(250), symbol), use_container_width=True)
+        st.plotly_chart(create_price_chart(df, symbol), use_container_width=True)
 
-        # Fundamental + Technical snapshots
+        # Trade Plan
+        st.markdown("## 🎯 Trade Plan / Position Framework")
+        p1, p2, p3, p4, p5 = st.columns(5)
+        p1.metric("Support", plan["Support"])
+        p2.metric("Swing Support", plan["Swing Support"])
+        p3.metric("Stop Loss", plan["Stop Loss"])
+        p4.metric("Target 1", plan["Target 1"])
+        p5.metric("Target 2", plan["Target 2"])
+
+        # Snapshots
         colA, colB = st.columns(2)
 
         with colA:
@@ -591,7 +677,6 @@ if page == "Single Stock Analysis":
 
             if latest["52W_HIGH"] > 0:
                 dist_52w_high = ((latest["52W_HIGH"] - latest["Close"]) / latest["52W_HIGH"]) * 100
-
             if latest["52W_LOW"] > 0:
                 dist_52w_low = ((latest["Close"] - latest["52W_LOW"]) / latest["52W_LOW"]) * 100
 
@@ -621,47 +706,35 @@ if page == "Single Stock Analysis":
             })
             st.dataframe(tech_df, use_container_width=True, hide_index=True)
 
-        # Score breakdowns
+        # Score Breakdown
         st.markdown("## 🏅 Score Breakdown")
-        c5, c6 = st.columns(2)
-
-        with c5:
+        s1, s2 = st.columns(2)
+        with s1:
             st.markdown("### Fundamental Score Breakdown")
-            f_df = pd.DataFrame(f_breakdown)
-            st.dataframe(f_df, use_container_width=True, hide_index=True)
-
-        with c6:
+            st.dataframe(pd.DataFrame(f_breakdown), use_container_width=True, hide_index=True)
+        with s2:
             st.markdown("### Technical Score Breakdown")
-            t_df = pd.DataFrame(t_breakdown)
-            st.dataframe(t_df, use_container_width=True, hide_index=True)
+            st.dataframe(pd.DataFrame(t_breakdown), use_container_width=True, hide_index=True)
 
-        # Score summary
-        st.markdown("## 📌 Score Logic Summary")
-        s1, s2, s3 = st.columns(3)
-        s1.metric("Fundamental Raw", f"{f_raw}/{f_max if f_max > 0 else 'N/A'}")
-        s2.metric("Technical Raw", f"{t_raw}/{t_max if t_max > 0 else 'N/A'}")
-        s3.metric("Final Combined", f"{combined_score}/100")
-
-        # Recent data
+        # Recent Data
         st.markdown("## 📋 Recent Price Data")
-        recent = df.tail(10).copy()
-        recent_display = recent[["Open", "High", "Low", "Close", "Volume"]].round(2)
-        st.dataframe(recent_display, use_container_width=True)
+        recent = df.tail(10)[["Open", "High", "Low", "Close", "Volume"]].round(2)
+        st.dataframe(recent, use_container_width=True)
 
 # =========================================================
-# MINI SCREENER
+# PAGE 2: SECTOR SCREENER
 # =========================================================
-elif page == "Mini Screener":
-    st.markdown("## 🧮 Mini NSE Screener (Normalized Scoring)")
-    st.caption("Scans default NSE basket with fairer score normalization for missing fundamentals.")
+elif page == "Sector Screener":
+    st.markdown("## 🧮 Sector Screener")
+    sector_choice = st.selectbox("Select Sector Basket", list(SECTOR_MAP.keys()))
+    universe = SECTOR_MAP[sector_choice]
 
-    if st.button("Run Screener"):
+    if st.button("Run Sector Screener"):
         results = []
-
         progress = st.progress(0)
         status = st.empty()
 
-        for i, sym in enumerate(DEFAULT_NSE_STOCKS):
+        for i, sym in enumerate(universe):
             status.write(f"Scanning {sym}...")
             hist, info = fetch_stock_data(sym, "1y")
 
@@ -670,15 +743,16 @@ elif page == "Mini Screener":
                     df = add_indicators(hist)
                     latest = df.iloc[-1]
 
-                    f_score, f_raw, f_max, _, _ = calculate_fundamental_score(info)
-                    t_score, t_raw, t_max, _, _ = calculate_technical_score(df)
+                    f_score, f_raw, f_max, _ = calculate_fundamental_score(info)
+                    t_score, t_raw, t_max, _ = calculate_technical_score(df)
                     combined = round((0.6 * f_score) + (0.4 * t_score), 2)
 
                     results.append({
                         "Symbol": sym,
                         "Close": round(latest["Close"], 2),
-                        "RSI": round(latest["RSI14"], 2) if pd.notna(latest["RSI14"]) else np.nan,
                         "Trend": get_trend_label(df),
+                        "Risk": get_risk_label(df),
+                        "RSI": round(latest["RSI14"], 2) if pd.notna(latest["RSI14"]) else np.nan,
                         "Fund Score": f_score,
                         "Tech Score": t_score,
                         "Combined": combined,
@@ -689,7 +763,7 @@ elif page == "Mini Screener":
                 except Exception:
                     pass
 
-            progress.progress((i + 1) / len(DEFAULT_NSE_STOCKS))
+            progress.progress((i + 1) / len(universe))
 
         status.empty()
 
@@ -699,43 +773,116 @@ elif page == "Mini Screener":
 
             csv = screener_df.to_csv(index=False).encode("utf-8")
             st.download_button(
-                "⬇️ Download Screener CSV",
+                "⬇️ Download Sector Screener CSV",
                 data=csv,
-                file_name="nse_mini_screener_normalized.csv",
+                file_name=f"{sector_choice.lower().replace(' ', '_')}_screener.csv",
                 mime="text/csv"
             )
         else:
-            st.warning("No screener results found. Try again later.")
+            st.warning("No results found. Try again later.")
 
 # =========================================================
-# ABOUT
+# PAGE 3: TOP RANKED WATCHLIST
+# =========================================================
+elif page == "Top Ranked Watchlist":
+    st.markdown("## 🏆 Top Ranked Watchlist (Nifty Core 25)")
+
+    if st.button("Generate Ranked Watchlist"):
+        results = []
+        progress = st.progress(0)
+        status = st.empty()
+
+        for i, sym in enumerate(NIFTY_CORE):
+            status.write(f"Ranking {sym}...")
+            hist, info = fetch_stock_data(sym, "1y")
+
+            if not hist.empty:
+                try:
+                    df = add_indicators(hist)
+                    latest = df.iloc[-1]
+
+                    f_score, f_raw, f_max, _ = calculate_fundamental_score(info)
+                    t_score, t_raw, t_max, _ = calculate_technical_score(df)
+                    combined = round((0.6 * f_score) + (0.4 * t_score), 2)
+
+                    plan = get_position_plan(latest["Close"], df)
+
+                    results.append({
+                        "Rank Candidate": sym,
+                        "Close": round(latest["Close"], 2),
+                        "Trend": get_trend_label(df),
+                        "Risk": get_risk_label(df),
+                        "Fund Score": f_score,
+                        "Tech Score": t_score,
+                        "Combined": combined,
+                        "Support": plan["Support"],
+                        "Stop Loss": plan["Stop Loss"],
+                        "Target 1": plan["Target 1"],
+                        "Verdict": get_verdict(combined)
+                    })
+                except Exception:
+                    pass
+
+            progress.progress((i + 1) / len(NIFTY_CORE))
+
+        status.empty()
+
+        if results:
+            watchlist_df = pd.DataFrame(results).sort_values("Combined", ascending=False).reset_index(drop=True)
+            watchlist_df.index = watchlist_df.index + 1
+            st.dataframe(watchlist_df, use_container_width=True)
+
+            top5 = watchlist_df.head(5)
+            st.markdown("### ⭐ Top 5 Priority Watchlist")
+            st.dataframe(top5, use_container_width=True)
+
+            csv = watchlist_df.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "⬇️ Download Ranked Watchlist CSV",
+                data=csv,
+                file_name="top_ranked_watchlist.csv",
+                mime="text/csv"
+            )
+        else:
+            st.warning("No watchlist generated. Try again later.")
+
+# =========================================================
+# PAGE 4: ABOUT
 # =========================================================
 else:
-    st.markdown("## ℹ️ About This App")
+    st.markdown("## ℹ️ About This Production Pack")
     st.markdown("""
-### NSE Stock Analysis Pro V2.1 ELITE
+### NSE Stock Intelligence Pro V3 ULTRA
 
-This version improves the earlier model by:
+This is a **production-style Streamlit app** built for:
 
-- **Normalizing Fundamental Score** when Yahoo Finance misses some NSE fields
-- **Avoiding unfair 0/100 fundamentals** due to missing data
-- **Keeping Technical Score normalized**
-- **Making Combined Score more realistic**
+- **Single stock deep analysis**
+- **Normalized fundamental scoring**
+- **Technical trend scoring**
+- **Sector basket screening**
+- **Top ranked watchlist generation**
+- **Basic trade plan / position framework**
 
-### Formula Used
-- **Fundamental Score = normalized on available fundamental factors**
-- **Technical Score = normalized on available technical factors**
-- **Combined Score = (0.6 × Fundamental) + (0.4 × Technical)**
+### Core Logic
+- **Fundamental Score** = normalized on available fundamental data
+- **Technical Score** = normalized on available technical indicators
+- **Combined Score** = `0.6 × Fundamental + 0.4 × Technical`
 
-### Notes
-- Built for **education and research**
-- Data source: **Yahoo Finance via yfinance**
-- Always validate before investing
-- Some Indian stock fundamentals can still be incomplete
+### Best For
+- NSE stock shortlisting
+- Watchlist preparation
+- Client demo tool
+- Advisory workflow support
+- Daily research routine
+
+### Disclaimer
+- For **education / research only**
+- Always validate before real investment decisions
+- Yahoo Finance data for some NSE symbols may be incomplete
 """)
 
 # =========================================================
 # FOOTER
 # =========================================================
 st.markdown("---")
-st.caption("Built with Streamlit + yfinance | NSE (.NS) | FINAL V2.1 ELITE | Normalized scoring for Indian stocks")
+st.caption(f"Built with Streamlit + yfinance | NSE (.NS) | FINAL V3 ULTRA PRODUCTION | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}")
