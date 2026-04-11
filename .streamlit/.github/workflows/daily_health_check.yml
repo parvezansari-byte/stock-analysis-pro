@@ -1,1 +1,32 @@
+name: Daily Health Check
 
+on:
+  schedule:
+    - cron: "30 2 * * *"   # Daily at 02:30 UTC
+  workflow_dispatch:
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Syntax Check
+        run: |
+          python -m py_compile app.py
+
+      - name: Basic Import Check
+        run: |
+          python -c "import streamlit, pandas, numpy, yfinance, plotly; print('Health check passed')"
