@@ -9,7 +9,7 @@ from plotly.subplots import make_subplots
 # PAGE CONFIG
 # =========================================================
 st.set_page_config(
-    page_title="NSE Stock Analysis Pro V2 ELITE",
+    page_title="NSE Stock Analysis Pro V2.1 ELITE",
     page_icon="📈",
     layout="wide"
 )
@@ -27,20 +27,6 @@ st.markdown("""
     .sub-title {
         color: #6b7280;
         margin-bottom: 1rem;
-    }
-    .metric-card {
-        padding: 14px;
-        border-radius: 16px;
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.08);
-    }
-    .score-box {
-        padding: 18px;
-        border-radius: 16px;
-        text-align: center;
-        font-weight: 700;
-        font-size: 1.1rem;
-        border: 1px solid rgba(255,255,255,0.08);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -73,8 +59,7 @@ def fetch_stock_data(symbol: str, period: str = "1y"):
         info = ticker.info
     except Exception:
         info = {}
-    hist = hist.copy()
-    return hist, info
+    return hist.copy(), info
 
 def safe_get(info, key, default=np.nan):
     try:
@@ -185,10 +170,24 @@ def add_indicators(df):
     return df
 
 # =========================================================
-# SCORING
+# NORMALIZED SCORING ENGINE
 # =========================================================
+def add_score_component(breakdown, label, points_awarded, max_points, available=True):
+    breakdown.append({
+        "Factor": label,
+        "Points": points_awarded if available else "N/A",
+        "Max": max_points if available else "N/A",
+        "Available": available
+    })
+
+def normalize_score(raw_points, max_available_points):
+    if max_available_points <= 0:
+        return 50  # neutral fallback when no data is available
+    return round((raw_points / max_available_points) * 100, 2)
+
 def calculate_fundamental_score(info):
-    score = 0
+    raw_score = 0
+    max_score_available = 0
     breakdown = []
 
     pe = safe_get(info, "trailingPE", np.nan)
@@ -201,235 +200,208 @@ def calculate_fundamental_score(info):
     earn_growth = safe_get(info, "earningsGrowth", np.nan)
     dy = safe_get(info, "dividendYield", np.nan)
 
-    # PE
-    if pd.notna(pe):
-        if 0 < pe < 25:
-            score += 10
-            breakdown.append(("P/E Attractive", 10))
-        elif pe < 40:
-            score += 5
-            breakdown.append(("P/E Moderate", 5))
-        else:
-            breakdown.append(("P/E Expensive", 0))
+    # P/E (10)
+    if pd.notna(pe) and pe > 0:
+        max_score_available += 10
+        pts = 10 if pe < 25 else 5 if pe < 40 else 0
+        raw_score += pts
+        add_score_component(breakdown, "P/E", pts, 10, True)
     else:
-        breakdown.append(("P/E Unavailable", 0))
+        add_score_component(breakdown, "P/E", 0, 10, False)
 
-    # PB
-    if pd.notna(pb):
-        if 0 < pb < 4:
-            score += 10
-            breakdown.append(("P/B Healthy", 10))
-        elif pb < 8:
-            score += 5
-            breakdown.append(("P/B Moderate", 5))
-        else:
-            breakdown.append(("P/B High", 0))
+    # P/B (10)
+    if pd.notna(pb) and pb > 0:
+        max_score_available += 10
+        pts = 10 if pb < 4 else 5 if pb < 8 else 0
+        raw_score += pts
+        add_score_component(breakdown, "P/B", pts, 10, True)
     else:
-        breakdown.append(("P/B Unavailable", 0))
+        add_score_component(breakdown, "P/B", 0, 10, False)
 
-    # ROE
+    # ROE (15)
     if pd.notna(roe):
+        max_score_available += 15
         roe_pct = roe * 100 if abs(roe) <= 2 else roe
-        if roe_pct > 15:
-            score += 15
-            breakdown.append(("ROE Strong", 15))
-        elif roe_pct > 8:
-            score += 8
-            breakdown.append(("ROE Decent", 8))
-        else:
-            breakdown.append(("ROE Weak", 0))
+        pts = 15 if roe_pct > 15 else 8 if roe_pct > 8 else 0
+        raw_score += pts
+        add_score_component(breakdown, "ROE", pts, 15, True)
     else:
-        breakdown.append(("ROE Unavailable", 0))
+        add_score_component(breakdown, "ROE", 0, 15, False)
 
-    # Debt to Equity
+    # Debt to Equity (15)
     if pd.notna(de):
-        if de < 80:
-            score += 15
-            breakdown.append(("Debt Low", 15))
-        elif de < 150:
-            score += 8
-            breakdown.append(("Debt Moderate", 8))
-        else:
-            breakdown.append(("Debt High", 0))
+        max_score_available += 15
+        pts = 15 if de < 80 else 8 if de < 150 else 0
+        raw_score += pts
+        add_score_component(breakdown, "Debt to Equity", pts, 15, True)
     else:
-        breakdown.append(("Debt/Equity Unavailable", 0))
+        add_score_component(breakdown, "Debt to Equity", 0, 15, False)
 
-    # Profit Margin
+    # Profit Margin (10)
     if pd.notna(pm):
+        max_score_available += 10
         pm_pct = pm * 100 if abs(pm) <= 2 else pm
-        if pm_pct > 10:
-            score += 10
-            breakdown.append(("Profit Margin Strong", 10))
-        elif pm_pct > 5:
-            score += 5
-            breakdown.append(("Profit Margin Moderate", 5))
-        else:
-            breakdown.append(("Profit Margin Weak", 0))
+        pts = 10 if pm_pct > 10 else 5 if pm_pct > 5 else 0
+        raw_score += pts
+        add_score_component(breakdown, "Profit Margin", pts, 10, True)
     else:
-        breakdown.append(("Profit Margin Unavailable", 0))
+        add_score_component(breakdown, "Profit Margin", 0, 10, False)
 
-    # Operating Margin
+    # Operating Margin (10)
     if pd.notna(om):
+        max_score_available += 10
         om_pct = om * 100 if abs(om) <= 2 else om
-        if om_pct > 15:
-            score += 10
-            breakdown.append(("Operating Margin Strong", 10))
-        elif om_pct > 8:
-            score += 5
-            breakdown.append(("Operating Margin Moderate", 5))
-        else:
-            breakdown.append(("Operating Margin Weak", 0))
+        pts = 10 if om_pct > 15 else 5 if om_pct > 8 else 0
+        raw_score += pts
+        add_score_component(breakdown, "Operating Margin", pts, 10, True)
     else:
-        breakdown.append(("Operating Margin Unavailable", 0))
+        add_score_component(breakdown, "Operating Margin", 0, 10, False)
 
-    # Revenue Growth
+    # Revenue Growth (10)
     if pd.notna(rev_growth):
+        max_score_available += 10
         rg_pct = rev_growth * 100 if abs(rev_growth) <= 2 else rev_growth
-        if rg_pct > 10:
-            score += 10
-            breakdown.append(("Revenue Growth Strong", 10))
-        elif rg_pct > 5:
-            score += 5
-            breakdown.append(("Revenue Growth Moderate", 5))
-        else:
-            breakdown.append(("Revenue Growth Weak", 0))
+        pts = 10 if rg_pct > 10 else 5 if rg_pct > 5 else 0
+        raw_score += pts
+        add_score_component(breakdown, "Revenue Growth", pts, 10, True)
     else:
-        breakdown.append(("Revenue Growth Unavailable", 0))
+        add_score_component(breakdown, "Revenue Growth", 0, 10, False)
 
-    # Earnings Growth
+    # Earnings Growth (10)
     if pd.notna(earn_growth):
+        max_score_available += 10
         eg_pct = earn_growth * 100 if abs(earn_growth) <= 2 else earn_growth
-        if eg_pct > 10:
-            score += 10
-            breakdown.append(("Earnings Growth Strong", 10))
-        elif eg_pct > 5:
-            score += 5
-            breakdown.append(("Earnings Growth Moderate", 5))
-        else:
-            breakdown.append(("Earnings Growth Weak", 0))
+        pts = 10 if eg_pct > 10 else 5 if eg_pct > 5 else 0
+        raw_score += pts
+        add_score_component(breakdown, "Earnings Growth", pts, 10, True)
     else:
-        breakdown.append(("Earnings Growth Unavailable", 0))
+        add_score_component(breakdown, "Earnings Growth", 0, 10, False)
 
-    # Dividend Yield
+    # Dividend Yield (10)
     if pd.notna(dy):
+        max_score_available += 10
         dy_pct = dy * 100 if abs(dy) <= 2 else dy
-        if dy_pct > 1:
-            score += 10
-            breakdown.append(("Dividend Yield Positive", 10))
-        elif dy_pct > 0:
-            score += 5
-            breakdown.append(("Dividend Yield Low", 5))
-        else:
-            breakdown.append(("No Dividend", 0))
+        pts = 10 if dy_pct > 1 else 5 if dy_pct > 0 else 0
+        raw_score += pts
+        add_score_component(breakdown, "Dividend Yield", pts, 10, True)
     else:
-        breakdown.append(("Dividend Yield Unavailable", 0))
+        add_score_component(breakdown, "Dividend Yield", 0, 10, False)
 
-    return min(score, 100), breakdown
+    normalized = normalize_score(raw_score, max_score_available)
+
+    availability_pct = round((max_score_available / 100) * 100, 2)  # max possible is 100
+    return normalized, raw_score, max_score_available, availability_pct, breakdown
 
 def calculate_technical_score(df):
     if df.empty or len(df) < 60:
-        return 0, [("Not enough price history", 0)]
+        return 50, 0, 0, 0, [{
+            "Factor": "Not enough price history",
+            "Points": "N/A",
+            "Max": "N/A",
+            "Available": False
+        }]
 
     latest = df.iloc[-1]
-    score = 0
+    raw_score = 0
+    max_score_available = 0
     breakdown = []
 
-    # Price above 200 DMA
+    # Price above 200 DMA (20)
     if pd.notna(latest["SMA200"]):
-        if latest["Close"] > latest["SMA200"]:
-            score += 20
-            breakdown.append(("Price above 200 DMA", 20))
-        else:
-            breakdown.append(("Price below 200 DMA", 0))
+        max_score_available += 20
+        pts = 20 if latest["Close"] > latest["SMA200"] else 0
+        raw_score += pts
+        add_score_component(breakdown, "Price > 200 DMA", pts, 20, True)
     else:
-        breakdown.append(("200 DMA unavailable", 0))
+        add_score_component(breakdown, "Price > 200 DMA", 0, 20, False)
 
-    # 50 > 200
+    # 50 DMA above 200 DMA (15)
     if pd.notna(latest["SMA50"]) and pd.notna(latest["SMA200"]):
-        if latest["SMA50"] > latest["SMA200"]:
-            score += 15
-            breakdown.append(("50 DMA above 200 DMA", 15))
-        else:
-            breakdown.append(("50 DMA below 200 DMA", 0))
+        max_score_available += 15
+        pts = 15 if latest["SMA50"] > latest["SMA200"] else 0
+        raw_score += pts
+        add_score_component(breakdown, "50 DMA > 200 DMA", pts, 15, True)
     else:
-        breakdown.append(("DMA structure unavailable", 0))
+        add_score_component(breakdown, "50 DMA > 200 DMA", 0, 15, False)
 
-    # EMA alignment
+    # EMA alignment (10)
     if pd.notna(latest["EMA20"]) and pd.notna(latest["EMA50"]):
-        if latest["EMA20"] > latest["EMA50"]:
-            score += 10
-            breakdown.append(("EMA20 above EMA50", 10))
-        else:
-            breakdown.append(("EMA20 below EMA50", 0))
+        max_score_available += 10
+        pts = 10 if latest["EMA20"] > latest["EMA50"] else 0
+        raw_score += pts
+        add_score_component(breakdown, "EMA20 > EMA50", pts, 10, True)
     else:
-        breakdown.append(("EMA alignment unavailable", 0))
+        add_score_component(breakdown, "EMA20 > EMA50", 0, 10, False)
 
-    # RSI
+    # RSI (15)
     rsi = latest["RSI14"]
     if pd.notna(rsi):
+        max_score_available += 15
         if 55 <= rsi <= 70:
-            score += 15
-            breakdown.append(("RSI healthy bullish zone", 15))
+            pts = 15
         elif 45 <= rsi < 55:
-            score += 8
-            breakdown.append(("RSI neutral-positive", 8))
+            pts = 8
         elif 70 < rsi <= 80:
-            score += 5
-            breakdown.append(("RSI strong but extended", 5))
+            pts = 5
         else:
-            breakdown.append(("RSI weak/overstretched", 0))
+            pts = 0
+        raw_score += pts
+        add_score_component(breakdown, "RSI Strength", pts, 15, True)
     else:
-        breakdown.append(("RSI unavailable", 0))
+        add_score_component(breakdown, "RSI Strength", 0, 15, False)
 
-    # MACD
+    # MACD (10)
     if pd.notna(latest["MACD"]) and pd.notna(latest["MACD_SIGNAL"]):
-        if latest["MACD"] > latest["MACD_SIGNAL"]:
-            score += 10
-            breakdown.append(("MACD bullish", 10))
-        else:
-            breakdown.append(("MACD bearish", 0))
+        max_score_available += 10
+        pts = 10 if latest["MACD"] > latest["MACD_SIGNAL"] else 0
+        raw_score += pts
+        add_score_component(breakdown, "MACD Bullish", pts, 10, True)
     else:
-        breakdown.append(("MACD unavailable", 0))
+        add_score_component(breakdown, "MACD Bullish", 0, 10, False)
 
-    # Volume
+    # Volume (15)
     if pd.notna(latest["VOL20"]) and latest["VOL20"] > 0:
+        max_score_available += 15
         if latest["Volume"] > 1.5 * latest["VOL20"]:
-            score += 15
-            breakdown.append(("Strong volume breakout", 15))
+            pts = 15
         elif latest["Volume"] > latest["VOL20"]:
-            score += 8
-            breakdown.append(("Above-average volume", 8))
+            pts = 8
         else:
-            breakdown.append(("Volume not confirming", 0))
+            pts = 0
+        raw_score += pts
+        add_score_component(breakdown, "Volume Confirmation", pts, 15, True)
     else:
-        breakdown.append(("Volume average unavailable", 0))
+        add_score_component(breakdown, "Volume Confirmation", 0, 15, False)
 
-    # 52W High proximity
+    # 52W high proximity (10)
     if pd.notna(latest["52W_HIGH"]) and latest["52W_HIGH"] > 0:
+        max_score_available += 10
         dist = ((latest["52W_HIGH"] - latest["Close"]) / latest["52W_HIGH"]) * 100
         if dist < 10:
-            score += 10
-            breakdown.append(("Near 52W high", 10))
+            pts = 10
         elif dist < 20:
-            score += 5
-            breakdown.append(("Within 20% of 52W high", 5))
+            pts = 5
         else:
-            breakdown.append(("Far from 52W high", 0))
+            pts = 0
+        raw_score += pts
+        add_score_component(breakdown, "Near 52W High", pts, 10, True)
     else:
-        breakdown.append(("52W high unavailable", 0))
+        add_score_component(breakdown, "Near 52W High", 0, 10, False)
 
-    # ATR risk
+    # ATR risk (5)
     if pd.notna(latest["ATR14"]) and latest["Close"] > 0:
+        max_score_available += 5
         atr_pct = (latest["ATR14"] / latest["Close"]) * 100
-        if atr_pct < 4:
-            score += 5
-            breakdown.append(("Volatility controlled", 5))
-        else:
-            breakdown.append(("Volatility elevated", 0))
+        pts = 5 if atr_pct < 4 else 0
+        raw_score += pts
+        add_score_component(breakdown, "Controlled Volatility", pts, 5, True)
     else:
-        breakdown.append(("ATR unavailable", 0))
+        add_score_component(breakdown, "Controlled Volatility", 0, 5, False)
 
-    return min(score, 100), breakdown
+    normalized = normalize_score(raw_score, max_score_available)
+    availability_pct = round((max_score_available / 100) * 100, 2)
+
+    return normalized, raw_score, max_score_available, availability_pct, breakdown
 
 def get_verdict(combined_score):
     if combined_score >= 80:
@@ -472,7 +444,6 @@ def create_chart(df, symbol):
         row_heights=[0.6, 0.2, 0.2]
     )
 
-    # Candlestick
     fig.add_trace(
         go.Candlestick(
             x=df.index,
@@ -485,17 +456,14 @@ def create_chart(df, symbol):
         row=1, col=1
     )
 
-    # Moving averages + Bollinger
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA20"], mode="lines", name="SMA20"), row=1, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], mode="lines", name="SMA50"), row=1, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA200"], mode="lines", name="SMA200"), row=1, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df["BB_UPPER"], mode="lines", name="BB Upper"), row=1, col=1)
     fig.add_trace(go.Scatter(x=df.index, y=df["BB_LOWER"], mode="lines", name="BB Lower"), row=1, col=1)
 
-    # Volume
     fig.add_trace(go.Bar(x=df.index, y=df["Volume"], name="Volume"), row=2, col=1)
 
-    # RSI
     fig.add_trace(go.Scatter(x=df.index, y=df["RSI14"], mode="lines", name="RSI14"), row=3, col=1)
     fig.add_hline(y=70, line_dash="dash", row=3, col=1)
     fig.add_hline(y=30, line_dash="dash", row=3, col=1)
@@ -528,8 +496,8 @@ symbol = manual_symbol if manual_symbol else selected_symbol
 # =========================================================
 # HEADER
 # =========================================================
-st.markdown('<div class="main-title">📈 NSE Stock Analysis Pro V2 ELITE</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Fundamental + Technical + Scoring + Verdict (Streamlit Cloud Safe)</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">📈 NSE Stock Analysis Pro V2.1 ELITE</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Normalized Fundamental + Technical + Scoring + Verdict (NSE Friendly)</div>', unsafe_allow_html=True)
 
 # =========================================================
 # SINGLE STOCK ANALYSIS
@@ -547,8 +515,10 @@ if page == "Single Stock Analysis":
         price_change = latest["Close"] - prev_close
         price_change_pct = (price_change / prev_close * 100) if prev_close != 0 else 0
 
-        fundamental_score, f_breakdown = calculate_fundamental_score(info)
-        technical_score, t_breakdown = calculate_technical_score(df)
+        fundamental_score, f_raw, f_max, f_avail, f_breakdown = calculate_fundamental_score(info)
+        technical_score, t_raw, t_max, t_avail, t_breakdown = calculate_technical_score(df)
+
+        # Weighted combined on normalized scores
         combined_score = round((0.6 * fundamental_score) + (0.4 * technical_score), 2)
         verdict = get_verdict(combined_score)
         trend = get_trend_label(df)
@@ -562,6 +532,11 @@ if page == "Single Stock Analysis":
 
         st.success(f"Verdict: {verdict}")
         st.info(f"Trend: **{trend}**")
+
+        # Data quality note
+        dq1, dq2 = st.columns(2)
+        dq1.caption(f"Fundamental data availability: {f_max}/100 score-points available")
+        dq2.caption(f"Technical data availability: {t_max}/100 score-points available")
 
         # Chart
         st.plotly_chart(create_chart(df.tail(250), symbol), use_container_width=True)
@@ -652,13 +627,20 @@ if page == "Single Stock Analysis":
 
         with c5:
             st.markdown("### Fundamental Score Breakdown")
-            f_df = pd.DataFrame(f_breakdown, columns=["Factor", "Points"])
+            f_df = pd.DataFrame(f_breakdown)
             st.dataframe(f_df, use_container_width=True, hide_index=True)
 
         with c6:
             st.markdown("### Technical Score Breakdown")
-            t_df = pd.DataFrame(t_breakdown, columns=["Factor", "Points"])
+            t_df = pd.DataFrame(t_breakdown)
             st.dataframe(t_df, use_container_width=True, hide_index=True)
+
+        # Score summary
+        st.markdown("## 📌 Score Logic Summary")
+        s1, s2, s3 = st.columns(3)
+        s1.metric("Fundamental Raw", f"{f_raw}/{f_max if f_max > 0 else 'N/A'}")
+        s2.metric("Technical Raw", f"{t_raw}/{t_max if t_max > 0 else 'N/A'}")
+        s3.metric("Final Combined", f"{combined_score}/100")
 
         # Recent data
         st.markdown("## 📋 Recent Price Data")
@@ -670,8 +652,8 @@ if page == "Single Stock Analysis":
 # MINI SCREENER
 # =========================================================
 elif page == "Mini Screener":
-    st.markdown("## 🧮 Mini NSE Screener (Top 15 Default Stocks)")
-    st.caption("This scans a small basket for stability on Streamlit Cloud. Keep it lightweight.")
+    st.markdown("## 🧮 Mini NSE Screener (Normalized Scoring)")
+    st.caption("Scans default NSE basket with fairer score normalization for missing fundamentals.")
 
     if st.button("Run Screener"):
         results = []
@@ -688,8 +670,8 @@ elif page == "Mini Screener":
                     df = add_indicators(hist)
                     latest = df.iloc[-1]
 
-                    f_score, _ = calculate_fundamental_score(info)
-                    t_score, _ = calculate_technical_score(df)
+                    f_score, f_raw, f_max, _, _ = calculate_fundamental_score(info)
+                    t_score, t_raw, t_max, _, _ = calculate_technical_score(df)
                     combined = round((0.6 * f_score) + (0.4 * t_score), 2)
 
                     results.append({
@@ -697,9 +679,11 @@ elif page == "Mini Screener":
                         "Close": round(latest["Close"], 2),
                         "RSI": round(latest["RSI14"], 2) if pd.notna(latest["RSI14"]) else np.nan,
                         "Trend": get_trend_label(df),
-                        "Fundamental Score": f_score,
-                        "Technical Score": t_score,
-                        "Combined Score": combined,
+                        "Fund Score": f_score,
+                        "Tech Score": t_score,
+                        "Combined": combined,
+                        "F Raw": f"{f_raw}/{f_max if f_max > 0 else 'N/A'}",
+                        "T Raw": f"{t_raw}/{t_max if t_max > 0 else 'N/A'}",
                         "Verdict": get_verdict(combined)
                     })
                 except Exception:
@@ -710,14 +694,14 @@ elif page == "Mini Screener":
         status.empty()
 
         if results:
-            screener_df = pd.DataFrame(results).sort_values("Combined Score", ascending=False).reset_index(drop=True)
+            screener_df = pd.DataFrame(results).sort_values("Combined", ascending=False).reset_index(drop=True)
             st.dataframe(screener_df, use_container_width=True, hide_index=True)
 
             csv = screener_df.to_csv(index=False).encode("utf-8")
             st.download_button(
                 "⬇️ Download Screener CSV",
                 data=csv,
-                file_name="nse_mini_screener.csv",
+                file_name="nse_mini_screener_normalized.csv",
                 mime="text/csv"
             )
         else:
@@ -729,37 +713,29 @@ elif page == "Mini Screener":
 else:
     st.markdown("## ℹ️ About This App")
     st.markdown("""
-### NSE Stock Analysis Pro V2 ELITE
+### NSE Stock Analysis Pro V2.1 ELITE
 
-This app provides:
+This version improves the earlier model by:
 
-- **NSE Stock Analysis** using `.NS`
-- **Fundamental Score /100**
-- **Technical Score /100**
-- **Combined Score /100**
-- **Trend classification**
-- **Verdict: Buy / Watch / Avoid**
-- **Mini Screener for default NSE basket**
+- **Normalizing Fundamental Score** when Yahoo Finance misses some NSE fields
+- **Avoiding unfair 0/100 fundamentals** due to missing data
+- **Keeping Technical Score normalized**
+- **Making Combined Score more realistic**
+
+### Formula Used
+- **Fundamental Score = normalized on available fundamental factors**
+- **Technical Score = normalized on available technical factors**
+- **Combined Score = (0.6 × Fundamental) + (0.4 × Technical)**
 
 ### Notes
 - Built for **education and research**
 - Data source: **Yahoo Finance via yfinance**
 - Always validate before investing
-- Some fundamental fields may be missing for certain stocks
-
-### Good NSE examples:
-- RELIANCE
-- TCS
-- INFY
-- HDFCBANK
-- ICICIBANK
-- SBIN
-- LT
-- ITC
+- Some Indian stock fundamentals can still be incomplete
 """)
 
 # =========================================================
 # FOOTER
 # =========================================================
 st.markdown("---")
-st.caption("Built with Streamlit + yfinance | NSE (.NS) | FINAL V2 ELITE | For research & education only")
+st.caption("Built with Streamlit + yfinance | NSE (.NS) | FINAL V2.1 ELITE | Normalized scoring for Indian stocks")
