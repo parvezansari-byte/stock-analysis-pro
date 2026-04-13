@@ -10,7 +10,7 @@ import math
 # PAGE CONFIG
 # =========================================================
 st.set_page_config(
-    page_title="NSE Stock Intelligence Pro MAX V5.1",
+    page_title="NSE Stock Intelligence Pro MAX V5.2",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -105,6 +105,34 @@ SECTOR_PACKS = {
     "Pharma": ["SUNPHARMA", "DRREDDY", "CIPLA", "DIVISLAB", "LUPIN"]
 }
 
+# Major NSE fallback map when Yahoo misses sector/industry
+NSE_MASTER_FALLBACK = {
+    "RELIANCE": {"sector": "Energy", "industry": "Oil & Gas / Conglomerate"},
+    "TCS": {"sector": "Information Technology", "industry": "IT Services"},
+    "INFY": {"sector": "Information Technology", "industry": "IT Services"},
+    "HCLTECH": {"sector": "Information Technology", "industry": "IT Services"},
+    "WIPRO": {"sector": "Information Technology", "industry": "IT Services"},
+    "TECHM": {"sector": "Information Technology", "industry": "IT Services"},
+    "HDFCBANK": {"sector": "Financial Services", "industry": "Private Sector Bank"},
+    "ICICIBANK": {"sector": "Financial Services", "industry": "Private Sector Bank"},
+    "SBIN": {"sector": "Financial Services", "industry": "Public Sector Bank"},
+    "AXISBANK": {"sector": "Financial Services", "industry": "Private Sector Bank"},
+    "KOTAKBANK": {"sector": "Financial Services", "industry": "Private Sector Bank"},
+    "ITC": {"sector": "Consumer Defensive", "industry": "Diversified FMCG"},
+    "LT": {"sector": "Industrials", "industry": "Engineering & Construction"},
+    "BHARTIARTL": {"sector": "Communication Services", "industry": "Telecom"},
+    "HINDUNILVR": {"sector": "Consumer Defensive", "industry": "FMCG"},
+    "SUNPHARMA": {"sector": "Healthcare", "industry": "Pharmaceuticals"},
+    "DRREDDY": {"sector": "Healthcare", "industry": "Pharmaceuticals"},
+    "CIPLA": {"sector": "Healthcare", "industry": "Pharmaceuticals"},
+    "MARUTI": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
+    "TATAMOTORS": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
+    "M&M": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
+    "EICHERMOT": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
+    "HEROMOTOCO": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
+    "ASIANPAINT": {"sector": "Basic Materials", "industry": "Specialty Chemicals / Paints"}
+}
+
 # =========================================================
 # HELPERS
 # =========================================================
@@ -112,8 +140,11 @@ def safe_num(x, default=np.nan):
     try:
         if x is None:
             return default
-        if isinstance(x, str) and x.strip() == "":
-            return default
+        if isinstance(x, str):
+            if x.strip() == "":
+                return default
+            if x.strip().lower() == "nan":
+                return default
         v = float(x)
         if math.isinf(v):
             return default
@@ -145,15 +176,29 @@ def get_safe_series_value(df, row_name):
     except:
         return np.nan
 
+def format_generic_value(v):
+    if isinstance(v, (int, float, np.floating)):
+        return f"{v:,.2f}" if pd.notna(v) else "N/A"
+    if v is None:
+        return "N/A"
+    sv = str(v).strip()
+    if sv == "" or sv.lower() == "nan":
+        return "N/A"
+    return sv
+
+def format_rupees_cr(v):
+    return f"₹ {v/1e7:,.2f} Cr" if pd.notna(v) else "N/A"
+
+def format_pct(v):
+    return f"{v:.2f}%" if pd.notna(v) else "N/A"
+
 # =========================================================
 # SAFE DATA FETCH (NO CACHE ON RAW OBJECTS)
-# IMPORTANT: NO @st.cache_data HERE
 # =========================================================
 def fetch_full_stock_data(symbol: str, period: str = "1y"):
     try:
         ticker = yf.Ticker(get_nse_symbol(symbol))
 
-        # Price history
         hist = ticker.history(period=period, auto_adjust=False)
         if hist is None or hist.empty:
             hist = ticker.history(period="6mo", auto_adjust=False)
@@ -165,7 +210,6 @@ def fetch_full_stock_data(symbol: str, period: str = "1y"):
         if hist.empty:
             return None, None, None, None, None, None, None, "Price history empty after cleaning."
 
-        # info
         try:
             info = ticker.info
             if not isinstance(info, dict):
@@ -173,14 +217,12 @@ def fetch_full_stock_data(symbol: str, period: str = "1y"):
         except:
             info = {}
 
-        # fast_info -> force plain dict for safety
         try:
             fi = ticker.fast_info
             fast_info = dict(fi) if fi is not None else {}
         except:
             fast_info = {}
 
-        # financials
         try:
             financials = ticker.financials
             if financials is None:
@@ -190,7 +232,6 @@ def fetch_full_stock_data(symbol: str, period: str = "1y"):
         except:
             financials = pd.DataFrame()
 
-        # balance sheet
         try:
             balance_sheet = ticker.balance_sheet
             if balance_sheet is None:
@@ -200,7 +241,6 @@ def fetch_full_stock_data(symbol: str, period: str = "1y"):
         except:
             balance_sheet = pd.DataFrame()
 
-        # cashflow
         try:
             cashflow = ticker.cashflow
             if cashflow is None:
@@ -210,7 +250,6 @@ def fetch_full_stock_data(symbol: str, period: str = "1y"):
         except:
             cashflow = pd.DataFrame()
 
-        # quarterly financials
         try:
             q_financials = ticker.quarterly_financials
             if q_financials is None:
@@ -220,7 +259,6 @@ def fetch_full_stock_data(symbol: str, period: str = "1y"):
         except:
             q_financials = pd.DataFrame()
 
-        # quarterly balance sheet
         try:
             q_balance_sheet = ticker.quarterly_balance_sheet
             if q_balance_sheet is None:
@@ -276,16 +314,19 @@ def add_indicators(df):
     return df
 
 # =========================================================
-# ROBUST FUNDAMENTAL EXTRACTION
+# ROBUST FUNDAMENTAL EXTRACTION (ENHANCED V5.2)
 # =========================================================
 def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_sheet, cashflow, extra_data=None):
     extra_data = extra_data or {}
     q_financials = extra_data.get("q_financials", pd.DataFrame())
     q_balance_sheet = extra_data.get("q_balance_sheet", pd.DataFrame())
 
-    company_name = info.get("longName") or info.get("shortName") or symbol
-    sector = info.get("sector")
-    industry = info.get("industry")
+    sym = symbol.upper().replace(".NS", "")
+    fallback = NSE_MASTER_FALLBACK.get(sym, {})
+
+    company_name = info.get("longName") or info.get("shortName") or sym
+    sector = info.get("sector") or fallback.get("sector")
+    industry = info.get("industry") or fallback.get("industry")
 
     market_cap = safe_num(info.get("marketCap"))
     if pd.isna(market_cap):
@@ -296,6 +337,15 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
         current_price = safe_num(info.get("regularMarketPrice"))
     if pd.isna(current_price):
         current_price = safe_num(fast_info.get("lastPrice"))
+    if pd.isna(current_price):
+        current_price = safe_num(fast_info.get("last_price"))
+
+    shares_outstanding = safe_num(info.get("sharesOutstanding"))
+    if pd.isna(shares_outstanding):
+        shares_outstanding = safe_num(info.get("impliedSharesOutstanding"))
+
+    book_value = safe_num(info.get("bookValue"))
+    eps = safe_num(info.get("trailingEps"))
 
     pe = safe_num(info.get("trailingPE"))
     if pd.isna(pe):
@@ -317,15 +367,11 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
     if not pd.isna(revenue_growth) and revenue_growth < 5:
         revenue_growth = revenue_growth * 100
 
-    book_value = safe_num(info.get("bookValue"))
-    eps = safe_num(info.get("trailingEps"))
-
     dividend_yield = safe_num(info.get("dividendYield"))
     if not pd.isna(dividend_yield) and dividend_yield < 5:
         dividend_yield = dividend_yield * 100
 
-    shares_outstanding = safe_num(info.get("sharesOutstanding"))
-
+    # Statement values
     net_income = get_safe_series_value(financials, "Net Income")
     if pd.isna(net_income):
         net_income = get_safe_series_value(financials, "Net Income Common Stockholders")
@@ -336,10 +382,15 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
 
     ebitda = get_safe_series_value(financials, "EBITDA")
     operating_income = get_safe_series_value(financials, "Operating Income")
+    gross_profit = get_safe_series_value(financials, "Gross Profit")
 
     total_equity = get_safe_series_value(balance_sheet, "Stockholders Equity")
     if pd.isna(total_equity):
         total_equity = get_safe_series_value(balance_sheet, "Total Equity Gross Minority Interest")
+
+    total_assets = get_safe_series_value(balance_sheet, "Total Assets")
+    current_assets = get_safe_series_value(balance_sheet, "Current Assets")
+    current_liabilities = get_safe_series_value(balance_sheet, "Current Liabilities")
 
     total_debt = get_safe_series_value(balance_sheet, "Total Debt")
     if pd.isna(total_debt):
@@ -352,9 +403,27 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
     if pd.isna(cash):
         cash = get_safe_series_value(balance_sheet, "Cash Cash Equivalents And Short Term Investments")
 
+    operating_cashflow = get_safe_series_value(cashflow, "Operating Cash Flow")
+    free_cashflow = get_safe_series_value(cashflow, "Free Cash Flow")
+    capex = get_safe_series_value(cashflow, "Capital Expenditure")
+
     # Derived fallbacks
+    if pd.isna(market_cap) and pd.notna(current_price) and pd.notna(shares_outstanding) and shares_outstanding > 0:
+        market_cap = current_price * shares_outstanding
+
+    if pd.isna(book_value) and pd.notna(total_equity) and pd.notna(shares_outstanding) and shares_outstanding > 0:
+        book_value = total_equity / shares_outstanding
+
+    if pd.isna(pb) and pd.notna(current_price) and pd.notna(book_value) and book_value > 0:
+        pb = current_price / book_value
     if pd.isna(pb) and pd.notna(market_cap) and pd.notna(total_equity) and total_equity > 0:
         pb = market_cap / total_equity
+
+    if pd.isna(eps) and pd.notna(net_income) and pd.notna(shares_outstanding) and shares_outstanding > 0:
+        eps = net_income / shares_outstanding
+
+    if pd.isna(pe) and pd.notna(current_price) and pd.notna(eps) and eps > 0:
+        pe = current_price / eps
 
     if pd.isna(roe) and pd.notna(net_income) and pd.notna(total_equity) and total_equity > 0:
         roe = (net_income / total_equity) * 100
@@ -364,15 +433,6 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
 
     if pd.isna(profit_margin) and pd.notna(net_income) and pd.notna(total_revenue) and total_revenue > 0:
         profit_margin = (net_income / total_revenue) * 100
-
-    if pd.isna(book_value) and pd.notna(total_equity) and pd.notna(shares_outstanding) and shares_outstanding > 0:
-        book_value = total_equity / shares_outstanding
-
-    if pd.isna(eps) and pd.notna(net_income) and pd.notna(shares_outstanding) and shares_outstanding > 0:
-        eps = net_income / shares_outstanding
-
-    if pd.isna(pe) and pd.notna(current_price) and pd.notna(eps) and eps > 0:
-        pe = current_price / eps
 
     if pd.isna(revenue_growth):
         try:
@@ -384,25 +444,41 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
         except:
             pass
 
+    current_ratio = np.nan
+    if pd.notna(current_assets) and pd.notna(current_liabilities) and current_liabilities > 0:
+        current_ratio = current_assets / current_liabilities
+
+    asset_turnover = np.nan
+    if pd.notna(total_revenue) and pd.notna(total_assets) and total_assets > 0:
+        asset_turnover = total_revenue / total_assets
+
     return {
         "Company Name": company_name,
         "Sector": sector,
         "Industry": industry,
-        "Market Cap": market_cap,
         "Current Price": current_price,
+        "Market Cap": market_cap,
+        "Shares Outstanding": shares_outstanding,
         "P/E Ratio": pe,
+        "EPS": eps,
         "P/B Ratio": pb,
+        "Book Value": book_value,
         "ROE %": roe,
         "Debt/Equity": debt_equity,
         "Profit Margin %": profit_margin,
         "Revenue Growth %": revenue_growth,
-        "Book Value": book_value,
-        "EPS": eps,
         "Dividend Yield %": dividend_yield,
-        "Net Income": net_income,
+        "Current Ratio": current_ratio,
+        "Asset Turnover": asset_turnover,
         "Total Revenue": total_revenue,
-        "EBITDA": ebitda,
+        "Gross Profit": gross_profit,
         "Operating Income": operating_income,
+        "EBITDA": ebitda,
+        "Net Income": net_income,
+        "Operating Cash Flow": operating_cashflow,
+        "Free Cash Flow": free_cashflow,
+        "Capex": capex,
+        "Total Assets": total_assets,
         "Total Equity": total_equity,
         "Total Debt": total_debt,
         "Cash": cash
@@ -701,7 +777,7 @@ def build_rsi_chart(df, symbol):
 # SIDEBAR
 # =========================================================
 st.sidebar.markdown("## 📈 NSE Stock Intelligence Pro MAX")
-st.sidebar.caption("V5.1 • Single-file • Cloud Safe • Fixed")
+st.sidebar.caption("V5.2 • Full Fundamental Fix • Cloud Safe")
 
 module = st.sidebar.radio(
     "Choose Module",
@@ -730,11 +806,11 @@ period = period_map[period_label]
 # =========================================================
 st.markdown("""
 <div class="hero-box">
-    <div class="main-title">📈 NSE Stock Intelligence Pro MAX V5.1</div>
-    <div class="sub-title">Technical + Fundamental + Robust NSE Fallback + Screener + Portfolio Ranker</div>
+    <div class="main-title">📈 NSE Stock Intelligence Pro MAX V5.2</div>
+    <div class="sub-title">Technical + Fundamental + Stronger NSE Fallback + Screener + Portfolio Ranker</div>
     <span class="pill">Cloud Safe</span>
     <span class="pill">Single app.py</span>
-    <span class="pill">Serialization Fixed</span>
+    <span class="pill">Full Fundamental Fix</span>
     <span class="pill">NSE Ready</span>
 </div>
 """, unsafe_allow_html=True)
@@ -815,29 +891,49 @@ if module == "Single Stock Analysis":
 
         fd = result["fundamental_data"]
 
-        display_rows = []
-        rupee_cr_fields = ["Market Cap", "Net Income", "Total Revenue", "EBITDA", "Operating Income", "Total Equity", "Total Debt", "Cash"]
+        # Ordered display for cleaner institutional view
+        ordered_keys = [
+            "Company Name", "Sector", "Industry", "Current Price", "Market Cap", "Shares Outstanding",
+            "P/E Ratio", "EPS", "P/B Ratio", "Book Value", "ROE %", "Debt/Equity",
+            "Profit Margin %", "Revenue Growth %", "Dividend Yield %", "Current Ratio", "Asset Turnover",
+            "Total Revenue", "Gross Profit", "Operating Income", "EBITDA", "Net Income",
+            "Operating Cash Flow", "Free Cash Flow", "Capex", "Total Assets", "Total Equity", "Total Debt", "Cash"
+        ]
 
-        for k, v in fd.items():
-            if k in rupee_cr_fields:
-                if pd.notna(v):
-                    display_rows.append([k, f"₹ {v/1e7:,.2f} Cr"])
-                else:
-                    display_rows.append([k, "N/A"])
-            elif k in ["ROE %", "Profit Margin %", "Revenue Growth %", "Dividend Yield %"]:
-                display_rows.append([k, f"{v:.2f}%" if pd.notna(v) else "N/A"])
-            elif k == "Current Price":
+        rupee_cr_fields = {
+            "Market Cap", "Total Revenue", "Gross Profit", "Operating Income", "EBITDA",
+            "Net Income", "Operating Cash Flow", "Free Cash Flow", "Capex",
+            "Total Assets", "Total Equity", "Total Debt", "Cash"
+        }
+
+        percent_fields = {"ROE %", "Profit Margin %", "Revenue Growth %", "Dividend Yield %"}
+
+        display_rows = []
+        for k in ordered_keys:
+            v = fd.get(k, None)
+
+            if k == "Current Price":
                 display_rows.append([k, f"₹ {v:,.2f}" if pd.notna(v) else "N/A"])
+            elif k in rupee_cr_fields:
+                display_rows.append([k, format_rupees_cr(v)])
+            elif k in percent_fields:
+                display_rows.append([k, format_pct(v)])
             else:
-                if isinstance(v, (int, float, np.floating)) and pd.notna(v):
-                    display_rows.append([k, f"{v:,.2f}"])
-                else:
-                    display_rows.append([k, str(v) if v is not None else "N/A"])
+                display_rows.append([k, format_generic_value(v)])
 
         fundamental_df = pd.DataFrame(display_rows, columns=["Metric", "Value"])
         st.dataframe(fundamental_df, use_container_width=True, hide_index=True)
 
-        st.info("This version uses multi-source fallback (info + fast_info + financial statements + derived ratios) to reduce NSE fundamental N/A values.")
+        # Coverage score
+        available = sum(1 for _, v in display_rows if v != "N/A")
+        total = len(display_rows)
+        coverage = round((available / total) * 100, 1)
+
+        st.info(
+            f"Fundamental Coverage: {coverage}% | "
+            "This version uses info + fast_info + statements + derived ratios + NSE fallback map "
+            "to improve data completeness for major NSE stocks."
+        )
 
     with tab3:
         df = result["df"]
@@ -977,38 +1073,25 @@ elif module == "Portfolio Ranker":
 else:
     st.subheader("ℹ️ About")
     st.markdown("""
-### NSE Stock Intelligence Pro MAX V5.1
+### NSE Stock Intelligence Pro MAX V5.2
 
 This is a **single-file Streamlit Cloud friendly app** for:
 
-- Fundamental analysis with robust fallback
+- Stronger NSE fundamental analysis
 - Technical analysis
 - Combined scoring
 - Mini screener
 - Portfolio ranker
 - NSE (.NS) stocks
 
-### What was fixed in V5.1
+### What was improved in V5.2
 - Removed Streamlit cache serialization issue
-- Converted `fast_info` to plain dict
-- Safe handling of Yahoo Finance statement objects
-- Better cloud stability
-
-### Fundamental Fix Included
-This version reduces **N/A problem for NSE stocks** by using:
-
-- `ticker.info`
-- `ticker.fast_info`
-- `ticker.financials`
-- `ticker.balance_sheet`
-- `ticker.cashflow`
-- derived ratios (P/B, ROE, Debt/Equity, Margin, PE)
-
-### Best Use Cases
-- Daily research
-- Watchlist creation
-- Client demo
-- Advisory support
+- Better market cap fallback
+- Better P/E fallback
+- Better P/B fallback
+- No ugly `nan` values in table
+- NSE sector/industry fallback map for major stocks
+- More complete institutional-style fundamental table
 
 ### Important
 This app uses **Yahoo Finance via yfinance**.  
@@ -1023,5 +1106,5 @@ For educational and research purposes only. Not investment advice.
 # =========================================================
 st.markdown("---")
 st.caption(
-    f"Built with Streamlit + yfinance | NSE (.NS) | FINAL V5.1 STREAMLIT CLOUD SAFE FIXED SINGLE FILE | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
+    f"Built with Streamlit + yfinance | NSE (.NS) | FINAL V5.2 FULL FUNDAMENTAL FIX SINGLE FILE | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
 )
