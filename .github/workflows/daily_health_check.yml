@@ -1,1 +1,14 @@
+name: Daily Health Check
 
+on:
+  schedule:
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Streamlit App
+        run: |
+          curl -I https://stock-analysis-pro-hwvrb6jsmqzsk23wpcex9b.streamlit.app
