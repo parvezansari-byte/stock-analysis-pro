@@ -1,12 +1,10 @@
 streamlit
 pandas
 numpy
-plotly
 yfinance
+plotly
 requests
 beautifulsoup4
 lxml
-scikit-learn
 openpyxl
 xlsxwriter
-nsepython
