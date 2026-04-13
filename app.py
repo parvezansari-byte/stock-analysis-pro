@@ -1,806 +1,990 @@
 import streamlit as st
+import yfinance as yf
 import pandas as pd
 import numpy as np
-import yfinance as yf
-import plotly.express as px
 import plotly.graph_objects as go
-from io import BytesIO
+from datetime import datetime
+import math
 
-# ============================================================
-# FINAL V8 INSTITUTIONAL GRADE CLOUD SAFE SINGLE app.py
-# Institutional UI | Technical + Fundamental + Scanner + Portfolio DB
-# Risk/Reward | SL/Target | Export Excel | Streamlit Cloud Safe
-# ============================================================
-
-# -------------------------------
+# =========================================================
 # PAGE CONFIG
-# -------------------------------
+# =========================================================
 st.set_page_config(
-    page_title="NSE Stock Intelligence Pro MAX V8 INSTITUTIONAL",
+    page_title="NSE Stock Intelligence Pro MAX",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# -------------------------------
-# PREMIUM CSS
-# -------------------------------
+# =========================================================
+# STYLES
+# =========================================================
 st.markdown("""
 <style>
-:root {
-    --bg1:#0a1020;
-    --bg2:#111827;
-    --card:rgba(255,255,255,0.05);
-    --line:rgba(255,255,255,0.08);
-    --muted:#cbd5e1;
-}
-html, body, [data-testid="stAppViewContainer"] {
-    background: linear-gradient(135deg, var(--bg1), var(--bg2));
-    color: white;
-}
-.block-container {padding-top: 1rem; padding-bottom: 2rem; max-width: 98%;}
-[data-testid="stSidebar"] {background: rgba(255,255,255,0.03); border-right:1px solid var(--line);}
-.hero {
-    background: linear-gradient(135deg, rgba(59,130,246,0.16), rgba(16,185,129,0.10));
-    border:1px solid rgba(255,255,255,0.08); border-radius:24px; padding:22px; margin-bottom:14px;
-}
-.hero-title {font-size:2.05rem; font-weight:800; color:white;}
-.hero-sub {color:var(--muted); font-size:0.95rem; margin-top:4px;}
-.pill {display:inline-block; padding:6px 12px; border-radius:999px; margin-right:8px; margin-top:10px; font-size:0.82rem; border:1px solid rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); color:#e2e8f0;}
-.card {background:var(--card); border:1px solid var(--line); border-radius:20px; padding:16px;}
-.stTabs [data-baseweb="tab"] {font-weight:700; font-size:15px;}
+    .main-title {
+        font-size: 2.6rem;
+        font-weight: 800;
+        margin-bottom: 0.2rem;
+    }
+    .sub-title {
+        font-size: 1rem;
+        color: #94a3b8;
+        margin-bottom: 1rem;
+    }
+    .hero-box {
+        padding: 1.2rem 1.4rem;
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(15,23,42,0.95), rgba(14,116,144,0.25));
+        border: 1px solid rgba(59,130,246,0.25);
+        margin-bottom: 1rem;
+    }
+    .good-box {
+        padding: 1rem;
+        border-radius: 12px;
+        background: rgba(22,163,74,0.18);
+        border: 1px solid rgba(22,163,74,0.35);
+        color: #86efac;
+        font-weight: 700;
+    }
+    .warn-box {
+        padding: 1rem;
+        border-radius: 12px;
+        background: rgba(245,158,11,0.15);
+        border: 1px solid rgba(245,158,11,0.35);
+        color: #fcd34d;
+        font-weight: 700;
+    }
+    .bad-box {
+        padding: 1rem;
+        border-radius: 12px;
+        background: rgba(239,68,68,0.15);
+        border: 1px solid rgba(239,68,68,0.35);
+        color: #fca5a5;
+        font-weight: 700;
+    }
+    .info-box {
+        padding: 0.8rem;
+        border-radius: 12px;
+        background: rgba(59,130,246,0.15);
+        border: 1px solid rgba(59,130,246,0.35);
+        color: #93c5fd;
+        font-weight: 600;
+    }
+    .pill {
+        display: inline-block;
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        border: 1px solid rgba(148,163,184,0.25);
+        margin-right: 0.4rem;
+        margin-top: 0.25rem;
+        color: #cbd5e1;
+        font-size: 0.85rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------------------
-# UNIVERSE
-# -------------------------------
-NSE_STOCKS = [
-    "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS",
-    "SBIN.NS", "LT.NS", "ITC.NS", "BHARTIARTL.NS", "AXISBANK.NS",
-    "KOTAKBANK.NS", "ASIANPAINT.NS", "MARUTI.NS", "TITAN.NS", "SUNPHARMA.NS",
-    "HCLTECH.NS", "WIPRO.NS", "ULTRACEMCO.NS", "BAJFINANCE.NS", "NESTLEIND.NS"
+# =========================================================
+# CONSTANTS
+# =========================================================
+QUICK_LIST = [
+    "RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK",
+    "SBIN", "AXISBANK", "KOTAKBANK", "LT", "ITC",
+    "HINDUNILVR", "BHARTIARTL", "ASIANPAINT", "SUNPHARMA", "MARUTI"
 ]
-WATCHLIST = [
-    "RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ICICIBANK.NS",
-    "SBIN.NS", "ITC.NS", "LT.NS", "AXISBANK.NS", "BAJFINANCE.NS"
-]
-SECTOR_MAP = {
-    "RELIANCE.NS":"Energy", "TCS.NS":"IT", "INFY.NS":"IT", "HDFCBANK.NS":"Banking", "ICICIBANK.NS":"Banking",
-    "SBIN.NS":"Banking", "LT.NS":"Infra", "ITC.NS":"FMCG", "BHARTIARTL.NS":"Telecom", "AXISBANK.NS":"Banking",
-    "KOTAKBANK.NS":"Banking", "ASIANPAINT.NS":"Consumer", "MARUTI.NS":"Auto", "TITAN.NS":"Consumer", "SUNPHARMA.NS":"Pharma",
-    "HCLTECH.NS":"IT", "WIPRO.NS":"IT", "ULTRACEMCO.NS":"Cement", "BAJFINANCE.NS":"NBFC", "NESTLEIND.NS":"FMCG"
+
+SECTOR_PACKS = {
+    "Nifty Core": ["RELIANCE", "TCS", "INFY", "HDFCBANK", "ICICIBANK", "SBIN", "ITC", "LT"],
+    "Banking": ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK"],
+    "IT": ["TCS", "INFY", "HCLTECH", "WIPRO", "TECHM"],
+    "Auto": ["MARUTI", "TATAMOTORS", "M&M", "EICHERMOT", "HEROMOTOCO"],
+    "Pharma": ["SUNPHARMA", "DRREDDY", "CIPLA", "DIVISLAB", "LUPIN"]
 }
 
-# -------------------------------
+# =========================================================
 # HELPERS
-# -------------------------------
-def safe_float(val, default=0.0):
+# =========================================================
+def safe_num(x, default=np.nan):
     try:
-        if val is None or isinstance(val, (dict, list, tuple)):
+        if x is None:
             return default
-        return float(val)
-    except Exception:
+        if isinstance(x, str) and x.strip() == "":
+            return default
+        v = float(x)
+        if math.isinf(v):
+            return default
+        return v
+    except:
         return default
 
+def fmt(x, decimals=2):
+    if pd.isna(x):
+        return "N/A"
+    return f"{x:,.{decimals}f}"
 
-def flatten_columns(df):
+def get_nse_symbol(symbol: str):
+    symbol = str(symbol).strip().upper().replace(".NS", "")
+    return f"{symbol}.NS"
+
+def get_safe_series_value(df, row_name):
     try:
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
-        return df
-    except Exception:
-        return df
+        if df is None or df.empty:
+            return np.nan
+        if row_name not in df.index:
+            return np.nan
+        row = df.loc[row_name]
+        if isinstance(row, pd.Series):
+            for val in row:
+                if pd.notna(val):
+                    return safe_num(val)
+        return np.nan
+    except:
+        return np.nan
 
+# =========================================================
+# DATA FETCH
+# =========================================================
+@st.cache_data(ttl=1800, show_spinner=False)
+def fetch_full_stock_data(symbol: str, period: str = "1y"):
+    try:
+        ticker = yf.Ticker(get_nse_symbol(symbol))
 
-def normalize_df(df):
-    df = flatten_columns(df)
-    for col in ["Open", "High", "Low", "Close", "Adj Close", "Volume"]:
-        if col not in df.columns:
-            df[col] = np.nan
-    if "Date" not in df.columns:
-        df = df.reset_index()
-        if "Date" not in df.columns:
-            df["Date"] = pd.date_range(end=pd.Timestamp.today(), periods=len(df))
+        # Price history
+        hist = ticker.history(period=period, auto_adjust=False)
+        if hist is None or hist.empty:
+            hist = ticker.history(period="6mo", auto_adjust=False)
+
+        if hist is None or hist.empty:
+            return None, None, None, None, None, None, None, "No price history found."
+
+        hist = hist.dropna(subset=["Open", "High", "Low", "Close"])
+        if hist.empty:
+            return None, None, None, None, None, None, None, "Price history empty after cleaning."
+
+        # info
+        try:
+            info = ticker.info
+            if not isinstance(info, dict):
+                info = {}
+        except:
+            info = {}
+
+        # fast_info
+        try:
+            fast_info = ticker.fast_info
+            if fast_info is None:
+                fast_info = {}
+        except:
+            fast_info = {}
+
+        # statements
+        try:
+            financials = ticker.financials
+        except:
+            financials = pd.DataFrame()
+
+        try:
+            balance_sheet = ticker.balance_sheet
+        except:
+            balance_sheet = pd.DataFrame()
+
+        try:
+            cashflow = ticker.cashflow
+        except:
+            cashflow = pd.DataFrame()
+
+        try:
+            q_financials = ticker.quarterly_financials
+        except:
+            q_financials = pd.DataFrame()
+
+        try:
+            q_balance_sheet = ticker.quarterly_balance_sheet
+        except:
+            q_balance_sheet = pd.DataFrame()
+
+        extra_data = {
+            "q_financials": q_financials,
+            "q_balance_sheet": q_balance_sheet
+        }
+
+        return hist, info, fast_info, financials, balance_sheet, cashflow, extra_data, None
+
+    except Exception as e:
+        return None, None, None, None, None, None, None, f"Fetch failed: {str(e)}"
+
+# =========================================================
+# TECHNICAL INDICATORS
+# =========================================================
+def add_indicators(df):
+    df = df.copy()
+
+    df["SMA20"] = df["Close"].rolling(20).mean()
+    df["SMA50"] = df["Close"].rolling(50).mean()
+    df["SMA200"] = df["Close"].rolling(200).mean()
+
+    delta = df["Close"].diff()
+    gain = delta.where(delta > 0, 0.0).rolling(14).mean()
+    loss = (-delta.where(delta < 0, 0.0)).rolling(14).mean()
+    rs = gain / loss.replace(0, np.nan)
+    df["RSI14"] = 100 - (100 / (1 + rs))
+
+    ema12 = df["Close"].ewm(span=12, adjust=False).mean()
+    ema26 = df["Close"].ewm(span=26, adjust=False).mean()
+    df["MACD"] = ema12 - ema26
+    df["MACD_SIGNAL"] = df["MACD"].ewm(span=9, adjust=False).mean()
+
+    mid = df["Close"].rolling(20).mean()
+    std = df["Close"].rolling(20).std()
+    df["BB_UPPER"] = mid + 2 * std
+    df["BB_LOWER"] = mid - 2 * std
+
+    prev_close = df["Close"].shift(1)
+    tr1 = df["High"] - df["Low"]
+    tr2 = (df["High"] - prev_close).abs()
+    tr3 = (df["Low"] - prev_close).abs()
+    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+    df["ATR14"] = tr.rolling(14).mean()
+
     return df
 
-# -------------------------------
-# DATA FETCH (CLOUD SAFE)
-# -------------------------------
-@st.cache_data(ttl=1800, show_spinner=False)
-def get_stock_data(symbol, period="6mo"):
-    try:
-        df = yf.download(symbol, period=period, interval="1d", progress=False, auto_adjust=False, threads=False)
-        if df is None or df.empty:
-            return pd.DataFrame()
-        df = df.reset_index()
-        return normalize_df(df)
-    except Exception:
-        return pd.DataFrame()
+# =========================================================
+# FUNDAMENTAL EXTRACTION (ROBUST FIX)
+# =========================================================
+def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_sheet, cashflow, extra_data=None):
+    extra_data = extra_data or {}
+    q_financials = extra_data.get("q_financials", pd.DataFrame())
+    q_balance_sheet = extra_data.get("q_balance_sheet", pd.DataFrame())
 
+    company_name = info.get("longName") or info.get("shortName") or symbol
+    sector = info.get("sector")
+    industry = info.get("industry")
 
-@st.cache_data(ttl=1800, show_spinner=False)
-def get_stock_info(symbol):
-    try:
-        t = yf.Ticker(symbol)
-        info = t.info
-        return info if isinstance(info, dict) else {}
-    except Exception:
-        return {}
-
-# -------------------------------
-# INDICATORS
-# -------------------------------
-def calc_rsi(series, period=14):
-    try:
-        delta = series.diff()
-        gain = delta.clip(lower=0)
-        loss = -delta.clip(upper=0)
-        avg_gain = gain.rolling(period).mean()
-        avg_loss = loss.rolling(period).mean()
-        rs = avg_gain / avg_loss.replace(0, np.nan)
-        rsi = 100 - (100 / (1 + rs))
-        return rsi.fillna(50)
-    except Exception:
-        return pd.Series([50]*len(series), index=series.index)
-
-
-def add_indicators(df):
-    try:
-        df = df.copy()
-        df["SMA20"] = df["Close"].rolling(20).mean()
-        df["SMA50"] = df["Close"].rolling(50).mean()
-        df["EMA20"] = df["Close"].ewm(span=20, adjust=False).mean()
-        df["EMA50"] = df["Close"].ewm(span=50, adjust=False).mean()
-        df["RSI"] = calc_rsi(df["Close"], 14)
-        df["Daily Return %"] = df["Close"].pct_change() * 100
-        df["Volatility20"] = df["Daily Return %"].rolling(20).std() * np.sqrt(252)
-        df["RollingHigh20"] = df["High"].rolling(20).max()
-        df["RollingLow20"] = df["Low"].rolling(20).min()
-        df["Momentum20"] = ((df["Close"] / df["Close"].shift(20)) - 1) * 100
-        return df
-    except Exception:
-        return df
-
-# -------------------------------
-# SCORING ENGINES
-# -------------------------------
-def technical_score(df):
-    score = 35
-    reasons = []
-    try:
-        close = safe_float(df["Close"].iloc[-1])
-        sma20 = safe_float(df["SMA20"].iloc[-1], close)
-        sma50 = safe_float(df["SMA50"].iloc[-1], close)
-        ema20 = safe_float(df["EMA20"].iloc[-1], close)
-        ema50 = safe_float(df["EMA50"].iloc[-1], close)
-        rsi = safe_float(df["RSI"].iloc[-1], 50)
-        momentum = safe_float(df["Momentum20"].iloc[-1], 0)
-
-        if close > sma20:
-            score += 12; reasons.append("Price above SMA20")
-        else:
-            score -= 8
-        if close > sma50:
-            score += 18; reasons.append("Price above SMA50")
-        else:
-            score -= 12
-        if sma20 > sma50:
-            score += 15; reasons.append("SMA20 above SMA50")
-        else:
-            score -= 8
-        if ema20 > ema50:
-            score += 10; reasons.append("EMA20 above EMA50")
-        else:
-            score -= 6
-        if 45 <= rsi <= 65:
-            score += 10; reasons.append("RSI healthy")
-        elif 30 <= rsi < 45 or 65 < rsi <= 75:
-            score += 4
-        elif rsi < 30:
-            score += 8; reasons.append("Oversold rebound zone")
-        else:
-            score -= 8
-        if momentum > 8:
-            score += 8; reasons.append("Strong 20D momentum")
-        elif momentum < -8:
-            score -= 8
-
-        score = max(0, min(100, int(score)))
-        if score >= 75:
-            signal = "STRONG BUY"
-        elif score >= 60:
-            signal = "BUY"
-        elif score >= 40:
-            signal = "HOLD"
-        elif score >= 25:
-            signal = "WEAK"
-        else:
-            signal = "AVOID"
-        return score, signal, reasons
-    except Exception:
-        return 50, "HOLD", ["Fallback technical scoring"]
-
-
-def fundamental_score(info):
-    score = 40
-    reasons = []
-    try:
-        pe = safe_float(info.get("trailingPE"), 0)
-        pb = safe_float(info.get("priceToBook"), 0)
-        roe = safe_float(info.get("returnOnEquity"), 0)
-        roe = roe * 100 if abs(roe) < 2 else roe
-        debt_eq = safe_float(info.get("debtToEquity"), 0)
-        current_ratio = safe_float(info.get("currentRatio"), 0)
-        margins = safe_float(info.get("profitMargins"), 0)
-        margins = margins * 100 if abs(margins) < 2 else margins
-        div = safe_float(info.get("dividendYield"), 0)
-        div = div * 100 if abs(div) < 2 else div
-
-        if 0 < pe <= 25:
-            score += 15; reasons.append("Reasonable P/E")
-        elif 25 < pe <= 40:
-            score += 7
-        elif pe > 60:
-            score -= 8
-        if 0 < pb <= 5:
-            score += 8; reasons.append("Healthy P/B")
-        elif pb > 10:
-            score -= 5
-        if roe >= 15:
-            score += 15; reasons.append("Strong ROE")
-        elif roe >= 10:
-            score += 8
-        elif 0 < roe < 5:
-            score -= 5
-        if 0 < debt_eq <= 80:
-            score += 10; reasons.append("Manageable Debt")
-        elif debt_eq > 200:
-            score -= 10
-        if current_ratio >= 1.2:
-            score += 6; reasons.append("Healthy liquidity")
-        elif 0 < current_ratio < 0.8:
-            score -= 4
-        if margins >= 10:
-            score += 10; reasons.append("Strong margins")
-        elif 0 < margins < 5:
-            score -= 4
-        if div >= 1:
-            score += 4
-
-        score = max(0, min(100, int(score)))
-        if score >= 75:
-            rating = "STRONG"
-        elif score >= 60:
-            rating = "GOOD"
-        elif score >= 40:
-            rating = "AVERAGE"
-        else:
-            rating = "WEAK"
-        return score, rating, reasons
-    except Exception:
-        return 50, "AVERAGE", ["Fallback fundamental scoring"]
-
-
-def combined_score(tech, fund):
-    score = int(round(tech * 0.55 + fund * 0.45))
-    if score >= 78:
-        verdict = "ELITE BUY"
-    elif score >= 65:
-        verdict = "QUALITY BUY"
-    elif score >= 50:
-        verdict = "HOLD / WATCH"
-    elif score >= 35:
-        verdict = "SPECULATIVE"
-    else:
-        verdict = "AVOID"
-    return score, verdict
-
-# -------------------------------
-# TRADING HELPERS
-# -------------------------------
-def support_resistance(df):
-    try:
-        support = safe_float(df["RollingLow20"].iloc[-1], safe_float(df["Low"].tail(20).min()))
-        resistance = safe_float(df["RollingHigh20"].iloc[-1], safe_float(df["High"].tail(20).max()))
-        return support, resistance
-    except Exception:
-        close = safe_float(df["Close"].iloc[-1])
-        return close*0.95, close*1.05
-
-
-def breakout_status(df):
-    try:
-        close = safe_float(df["Close"].iloc[-1])
-        recent_high = safe_float(df["High"].tail(20).max())
-        recent_low = safe_float(df["Low"].tail(20).min())
-        if close >= recent_high * 0.995:
-            return "NEAR BREAKOUT"
-        elif close <= recent_low * 1.005:
-            return "NEAR BREAKDOWN"
-        return "IN RANGE"
-    except Exception:
-        return "UNKNOWN"
-
-
-def reversal_status(df):
-    try:
-        rsi = safe_float(df["RSI"].iloc[-1], 50)
-        close = safe_float(df["Close"].iloc[-1])
-        sma20 = safe_float(df["SMA20"].iloc[-1], close)
-        if rsi < 35 and close > sma20 * 0.97:
-            return "POTENTIAL BULLISH REVERSAL"
-        if rsi > 70 and close < sma20 * 1.03:
-            return "POTENTIAL BEARISH REVERSAL"
-        return "NO CLEAR REVERSAL"
-    except Exception:
-        return "UNKNOWN"
-
-
-def buy_sell_probability(tech_score_val, fund_score_val, close, support, resistance):
-    try:
-        rr = ((resistance - close) / max(close - support, 0.01)) if close > support else 1.0
-        rr_bonus = min(max(rr * 5, 0), 15)
-        buy_prob = min(95, max(5, int(tech_score_val * 0.55 + fund_score_val * 0.35 + rr_bonus)))
-        sell_prob = 100 - buy_prob
-        return buy_prob, sell_prob
-    except Exception:
-        return 50, 50
-
-
-def risk_reward(close, support, resistance):
-    try:
-        downside = max(close - support, 0.01)
-        upside = max(resistance - close, 0.0)
-        rr = upside / downside if downside else 0
-        return upside, downside, rr
-    except Exception:
-        return 0, 0, 0
-
-
-def stoploss_target_plan(close, support, resistance, style="Swing"):
-    try:
-        if style == "Intraday":
-            sl = max(close * 0.985, support)
-            t1 = min(close * 1.015, resistance)
-            t2 = min(close * 1.025, resistance * 1.02)
-        else:
-            sl = max(close * 0.95, support)
-            t1 = min(close * 1.08, resistance)
-            t2 = max(close * 1.12, resistance)
-        return sl, t1, t2
-    except Exception:
-        return close*0.95, close*1.05, close*1.10
-
-# -------------------------------
-# WEALTH HELPERS
-# -------------------------------
-def lumpsum_projection(amount, rate, years):
-    fv = amount * ((1 + rate / 100) ** years)
-    rows = [{"Year": y, "Projected Value": amount * ((1 + rate / 100) ** y)} for y in range(1, years + 1)]
-    return fv, pd.DataFrame(rows)
-
-
-def sip_projection(monthly, rate, years):
-    r = rate / 100 / 12
-    n = years * 12
-    if r == 0:
-        fv = monthly * n
-    else:
-        fv = monthly * (((1 + r) ** n - 1) / r) * (1 + r)
-    rows = []
-    for y in range(1, years + 1):
-        m = y * 12
-        val = monthly * m if r == 0 else monthly * (((1 + r) ** m - 1) / r) * (1 + r)
-        rows.append({"Year": y, "Projected Value": val})
-    return fv, pd.DataFrame(rows)
-
-# -------------------------------
-# SCANNER DATA
-# -------------------------------
-@st.cache_data(ttl=1800, show_spinner=False)
-def get_watchlist_snapshot(symbols):
-    rows = []
-    for s in symbols:
+    market_cap = safe_num(info.get("marketCap"))
+    if pd.isna(market_cap):
         try:
-            df = get_stock_data(s, "6mo")
-            info = get_stock_info(s)
-            if df.empty:
-                rows.append({"Symbol": s.replace('.NS',''), "Sector": SECTOR_MAP.get(s, "Other"), "Price": np.nan, "Tech": 0, "Fund": 0, "Combined": 0, "Verdict": "NA", "Breakout": "NA", "Reversal": "NA", "Momentum20": 0})
-                continue
-            df = add_indicators(df)
-            close = safe_float(df["Close"].iloc[-1])
-            tech, _, _ = technical_score(df)
-            fund, _, _ = fundamental_score(info)
-            comb, verdict = combined_score(tech, fund)
-            rows.append({
-                "Symbol": s.replace('.NS',''),
-                "Sector": SECTOR_MAP.get(s, "Other"),
-                "Price": round(close, 2),
-                "Tech": tech,
-                "Fund": fund,
-                "Combined": comb,
-                "Verdict": verdict,
-                "Breakout": breakout_status(df),
-                "Reversal": reversal_status(df),
-                "Momentum20": round(safe_float(df["Momentum20"].iloc[-1], 0), 2)
-            })
-        except Exception:
-            rows.append({"Symbol": s.replace('.NS',''), "Sector": SECTOR_MAP.get(s, "Other"), "Price": np.nan, "Tech": 0, "Fund": 0, "Combined": 0, "Verdict": "NA", "Breakout": "NA", "Reversal": "NA", "Momentum20": 0})
-    return pd.DataFrame(rows)
+            market_cap = safe_num(fast_info.get("market_cap"))
+        except:
+            pass
 
+    current_price = safe_num(info.get("currentPrice"))
+    if pd.isna(current_price):
+        current_price = safe_num(info.get("regularMarketPrice"))
+    if pd.isna(current_price):
+        try:
+            current_price = safe_num(fast_info.get("lastPrice"))
+        except:
+            pass
 
-def sector_rotation(scan_df):
-    try:
-        sec = scan_df.groupby("Sector", as_index=False).agg({"Combined":"mean", "Momentum20":"mean"})
-        sec["Rotation Score"] = (sec["Combined"] * 0.7 + sec["Momentum20"] * 0.3).round(2)
-        return sec.sort_values("Rotation Score", ascending=False)
-    except Exception:
-        return pd.DataFrame()
+    pe = safe_num(info.get("trailingPE"))
+    if pd.isna(pe):
+        pe = safe_num(info.get("forwardPE"))
 
-# -------------------------------
-# EXCEL EXPORT
-# -------------------------------
-def make_excel_bytes(dfs: dict):
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        for sheet_name, df in dfs.items():
-            try:
-                df.to_excel(writer, index=False, sheet_name=sheet_name[:31])
-            except Exception:
-                pass
-    output.seek(0)
-    return output.getvalue()
+    pb = safe_num(info.get("priceToBook"))
 
-# -------------------------------
+    roe = safe_num(info.get("returnOnEquity"))
+    if not pd.isna(roe) and roe < 5:
+        roe = roe * 100
+
+    debt_equity = safe_num(info.get("debtToEquity"))
+
+    profit_margin = safe_num(info.get("profitMargins"))
+    if not pd.isna(profit_margin) and profit_margin < 5:
+        profit_margin = profit_margin * 100
+
+    revenue_growth = safe_num(info.get("revenueGrowth"))
+    if not pd.isna(revenue_growth) and revenue_growth < 5:
+        revenue_growth = revenue_growth * 100
+
+    book_value = safe_num(info.get("bookValue"))
+    eps = safe_num(info.get("trailingEps"))
+    dividend_yield = safe_num(info.get("dividendYield"))
+    if not pd.isna(dividend_yield) and dividend_yield < 5:
+        dividend_yield = dividend_yield * 100
+
+    shares_outstanding = safe_num(info.get("sharesOutstanding"))
+
+    net_income = get_safe_series_value(financials, "Net Income")
+    if pd.isna(net_income):
+        net_income = get_safe_series_value(financials, "Net Income Common Stockholders")
+
+    total_revenue = get_safe_series_value(financials, "Total Revenue")
+    if pd.isna(total_revenue):
+        total_revenue = get_safe_series_value(q_financials, "Total Revenue")
+
+    ebitda = get_safe_series_value(financials, "EBITDA")
+    operating_income = get_safe_series_value(financials, "Operating Income")
+
+    total_equity = get_safe_series_value(balance_sheet, "Stockholders Equity")
+    if pd.isna(total_equity):
+        total_equity = get_safe_series_value(balance_sheet, "Total Equity Gross Minority Interest")
+
+    total_debt = get_safe_series_value(balance_sheet, "Total Debt")
+    if pd.isna(total_debt):
+        long_term_debt = get_safe_series_value(balance_sheet, "Long Term Debt")
+        current_debt = get_safe_series_value(balance_sheet, "Current Debt")
+        if pd.notna(long_term_debt) or pd.notna(current_debt):
+            total_debt = np.nansum([long_term_debt, current_debt])
+
+    cash = get_safe_series_value(balance_sheet, "Cash And Cash Equivalents")
+    if pd.isna(cash):
+        cash = get_safe_series_value(balance_sheet, "Cash Cash Equivalents And Short Term Investments")
+
+    # Derived fallbacks
+    if pd.isna(pb) and pd.notna(market_cap) and pd.notna(total_equity) and total_equity > 0:
+        pb = market_cap / total_equity
+
+    if pd.isna(roe) and pd.notna(net_income) and pd.notna(total_equity) and total_equity > 0:
+        roe = (net_income / total_equity) * 100
+
+    if pd.isna(debt_equity) and pd.notna(total_debt) and pd.notna(total_equity) and total_equity > 0:
+        debt_equity = total_debt / total_equity
+
+    if pd.isna(profit_margin) and pd.notna(net_income) and pd.notna(total_revenue) and total_revenue > 0:
+        profit_margin = (net_income / total_revenue) * 100
+
+    if pd.isna(book_value) and pd.notna(total_equity) and pd.notna(shares_outstanding) and shares_outstanding > 0:
+        book_value = total_equity / shares_outstanding
+
+    if pd.isna(eps) and pd.notna(net_income) and pd.notna(shares_outstanding) and shares_outstanding > 0:
+        eps = net_income / shares_outstanding
+
+    if pd.isna(pe) and pd.notna(current_price) and pd.notna(eps) and eps > 0:
+        pe = current_price / eps
+
+    if pd.isna(revenue_growth):
+        try:
+            if q_financials is not None and not q_financials.empty and "Total Revenue" in q_financials.index:
+                row = q_financials.loc["Total Revenue"]
+                vals = [safe_num(v) for v in row if pd.notna(v)]
+                if len(vals) >= 2 and vals[1] not in [0, np.nan]:
+                    revenue_growth = ((vals[0] - vals[1]) / abs(vals[1])) * 100
+        except:
+            pass
+
+    return {
+        "Company Name": company_name,
+        "Sector": sector,
+        "Industry": industry,
+        "Market Cap": market_cap,
+        "Current Price": current_price,
+        "P/E Ratio": pe,
+        "P/B Ratio": pb,
+        "ROE %": roe,
+        "Debt/Equity": debt_equity,
+        "Profit Margin %": profit_margin,
+        "Revenue Growth %": revenue_growth,
+        "Book Value": book_value,
+        "EPS": eps,
+        "Dividend Yield %": dividend_yield,
+        "Net Income": net_income,
+        "Total Revenue": total_revenue,
+        "EBITDA": ebitda,
+        "Operating Income": operating_income,
+        "Total Equity": total_equity,
+        "Total Debt": total_debt,
+        "Cash": cash
+    }
+
+# =========================================================
+# SCORING
+# =========================================================
+def score_fundamentals_from_data(fd):
+    scores = []
+
+    pe = safe_num(fd.get("P/E Ratio"))
+    pb = safe_num(fd.get("P/B Ratio"))
+    roe = safe_num(fd.get("ROE %"))
+    debt_equity = safe_num(fd.get("Debt/Equity"))
+    profit_margin = safe_num(fd.get("Profit Margin %"))
+    revenue_growth = safe_num(fd.get("Revenue Growth %"))
+
+    if pd.notna(pe):
+        if 0 < pe <= 18:
+            scores.append(100)
+        elif pe <= 25:
+            scores.append(80)
+        elif pe <= 35:
+            scores.append(60)
+        elif pe <= 50:
+            scores.append(40)
+        else:
+            scores.append(20)
+
+    if pd.notna(pb):
+        if pb <= 2:
+            scores.append(100)
+        elif pb <= 4:
+            scores.append(80)
+        elif pb <= 6:
+            scores.append(60)
+        else:
+            scores.append(30)
+
+    if pd.notna(roe):
+        if roe >= 20:
+            scores.append(100)
+        elif roe >= 15:
+            scores.append(85)
+        elif roe >= 10:
+            scores.append(65)
+        else:
+            scores.append(35)
+
+    if pd.notna(debt_equity):
+        if debt_equity <= 0.5:
+            scores.append(100)
+        elif debt_equity <= 1.0:
+            scores.append(75)
+        elif debt_equity <= 2.0:
+            scores.append(50)
+        else:
+            scores.append(20)
+
+    if pd.notna(profit_margin):
+        if profit_margin >= 20:
+            scores.append(100)
+        elif profit_margin >= 10:
+            scores.append(75)
+        elif profit_margin >= 5:
+            scores.append(55)
+        else:
+            scores.append(30)
+
+    if pd.notna(revenue_growth):
+        if revenue_growth >= 15:
+            scores.append(100)
+        elif revenue_growth >= 8:
+            scores.append(75)
+        elif revenue_growth >= 0:
+            scores.append(55)
+        else:
+            scores.append(25)
+
+    if len(scores) == 0:
+        return 50.0, "Fallback neutral score (limited fundamentals)"
+
+    return round(float(np.mean(scores)), 1), f"Scored from {len(scores)} metrics"
+
+def score_technical(df):
+    if df is None or df.empty or len(df) < 50:
+        return 45.0, "Not enough data", "Neutral"
+
+    last = df.iloc[-1]
+
+    close = safe_num(last["Close"])
+    sma20 = safe_num(last["SMA20"])
+    sma50 = safe_num(last["SMA50"])
+    sma200 = safe_num(last["SMA200"])
+    rsi = safe_num(last["RSI14"])
+    macd = safe_num(last["MACD"])
+    macd_signal = safe_num(last["MACD_SIGNAL"])
+
+    scores = []
+    reasons = []
+
+    if pd.notna(close) and pd.notna(sma20):
+        scores.append(100 if close > sma20 else 35)
+        reasons.append("Above 20DMA" if close > sma20 else "Below 20DMA")
+
+    if pd.notna(close) and pd.notna(sma50):
+        scores.append(100 if close > sma50 else 35)
+        reasons.append("Above 50DMA" if close > sma50 else "Below 50DMA")
+
+    if pd.notna(close) and pd.notna(sma200):
+        scores.append(100 if close > sma200 else 20)
+        reasons.append("Above 200DMA" if close > sma200 else "Below 200DMA")
+
+    if pd.notna(sma20) and pd.notna(sma50) and pd.notna(sma200):
+        if sma20 > sma50 > sma200:
+            scores.append(100)
+            reasons.append("Bullish MA alignment")
+        elif sma20 > sma50:
+            scores.append(70)
+            reasons.append("Short-term bullish")
+        else:
+            scores.append(35)
+            reasons.append("Weak alignment")
+
+    if pd.notna(rsi):
+        if 45 <= rsi <= 65:
+            scores.append(90)
+            reasons.append("Healthy RSI")
+        elif 35 <= rsi < 45 or 65 < rsi <= 75:
+            scores.append(65)
+            reasons.append("Moderate RSI")
+        elif rsi < 35:
+            scores.append(55)
+            reasons.append("Oversold RSI")
+        else:
+            scores.append(40)
+            reasons.append("Overheated RSI")
+
+    if pd.notna(macd) and pd.notna(macd_signal):
+        scores.append(85 if macd > macd_signal else 35)
+        reasons.append("MACD bullish" if macd > macd_signal else "MACD bearish")
+
+    if len(scores) == 0:
+        return 45.0, "Indicators unavailable", "Neutral"
+
+    score = round(float(np.mean(scores)), 1)
+
+    trend = "Neutral"
+    if pd.notna(close) and pd.notna(sma50) and pd.notna(sma200):
+        if close > sma50 > sma200:
+            trend = "Strong Uptrend"
+        elif close > sma50:
+            trend = "Uptrend"
+        elif close < sma50 < sma200:
+            trend = "Strong Downtrend"
+        else:
+            trend = "Weak / Sideways"
+
+    return score, ", ".join(reasons[:4]), trend
+
+def support_resistance(df):
+    if df is None or df.empty or len(df) < 30:
+        return np.nan, np.nan
+    recent = df.tail(30)
+    return recent["Low"].min(), recent["High"].max()
+
+def get_verdict(fund_score, tech_score, combined):
+    if combined >= 80 and tech_score >= 70:
+        return "🔥 STRONG BUY / HIGH QUALITY", "good"
+    elif combined >= 68 and tech_score >= 60:
+        return "✅ BUY / ACCUMULATE", "good"
+    elif combined >= 55:
+        return "🟡 HOLD / WATCHLIST", "warn"
+    elif combined >= 42:
+        return "⚠️ WAIT / AVOID FRESH ENTRY", "warn"
+    else:
+        return "❌ AVOID / WEAK SETUP", "bad"
+
+# =========================================================
+# ANALYSIS ENGINE
+# =========================================================
+def analyze_stock(symbol, period="1y", mode="Balanced"):
+    hist, info, fast_info, financials, balance_sheet, cashflow, extra_data, err = fetch_full_stock_data(symbol, period)
+
+    if err:
+        return {"error": err}
+
+    df = add_indicators(hist)
+
+    last_close = safe_num(df["Close"].iloc[-1])
+    prev_close = safe_num(df["Close"].iloc[-2]) if len(df) > 1 else np.nan
+    change = last_close - prev_close if pd.notna(last_close) and pd.notna(prev_close) else np.nan
+    change_pct = (change / prev_close * 100) if pd.notna(change) and pd.notna(prev_close) and prev_close != 0 else np.nan
+
+    fundamental_data = extract_fundamentals_robust(
+        symbol=symbol,
+        info=info,
+        fast_info=fast_info,
+        financials=financials,
+        balance_sheet=balance_sheet,
+        cashflow=cashflow,
+        extra_data=extra_data
+    )
+
+    fund_score, fund_note = score_fundamentals_from_data(fundamental_data)
+    tech_score, tech_note, trend = score_technical(df)
+
+    if mode == "Long-Term":
+        fw, tw = 0.65, 0.35
+    elif mode == "Swing":
+        fw, tw = 0.30, 0.70
+    else:
+        fw, tw = 0.50, 0.50
+
+    combined = round((fund_score * fw) + (tech_score * tw), 1)
+
+    support, resistance = support_resistance(df)
+    atr = safe_num(df["ATR14"].iloc[-1]) if "ATR14" in df.columns else np.nan
+
+    stop_loss = round(last_close - 1.2 * atr, 2) if pd.notna(last_close) and pd.notna(atr) else np.nan
+    target1 = round(last_close + 1.5 * atr, 2) if pd.notna(last_close) and pd.notna(atr) else np.nan
+    target2 = round(last_close + 3.0 * atr, 2) if pd.notna(last_close) and pd.notna(atr) else np.nan
+
+    verdict, verdict_type = get_verdict(fund_score, tech_score, combined)
+
+    return {
+        "df": df,
+        "last_close": last_close,
+        "change": change,
+        "change_pct": change_pct,
+        "fund_score": fund_score,
+        "fund_note": fund_note,
+        "tech_score": tech_score,
+        "tech_note": tech_note,
+        "trend": trend,
+        "combined": combined,
+        "support": support,
+        "resistance": resistance,
+        "stop_loss": stop_loss,
+        "target1": target1,
+        "target2": target2,
+        "verdict": verdict,
+        "verdict_type": verdict_type,
+        "fundamental_data": fundamental_data
+    }
+
+# =========================================================
+# CHARTS
+# =========================================================
+def build_chart(df, symbol):
+    fig = go.Figure()
+
+    fig.add_trace(go.Candlestick(
+        x=df.index,
+        open=df["Open"],
+        high=df["High"],
+        low=df["Low"],
+        close=df["Close"],
+        name="Price"
+    ))
+
+    if "SMA20" in df.columns:
+        fig.add_trace(go.Scatter(x=df.index, y=df["SMA20"], mode="lines", name="20DMA"))
+    if "SMA50" in df.columns:
+        fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], mode="lines", name="50DMA"))
+    if "SMA200" in df.columns:
+        fig.add_trace(go.Scatter(x=df.index, y=df["SMA200"], mode="lines", name="200DMA"))
+    if "BB_UPPER" in df.columns:
+        fig.add_trace(go.Scatter(x=df.index, y=df["BB_UPPER"], mode="lines", name="BB Upper", line=dict(dash="dot")))
+    if "BB_LOWER" in df.columns:
+        fig.add_trace(go.Scatter(x=df.index, y=df["BB_LOWER"], mode="lines", name="BB Lower", line=dict(dash="dot")))
+
+    fig.update_layout(
+        title=f"{symbol} - Price + MA + Bollinger Bands",
+        template="plotly_dark",
+        height=700,
+        xaxis_rangeslider_visible=False
+    )
+    return fig
+
+def build_rsi_chart(df, symbol):
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=df.index, y=df["RSI14"], mode="lines", name="RSI 14"))
+    fig.add_hline(y=70, line_dash="dash")
+    fig.add_hline(y=30, line_dash="dash")
+
+    fig.update_layout(
+        title=f"{symbol} - RSI (14)",
+        template="plotly_dark",
+        height=300
+    )
+    return fig
+
+# =========================================================
+# SIDEBAR
+# =========================================================
+st.sidebar.markdown("## 📈 NSE Stock Intelligence Pro MAX")
+st.sidebar.caption("Single-file • Cloud Safe • Fundamental Fix")
+
+module = st.sidebar.radio(
+    "Choose Module",
+    ["Single Stock Analysis", "Mini Screener", "Portfolio Ranker", "About"]
+)
+
+mode = st.sidebar.selectbox(
+    "Analysis Mode",
+    ["Balanced", "Long-Term", "Swing"]
+)
+
+quick_pick = st.sidebar.selectbox("Quick NSE Pick", QUICK_LIST, index=0)
+manual_symbol = st.sidebar.text_input("Or Enter NSE Symbol", value=quick_pick)
+
+period_map = {
+    "6 Months": "6mo",
+    "1 Year": "1y",
+    "2 Years": "2y",
+    "5 Years": "5y"
+}
+period_label = st.sidebar.selectbox("Price History", list(period_map.keys()), index=1)
+period = period_map[period_label]
+
+# =========================================================
 # HEADER
-# -------------------------------
+# =========================================================
 st.markdown("""
-<div class='hero'>
-  <div class='hero-title'>📊 NSE Stock Intelligence Pro MAX V8 INSTITUTIONAL</div>
-  <div class='hero-sub'>Institutional-grade dashboard • Technical + Fundamental • Sector rotation • Breakout & reversal scanners • Risk/Reward • Stop-loss & target planner • Multi-holding portfolio DB • Excel export • Cloud-safe single app.py</div>
-  <span class='pill'>Institutional Grade</span>
-  <span class='pill'>Cloud Safe</span>
-  <span class='pill'>Excel Export</span>
-  <span class='pill'>Portfolio DB</span>
+<div class="hero-box">
+    <div class="main-title">📈 NSE Stock Intelligence Pro MAX</div>
+    <div class="sub-title">Technical + Fundamental + Robust NSE Fallback + Screener + Portfolio Ranker</div>
+    <span class="pill">Cloud Safe</span>
+    <span class="pill">Single app.py</span>
+    <span class="pill">Fundamental Fix</span>
+    <span class="pill">NSE Ready</span>
 </div>
 """, unsafe_allow_html=True)
 
-# -------------------------------
-# SIDEBAR
-# -------------------------------
-st.sidebar.title("⚙️ Institutional Control Center")
-selected_stock = st.sidebar.selectbox("Select NSE Stock", NSE_STOCKS, index=0)
-period = st.sidebar.selectbox("Data Period", ["1mo", "3mo", "6mo", "1y", "2y", "5y"], index=2)
-trade_style = st.sidebar.selectbox("Trade Style", ["Swing", "Intraday"], index=0)
+# =========================================================
+# SINGLE STOCK ANALYSIS
+# =========================================================
+if module == "Single Stock Analysis":
+    symbol = manual_symbol.strip().upper().replace(".NS", "")
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("💰 Wealth Planner")
-lumpsum_amount = st.sidebar.number_input("Lumpsum (₹)", min_value=1000, value=100000, step=1000)
-sip_amount = st.sidebar.number_input("Monthly SIP (₹)", min_value=500, value=10000, step=500)
-expected_return = st.sidebar.slider("Expected Return (%)", 1, 30, 12)
-planner_years = st.sidebar.slider("Years", 1, 30, 10)
+    if not symbol:
+        st.warning("Please enter a valid NSE symbol.")
+        st.stop()
 
-# -------------------------------
-# PORTFOLIO DB INIT
-# -------------------------------
-if "portfolio_db" not in st.session_state:
-    st.session_state.portfolio_db = pd.DataFrame(columns=["Symbol", "Qty", "Avg Buy Price"])
+    with st.spinner(f"Analyzing {symbol}.NS ..."):
+        result = analyze_stock(symbol, period, mode)
 
-# -------------------------------
-# LOAD DATA
-# -------------------------------
-with st.spinner("Loading institutional market data safely..."):
-    df = get_stock_data(selected_stock, period)
-    info = get_stock_info(selected_stock)
+    if "error" in result:
+        st.error(result["error"])
+        st.info("Try another NSE symbol or use 6 Months / 1 Year period.")
+        st.stop()
 
-if df.empty:
-    st.error("❌ Unable to fetch stock data right now. App is deployed correctly, but data source may be temporarily unavailable.")
-    st.info("Try changing stock, reducing period, or refresh after a minute.")
-    st.stop()
+    c1, c2, c3, c4, c5 = st.columns(5)
 
-df = add_indicators(df)
-close = safe_float(df["Close"].iloc[-1])
-prev_close = safe_float(df["Close"].iloc[-2], close) if len(df) > 1 else close
-change_pct = ((close / prev_close) - 1) * 100 if prev_close else 0
-volume = safe_float(df["Volume"].iloc[-1])
-tech_score_val, tech_signal, tech_reasons = technical_score(df)
-fund_score_val, fund_rating, fund_reasons = fundamental_score(info)
-combo_score, combo_verdict = combined_score(tech_score_val, fund_score_val)
-support, resistance = support_resistance(df)
-buy_prob, sell_prob = buy_sell_probability(tech_score_val, fund_score_val, close, support, resistance)
-upside, downside, rr_ratio = risk_reward(close, support, resistance)
-sl, t1, t2 = stoploss_target_plan(close, support, resistance, trade_style)
-
-# -------------------------------
-# TOP METRICS
-# -------------------------------
-m1, m2, m3, m4, m5, m6 = st.columns(6)
-m1.metric("📌 Stock", selected_stock.replace('.NS',''))
-m2.metric("💹 Price", f"₹{close:,.2f}", f"{change_pct:.2f}%")
-m3.metric("🧠 Tech Score", f"{tech_score_val}/100")
-m4.metric("🏢 Fund Score", f"{fund_score_val}/100")
-m5.metric("⭐ Combined", f"{combo_score}/100")
-m6.metric("📢 Verdict", combo_verdict)
-
-st.markdown("---")
-
-# -------------------------------
-# TABS
-# -------------------------------
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
-    "📈 Dashboard",
-    "🧠 Technical Lab",
-    "🏢 Fundamental Lab",
-    "🔥 Institutional Scanner",
-    "🏛️ Sector Rotation",
-    "🎯 Trade Planner",
-    "💼 Portfolio DB",
-    "💰 Wealth Planner",
-    "📊 Returns Analyzer"
-])
-
-# -------------------------------
-# TAB 1 DASHBOARD
-# -------------------------------
-with tab1:
-    c1, c2 = st.columns([2, 1])
     with c1:
-        fig = go.Figure()
-        fig.add_trace(go.Candlestick(x=df["Date"], open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="Price"))
-        fig.add_trace(go.Scatter(x=df["Date"], y=df["SMA20"], mode="lines", name="SMA20"))
-        fig.add_trace(go.Scatter(x=df["Date"], y=df["SMA50"], mode="lines", name="SMA50"))
-        fig.update_layout(title=f"{selected_stock} Institutional Dashboard", height=620)
-        st.plotly_chart(fig, use_container_width=True)
+        delta_text = f"{fmt(result['change'])} ({fmt(result['change_pct'])}%)" if pd.notna(result["change"]) else "N/A"
+        st.metric("Current Price", f"₹ {fmt(result['last_close'])}", delta_text)
+
     with c2:
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown("### 🎯 Institutional Signal Board")
-        st.write(f"**Technical Signal:** {tech_signal}")
-        st.write(f"**Fundamental Rating:** {fund_rating}")
-        st.write(f"**Final Verdict:** {combo_verdict}")
-        st.write(f"**Breakout:** {breakout_status(df)}")
-        st.write(f"**Reversal:** {reversal_status(df)}")
-        st.write(f"**Support:** ₹{support:,.2f}")
-        st.write(f"**Resistance:** ₹{resistance:,.2f}")
-        st.markdown("</div>", unsafe_allow_html=True)
-        st.write("")
-        st.markdown("<div class='card'>", unsafe_allow_html=True)
-        st.markdown("### 🎲 Probability + Risk")
-        st.progress(buy_prob / 100)
-        st.write(f"**Buy Probability:** {buy_prob}%")
-        st.write(f"**Sell Probability:** {sell_prob}%")
-        st.write(f"**Reward/Risk Ratio:** {rr_ratio:.2f}")
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.metric("Fundamental Score", f"{result['fund_score']}/100", result["fund_note"])
 
-# -------------------------------
-# TAB 2 TECHNICAL LAB
-# -------------------------------
-with tab2:
-    rsi = safe_float(df["RSI"].iloc[-1], 50)
-    sma20 = safe_float(df["SMA20"].iloc[-1], close)
-    sma50 = safe_float(df["SMA50"].iloc[-1], close)
-    ema20 = safe_float(df["EMA20"].iloc[-1], close)
-    ema50 = safe_float(df["EMA50"].iloc[-1], close)
-    momentum20 = safe_float(df["Momentum20"].iloc[-1], 0)
+    with c3:
+        st.metric("Technical Score", f"{result['tech_score']}/100", result["trend"])
 
-    a,b,c,d,e = st.columns(5)
-    a.metric("RSI", f"{rsi:.2f}")
-    b.metric("SMA20", f"₹{sma20:,.2f}")
-    c.metric("SMA50", f"₹{sma50:,.2f}")
-    d.metric("EMA20", f"₹{ema20:,.2f}")
-    e.metric("20D Momentum", f"{momentum20:.2f}%")
+    with c4:
+        st.metric("Combined Score", f"{result['combined']}/100", f"Mode: {mode}")
 
-    if tech_signal in ["STRONG BUY", "BUY"]:
-        st.success(f"✅ Technical View: {tech_signal}")
-    elif tech_signal in ["WEAK", "AVOID"]:
-        st.error(f"❌ Technical View: {tech_signal}")
+    with c5:
+        st.metric("Verdict", result["verdict"].replace("🔥 ", "").replace("✅ ", "").replace("🟡 ", "").replace("⚠️ ", "").replace("❌ ", ""))
+
+    if result["verdict_type"] == "good":
+        st.markdown(f'<div class="good-box">Verdict: {result["verdict"]}</div>', unsafe_allow_html=True)
+    elif result["verdict_type"] == "warn":
+        st.markdown(f'<div class="warn-box">Verdict: {result["verdict"]}</div>', unsafe_allow_html=True)
     else:
-        st.warning(f"⚠️ Technical View: {tech_signal}")
+        st.markdown(f'<div class="bad-box">Verdict: {result["verdict"]}</div>', unsafe_allow_html=True)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        rsi_fig = go.Figure()
-        rsi_fig.add_trace(go.Scatter(x=df["Date"], y=df["RSI"], mode="lines", name="RSI"))
-        rsi_fig.add_hline(y=70, line_dash="dash")
-        rsi_fig.add_hline(y=30, line_dash="dash")
-        rsi_fig.update_layout(title="RSI Indicator", height=420)
-        st.plotly_chart(rsi_fig, use_container_width=True)
-    with col2:
-        sr_df = pd.DataFrame({"Level":["Support","Current","Resistance"], "Value":[support, close, resistance]})
-        st.plotly_chart(px.bar(sr_df, x="Level", y="Value", title="Support / Resistance"), use_container_width=True)
+    st.markdown(f'<div class="info-box">Trend: {result["trend"]} | Technical Note: {result["tech_note"]}</div>', unsafe_allow_html=True)
 
-    st.subheader("📝 Technical Reasons")
-    for r in tech_reasons:
-        st.write(f"- {r}")
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Price Chart", "🏢 Fundamental Analysis", "🧠 Technical Details", "⬇️ Export"])
 
-# -------------------------------
-# TAB 3 FUNDAMENTAL LAB
-# -------------------------------
-with tab3:
-    st.subheader("🏢 Fundamental Analysis")
-    snapshot = {
-        "Company Name": info.get("longName", "N/A"),
-        "Sector": info.get("sector", "N/A"),
-        "Industry": info.get("industry", "N/A"),
-        "Market Cap": info.get("marketCap", "N/A"),
-        "P/E Ratio": info.get("trailingPE", "N/A"),
-        "P/B Ratio": info.get("priceToBook", "N/A"),
-        "ROE": info.get("returnOnEquity", "N/A"),
-        "Debt/Equity": info.get("debtToEquity", "N/A"),
-        "Current Ratio": info.get("currentRatio", "N/A"),
-        "Profit Margins": info.get("profitMargins", "N/A"),
-        "Dividend Yield": info.get("dividendYield", "N/A"),
-        "Book Value": info.get("bookValue", "N/A")
-    }
-    st.dataframe(pd.DataFrame(list(snapshot.items()), columns=["Metric", "Value"]), use_container_width=True)
-    if fund_rating in ["STRONG", "GOOD"]:
-        st.success(f"✅ Fundamental Rating: {fund_rating} ({fund_score_val}/100)")
-    elif fund_rating == "AVERAGE":
-        st.warning(f"⚠️ Fundamental Rating: {fund_rating} ({fund_score_val}/100)")
-    else:
-        st.error(f"❌ Fundamental Rating: {fund_rating} ({fund_score_val}/100)")
-    st.subheader("📝 Fundamental Reasons")
-    for r in fund_reasons:
-        st.write(f"- {r}")
-    st.text_area("📝 Business Summary", info.get("longBusinessSummary", "Business summary not available."), height=220)
+    with tab1:
+        st.plotly_chart(build_chart(result["df"], symbol), use_container_width=True)
+        st.plotly_chart(build_rsi_chart(result["df"], symbol), use_container_width=True)
 
-# -------------------------------
-# TAB 4 INSTITUTIONAL SCANNER
-# -------------------------------
-with tab4:
-    st.subheader("🔥 Institutional Scanner")
-    with st.spinner("Scanning watchlist..."):
-        scan_df = get_watchlist_snapshot(WATCHLIST)
-    st.dataframe(scan_df, use_container_width=True)
+        z1, z2, z3, z4, z5 = st.columns(5)
+        with z1:
+            st.metric("Support", f"₹ {fmt(result['support'])}")
+        with z2:
+            st.metric("Resistance", f"₹ {fmt(result['resistance'])}")
+        with z3:
+            st.metric("Stop Loss", f"₹ {fmt(result['stop_loss'])}")
+        with z4:
+            st.metric("Target 1", f"₹ {fmt(result['target1'])}")
+        with z5:
+            st.metric("Target 2", f"₹ {fmt(result['target2'])}")
 
-    if not scan_df.empty:
-        st.subheader("🏆 Top 5 Leaders")
-        top_df = scan_df.sort_values(by="Combined", ascending=False).head(5)
-        st.dataframe(top_df, use_container_width=True)
-        st.plotly_chart(px.bar(top_df, x="Symbol", y=["Tech", "Fund", "Combined"], barmode="group", title="Top 5 Multi-Stock Comparison"), use_container_width=True)
+    with tab2:
+        st.subheader("🏢 Fundamental Analysis")
 
-# -------------------------------
-# TAB 5 SECTOR ROTATION
-# -------------------------------
-with tab5:
-    st.subheader("🏛️ Sector Rotation Dashboard")
-    with st.spinner("Building sector rotation model..."):
-        scan_df = get_watchlist_snapshot(WATCHLIST)
-        sector_df = sector_rotation(scan_df)
-    if sector_df.empty:
-        st.warning("Sector data unavailable.")
-    else:
-        st.dataframe(sector_df, use_container_width=True)
-        st.plotly_chart(px.bar(sector_df, x="Sector", y="Rotation Score", title="Sector Rotation Score"), use_container_width=True)
+        fd = result["fundamental_data"]
 
-# -------------------------------
-# TAB 6 TRADE PLANNER
-# -------------------------------
-with tab6:
-    st.subheader("🎯 Risk-Reward + Stop-Loss & Target Planner")
-    t1c, t2c, t3c, t4c = st.columns(4)
-    t1c.metric("Support", f"₹{support:,.2f}")
-    t2c.metric("Resistance", f"₹{resistance:,.2f}")
-    t3c.metric("Upside", f"₹{upside:,.2f}")
-    t4c.metric("Downside", f"₹{downside:,.2f}")
+        display_rows = []
+        rupee_cr_fields = ["Market Cap", "Net Income", "Total Revenue", "EBITDA", "Operating Income", "Total Equity", "Total Debt", "Cash"]
 
-    t5c, t6c, t7c, t8c = st.columns(4)
-    t5c.metric("Reward/Risk", f"{rr_ratio:.2f}")
-    t6c.metric("Stop Loss", f"₹{sl:,.2f}")
-    t7c.metric("Target 1", f"₹{t1:,.2f}")
-    t8c.metric("Target 2", f"₹{t2:,.2f}")
-
-    if rr_ratio >= 2:
-        st.success("✅ Attractive reward-to-risk setup")
-    elif rr_ratio >= 1:
-        st.warning("⚠️ Moderate reward-to-risk setup")
-    else:
-        st.error("❌ Weak reward-to-risk setup")
-
-# -------------------------------
-# TAB 7 PORTFOLIO DB
-# -------------------------------
-with tab7:
-    st.subheader("💼 Multi-Holding Portfolio Database")
-
-    with st.form("add_holding_form"):
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            new_symbol = st.selectbox("Symbol", NSE_STOCKS, key="pf_symbol")
-        with c2:
-            new_qty = st.number_input("Qty", min_value=1, value=10, step=1, key="pf_qty")
-        with c3:
-            new_avg = st.number_input("Avg Buy Price (₹)", min_value=1.0, value=1000.0, step=1.0, key="pf_avg")
-        submitted = st.form_submit_button("➕ Add Holding")
-        if submitted:
-            new_row = pd.DataFrame([[new_symbol, new_qty, new_avg]], columns=["Symbol", "Qty", "Avg Buy Price"])
-            st.session_state.portfolio_db = pd.concat([st.session_state.portfolio_db, new_row], ignore_index=True)
-            st.success("Holding added.")
-
-    portfolio_df = st.session_state.portfolio_db.copy()
-    if portfolio_df.empty:
-        st.info("No holdings added yet.")
-    else:
-        rows = []
-        for _, row in portfolio_df.iterrows():
-            sym = row["Symbol"]
-            qty = safe_float(row["Qty"], 0)
-            avg = safe_float(row["Avg Buy Price"], 0)
-            dfx = get_stock_data(sym, "1mo")
-            if dfx.empty:
-                current = 0
+        for k, v in fd.items():
+            if k in rupee_cr_fields:
+                if pd.notna(v):
+                    display_rows.append([k, f"₹ {v/1e7:,.2f} Cr"])
+                else:
+                    display_rows.append([k, "N/A"])
+            elif k in ["ROE %", "Profit Margin %", "Revenue Growth %", "Dividend Yield %"]:
+                display_rows.append([k, f"{v:.2f}%" if pd.notna(v) else "N/A"])
+            elif k == "Current Price":
+                display_rows.append([k, f"₹ {v:,.2f}" if pd.notna(v) else "N/A"])
             else:
-                dfx = add_indicators(dfx)
-                current = safe_float(dfx["Close"].iloc[-1], 0)
-            invested = qty * avg
-            current_val = qty * current
-            pnl = current_val - invested
-            pnl_pct = (pnl / invested * 100) if invested else 0
-            rows.append({
-                "Symbol": sym.replace('.NS',''), "Qty": qty, "Avg Buy": avg, "Current": current,
-                "Invested": invested, "Current Value": current_val, "PnL": pnl, "PnL %": pnl_pct
-            })
-        live_pf = pd.DataFrame(rows)
-        st.dataframe(live_pf, use_container_width=True)
+                if isinstance(v, (int, float, np.floating)) and pd.notna(v):
+                    display_rows.append([k, f"{v:,.2f}"])
+                else:
+                    display_rows.append([k, str(v) if v is not None else "N/A"])
 
-        total_invested = live_pf["Invested"].sum()
-        total_current = live_pf["Current Value"].sum()
-        total_pnl = live_pf["PnL"].sum()
-        total_pnl_pct = (total_pnl / total_invested * 100) if total_invested else 0
+        fundamental_df = pd.DataFrame(display_rows, columns=["Metric", "Value"])
+        st.dataframe(fundamental_df, use_container_width=True, hide_index=True)
 
-        p1,p2,p3,p4 = st.columns(4)
-        p1.metric("Total Invested", f"₹{total_invested:,.2f}")
-        p2.metric("Current Value", f"₹{total_current:,.2f}")
-        p3.metric("Total PnL", f"₹{total_pnl:,.2f}")
-        p4.metric("Total PnL %", f"{total_pnl_pct:.2f}%")
+        st.info("Note: NSE fundamentals depend on Yahoo Finance availability. This version uses multi-source fallback to reduce N/A values.")
 
-        export_bytes = make_excel_bytes({"Portfolio": live_pf})
-        st.download_button("📥 Download Portfolio Excel", data=export_bytes, file_name="portfolio_report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    with tab3:
+        df = result["df"]
+        last = df.iloc[-1]
 
-# -------------------------------
-# TAB 8 WEALTH PLANNER
-# -------------------------------
-with tab8:
-    st.subheader("💰 Wealth Planner - SIP + Lumpsum")
-    c1, c2 = st.columns(2)
-    with c1:
-        lump_fv, lump_df = lumpsum_projection(lumpsum_amount, expected_return, planner_years)
-        st.metric("Lumpsum Future Value", f"₹{lump_fv:,.0f}")
-        st.metric("Absolute Gain", f"₹{(lump_fv - lumpsum_amount):,.0f}")
-        st.plotly_chart(px.line(lump_df, x="Year", y="Projected Value", markers=True, title="Lumpsum Growth"), use_container_width=True)
-    with c2:
-        sip_fv, sip_df = sip_projection(sip_amount, expected_return, planner_years)
-        total_invested = sip_amount * 12 * planner_years
-        st.metric("SIP Future Value", f"₹{sip_fv:,.0f}")
-        st.metric("Total Invested", f"₹{total_invested:,.0f}")
-        st.metric("Wealth Created", f"₹{(sip_fv - total_invested):,.0f}")
-        st.plotly_chart(px.line(sip_df, x="Year", y="Projected Value", markers=True, title="SIP Growth"), use_container_width=True)
+        tech_rows = [
+            ["Close", f"₹ {fmt(last['Close'])}"],
+            ["20 DMA", f"₹ {fmt(last['SMA20'])}"],
+            ["50 DMA", f"₹ {fmt(last['SMA50'])}"],
+            ["200 DMA", f"₹ {fmt(last['SMA200'])}"],
+            ["RSI 14", fmt(last["RSI14"])],
+            ["MACD", fmt(last["MACD"])],
+            ["MACD Signal", fmt(last["MACD_SIGNAL"])],
+            ["BB Upper", f"₹ {fmt(last['BB_UPPER'])}"],
+            ["BB Lower", f"₹ {fmt(last['BB_LOWER'])}"],
+            ["ATR 14", fmt(last["ATR14"])]
+        ]
 
-# -------------------------------
-# TAB 9 RETURNS ANALYZER
-# -------------------------------
-with tab9:
-    st.subheader("📊 Returns Analyzer")
-    work = df.copy()
-    work["Daily Return %"] = work["Close"].pct_change() * 100
-    base = safe_float(work["Close"].iloc[0], close)
-    work["Cumulative Return %"] = ((work["Close"] / base) - 1) * 100 if base else 0
-    total_return = safe_float(work["Cumulative Return %"].iloc[-1], 0)
-    annual_vol = safe_float(work["Daily Return %"].std(), 0) * np.sqrt(252)
-    max_dd = ((work["Close"] / work["Close"].cummax()) - 1).min() * 100
-    rv_ratio = (total_return / annual_vol) if annual_vol else 0
+        tech_df = pd.DataFrame(tech_rows, columns=["Indicator", "Value"])
+        st.dataframe(tech_df, use_container_width=True, hide_index=True)
 
-    r1,r2,r3,r4 = st.columns(4)
-    r1.metric("Total Return", f"{total_return:.2f}%")
-    r2.metric("Annualized Volatility", f"{annual_vol:.2f}%")
-    r3.metric("Max Drawdown", f"{max_dd:.2f}%")
-    r4.metric("Return/Vol Ratio", f"{rv_ratio:.2f}")
+    with tab4:
+        st.subheader("⬇️ Download Price + Indicators")
+        csv = result["df"].reset_index().to_csv(index=False).encode("utf-8")
+        st.download_button(
+            "Download Full Analysis CSV",
+            data=csv,
+            file_name=f"{symbol}_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            mime="text/csv"
+        )
 
-    st.plotly_chart(px.line(work, x="Date", y="Cumulative Return %", title="Cumulative Return %"), use_container_width=True)
-    st.plotly_chart(px.histogram(work.dropna(), x="Daily Return %", nbins=50, title="Daily Return Distribution"), use_container_width=True)
+# =========================================================
+# MINI SCREENER
+# =========================================================
+elif module == "Mini Screener":
+    st.subheader("🔎 Mini Screener")
 
-# -------------------------------
+    pack = st.selectbox("Choose Sector Pack", list(SECTOR_PACKS.keys()))
+    symbols = SECTOR_PACKS[pack]
+
+    if st.button("Run Screener", use_container_width=True):
+        rows = []
+        progress = st.progress(0)
+
+        for i, sym in enumerate(symbols):
+            try:
+                res = analyze_stock(sym, "1y", mode)
+                if "error" not in res:
+                    rows.append({
+                        "Symbol": sym,
+                        "Price": round(res["last_close"], 2) if pd.notna(res["last_close"]) else np.nan,
+                        "Fundamental Score": res["fund_score"],
+                        "Technical Score": res["tech_score"],
+                        "Combined Score": res["combined"],
+                        "Trend": res["trend"],
+                        "Verdict": res["verdict"]
+                    })
+            except:
+                pass
+
+            progress.progress((i + 1) / len(symbols))
+
+        if rows:
+            out = pd.DataFrame(rows).sort_values("Combined Score", ascending=False).reset_index(drop=True)
+            st.dataframe(out, use_container_width=True, hide_index=True)
+
+            csv = out.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Download Screener CSV",
+                data=csv,
+                file_name=f"{pack.replace(' ', '_').lower()}_screener.csv",
+                mime="text/csv"
+            )
+        else:
+            st.error("Could not analyze stocks right now. Please try again later.")
+
+# =========================================================
+# PORTFOLIO RANKER
+# =========================================================
+elif module == "Portfolio Ranker":
+    st.subheader("📂 Portfolio Ranker")
+
+    portfolio_input = st.text_area(
+        "Enter comma-separated NSE symbols",
+        value="RELIANCE,HDFCBANK,ICICIBANK,SBIN,ITC"
+    )
+
+    if st.button("Rank Portfolio", use_container_width=True):
+        symbols = [x.strip().upper().replace(".NS", "") for x in portfolio_input.split(",") if x.strip()]
+        symbols = list(dict.fromkeys(symbols))[:12]
+
+        if not symbols:
+            st.warning("Please enter at least one valid symbol.")
+            st.stop()
+
+        rows = []
+        progress = st.progress(0)
+
+        for i, sym in enumerate(symbols):
+            try:
+                res = analyze_stock(sym, "1y", mode)
+                if "error" not in res:
+                    rows.append({
+                        "Symbol": sym,
+                        "Price": round(res["last_close"], 2) if pd.notna(res["last_close"]) else np.nan,
+                        "Fundamental Score": res["fund_score"],
+                        "Technical Score": res["tech_score"],
+                        "Combined Score": res["combined"],
+                        "Trend": res["trend"],
+                        "Verdict": res["verdict"]
+                    })
+            except:
+                pass
+
+            progress.progress((i + 1) / len(symbols))
+
+        if rows:
+            out = pd.DataFrame(rows).sort_values("Combined Score", ascending=False).reset_index(drop=True)
+            st.dataframe(out, use_container_width=True, hide_index=True)
+
+            st.markdown("### 🏆 Top 3 Ranked")
+            st.dataframe(out.head(3), use_container_width=True, hide_index=True)
+
+            csv = out.to_csv(index=False).encode("utf-8")
+            st.download_button(
+                "Download Portfolio Ranking CSV",
+                data=csv,
+                file_name=f"portfolio_rank_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv"
+            )
+        else:
+            st.error("No portfolio symbols could be analyzed.")
+
+# =========================================================
+# ABOUT
+# =========================================================
+else:
+    st.subheader("ℹ️ About")
+    st.markdown("""
+### NSE Stock Intelligence Pro MAX
+
+This is a **single-file Streamlit Cloud friendly app** for:
+
+- Fundamental analysis with robust fallback
+- Technical analysis
+- Combined scoring
+- Mini screener
+- Portfolio ranker
+- NSE (.NS) stocks
+
+### Fundamental Fix Included
+This version reduces **N/A problem for NSE stocks** by using:
+
+- `ticker.info`
+- `ticker.fast_info`
+- `ticker.financials`
+- `ticker.balance_sheet`
+- `ticker.cashflow`
+- derived ratios (P/B, ROE, Debt/Equity, Margin, PE)
+
+### Best Use Cases
+- Daily research
+- Watchlist creation
+- Client demo
+- Advisory support
+
+### Important
+This app uses **Yahoo Finance via yfinance**.  
+Some NSE fundamentals may still be incomplete depending on Yahoo source quality.
+
+### Disclaimer
+For educational and research purposes only. Not investment advice.
+""")
+
+# =========================================================
 # FOOTER
-# -------------------------------
+# =========================================================
 st.markdown("---")
-st.caption("🚀 FINAL V8 INSTITUTIONAL GRADE CLOUD SAFE BUILD | Institutional scanner + sector rotation + trade planner + portfolio DB + Excel export | Single deployable app.py")
+st.caption(
+    f"Built with Streamlit + yfinance | NSE (.NS) | FINAL MAX SINGLE FILE | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
+)
