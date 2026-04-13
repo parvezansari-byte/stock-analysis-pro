@@ -143,7 +143,6 @@ def get_safe_series_value(df, row_name):
 # =========================================================
 # DATA FETCH
 # =========================================================
-@st.cache_data(ttl=1800, show_spinner=False)
 def fetch_full_stock_data(symbol: str, period: str = "1y"):
     try:
         ticker = yf.Ticker(get_nse_symbol(symbol))
