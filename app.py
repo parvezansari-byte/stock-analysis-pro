@@ -10,14 +10,14 @@ import math
 # PAGE CONFIG
 # =========================================================
 st.set_page_config(
-    page_title="NSE Stock Intelligence Pro MAX",
+    page_title="NSE Stock Intelligence Pro MAX V5.1",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # =========================================================
-# STYLES
+# CUSTOM STYLING
 # =========================================================
 st.markdown("""
 <style>
@@ -25,16 +25,17 @@ st.markdown("""
         font-size: 2.6rem;
         font-weight: 800;
         margin-bottom: 0.2rem;
+        color: #ffffff;
     }
     .sub-title {
         font-size: 1rem;
-        color: #94a3b8;
+        color: #cbd5e1;
         margin-bottom: 1rem;
     }
     .hero-box {
         padding: 1.2rem 1.4rem;
         border-radius: 18px;
-        background: linear-gradient(135deg, rgba(15,23,42,0.95), rgba(14,116,144,0.25));
+        background: linear-gradient(135deg, rgba(15,23,42,0.95), rgba(14,116,144,0.22));
         border: 1px solid rgba(59,130,246,0.25);
         margin-bottom: 1rem;
     }
@@ -45,6 +46,7 @@ st.markdown("""
         border: 1px solid rgba(22,163,74,0.35);
         color: #86efac;
         font-weight: 700;
+        margin-bottom: 0.8rem;
     }
     .warn-box {
         padding: 1rem;
@@ -53,6 +55,7 @@ st.markdown("""
         border: 1px solid rgba(245,158,11,0.35);
         color: #fcd34d;
         font-weight: 700;
+        margin-bottom: 0.8rem;
     }
     .bad-box {
         padding: 1rem;
@@ -61,6 +64,7 @@ st.markdown("""
         border: 1px solid rgba(239,68,68,0.35);
         color: #fca5a5;
         font-weight: 700;
+        margin-bottom: 0.8rem;
     }
     .info-box {
         padding: 0.8rem;
@@ -69,6 +73,7 @@ st.markdown("""
         border: 1px solid rgba(59,130,246,0.35);
         color: #93c5fd;
         font-weight: 600;
+        margin-bottom: 0.8rem;
     }
     .pill {
         display: inline-block;
@@ -141,7 +146,8 @@ def get_safe_series_value(df, row_name):
         return np.nan
 
 # =========================================================
-# DATA FETCH
+# SAFE DATA FETCH (NO CACHE ON RAW OBJECTS)
+# IMPORTANT: NO @st.cache_data HERE
 # =========================================================
 def fetch_full_stock_data(symbol: str, period: str = "1y"):
     try:
@@ -167,37 +173,60 @@ def fetch_full_stock_data(symbol: str, period: str = "1y"):
         except:
             info = {}
 
-        # fast_info
+        # fast_info -> force plain dict for safety
         try:
-            fast_info = ticker.fast_info
-            if fast_info is None:
-                fast_info = {}
+            fi = ticker.fast_info
+            fast_info = dict(fi) if fi is not None else {}
         except:
             fast_info = {}
 
-        # statements
+        # financials
         try:
             financials = ticker.financials
+            if financials is None:
+                financials = pd.DataFrame()
+            if not isinstance(financials, pd.DataFrame):
+                financials = pd.DataFrame(financials)
         except:
             financials = pd.DataFrame()
 
+        # balance sheet
         try:
             balance_sheet = ticker.balance_sheet
+            if balance_sheet is None:
+                balance_sheet = pd.DataFrame()
+            if not isinstance(balance_sheet, pd.DataFrame):
+                balance_sheet = pd.DataFrame(balance_sheet)
         except:
             balance_sheet = pd.DataFrame()
 
+        # cashflow
         try:
             cashflow = ticker.cashflow
+            if cashflow is None:
+                cashflow = pd.DataFrame()
+            if not isinstance(cashflow, pd.DataFrame):
+                cashflow = pd.DataFrame(cashflow)
         except:
             cashflow = pd.DataFrame()
 
+        # quarterly financials
         try:
             q_financials = ticker.quarterly_financials
+            if q_financials is None:
+                q_financials = pd.DataFrame()
+            if not isinstance(q_financials, pd.DataFrame):
+                q_financials = pd.DataFrame(q_financials)
         except:
             q_financials = pd.DataFrame()
 
+        # quarterly balance sheet
         try:
             q_balance_sheet = ticker.quarterly_balance_sheet
+            if q_balance_sheet is None:
+                q_balance_sheet = pd.DataFrame()
+            if not isinstance(q_balance_sheet, pd.DataFrame):
+                q_balance_sheet = pd.DataFrame(q_balance_sheet)
         except:
             q_balance_sheet = pd.DataFrame()
 
@@ -247,7 +276,7 @@ def add_indicators(df):
     return df
 
 # =========================================================
-# FUNDAMENTAL EXTRACTION (ROBUST FIX)
+# ROBUST FUNDAMENTAL EXTRACTION
 # =========================================================
 def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_sheet, cashflow, extra_data=None):
     extra_data = extra_data or {}
@@ -260,19 +289,13 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
 
     market_cap = safe_num(info.get("marketCap"))
     if pd.isna(market_cap):
-        try:
-            market_cap = safe_num(fast_info.get("market_cap"))
-        except:
-            pass
+        market_cap = safe_num(fast_info.get("market_cap"))
 
     current_price = safe_num(info.get("currentPrice"))
     if pd.isna(current_price):
         current_price = safe_num(info.get("regularMarketPrice"))
     if pd.isna(current_price):
-        try:
-            current_price = safe_num(fast_info.get("lastPrice"))
-        except:
-            pass
+        current_price = safe_num(fast_info.get("lastPrice"))
 
     pe = safe_num(info.get("trailingPE"))
     if pd.isna(pe):
@@ -296,6 +319,7 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
 
     book_value = safe_num(info.get("bookValue"))
     eps = safe_num(info.get("trailingEps"))
+
     dividend_yield = safe_num(info.get("dividendYield"))
     if not pd.isna(dividend_yield) and dividend_yield < 5:
         dividend_yield = dividend_yield * 100
@@ -355,7 +379,7 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
             if q_financials is not None and not q_financials.empty and "Total Revenue" in q_financials.index:
                 row = q_financials.loc["Total Revenue"]
                 vals = [safe_num(v) for v in row if pd.notna(v)]
-                if len(vals) >= 2 and vals[1] not in [0, np.nan]:
+                if len(vals) >= 2 and pd.notna(vals[1]) and vals[1] != 0:
                     revenue_growth = ((vals[0] - vals[1]) / abs(vals[1])) * 100
         except:
             pass
@@ -627,7 +651,7 @@ def analyze_stock(symbol, period="1y", mode="Balanced"):
     }
 
 # =========================================================
-# CHARTS
+# CHART BUILDERS
 # =========================================================
 def build_chart(df, symbol):
     fig = go.Figure()
@@ -653,7 +677,7 @@ def build_chart(df, symbol):
         fig.add_trace(go.Scatter(x=df.index, y=df["BB_LOWER"], mode="lines", name="BB Lower", line=dict(dash="dot")))
 
     fig.update_layout(
-        title=f"{symbol} - Price + MA + Bollinger Bands",
+        title=f"{symbol} - Price + Moving Averages + Bollinger Bands",
         template="plotly_dark",
         height=700,
         xaxis_rangeslider_visible=False
@@ -677,7 +701,7 @@ def build_rsi_chart(df, symbol):
 # SIDEBAR
 # =========================================================
 st.sidebar.markdown("## 📈 NSE Stock Intelligence Pro MAX")
-st.sidebar.caption("Single-file • Cloud Safe • Fundamental Fix")
+st.sidebar.caption("V5.1 • Single-file • Cloud Safe • Fixed")
 
 module = st.sidebar.radio(
     "Choose Module",
@@ -706,11 +730,11 @@ period = period_map[period_label]
 # =========================================================
 st.markdown("""
 <div class="hero-box">
-    <div class="main-title">📈 NSE Stock Intelligence Pro MAX</div>
+    <div class="main-title">📈 NSE Stock Intelligence Pro MAX V5.1</div>
     <div class="sub-title">Technical + Fundamental + Robust NSE Fallback + Screener + Portfolio Ranker</div>
     <span class="pill">Cloud Safe</span>
     <span class="pill">Single app.py</span>
-    <span class="pill">Fundamental Fix</span>
+    <span class="pill">Serialization Fixed</span>
     <span class="pill">NSE Ready</span>
 </div>
 """, unsafe_allow_html=True)
@@ -730,7 +754,7 @@ if module == "Single Stock Analysis":
 
     if "error" in result:
         st.error(result["error"])
-        st.info("Try another NSE symbol or use 6 Months / 1 Year period.")
+        st.info("Try another NSE symbol or switch to 6 Months / 1 Year.")
         st.stop()
 
     c1, c2, c3, c4, c5 = st.columns(5)
@@ -749,7 +773,15 @@ if module == "Single Stock Analysis":
         st.metric("Combined Score", f"{result['combined']}/100", f"Mode: {mode}")
 
     with c5:
-        st.metric("Verdict", result["verdict"].replace("🔥 ", "").replace("✅ ", "").replace("🟡 ", "").replace("⚠️ ", "").replace("❌ ", ""))
+        verdict_clean = (
+            result["verdict"]
+            .replace("🔥 ", "")
+            .replace("✅ ", "")
+            .replace("🟡 ", "")
+            .replace("⚠️ ", "")
+            .replace("❌ ", "")
+        )
+        st.metric("Verdict", verdict_clean)
 
     if result["verdict_type"] == "good":
         st.markdown(f'<div class="good-box">Verdict: {result["verdict"]}</div>', unsafe_allow_html=True)
@@ -805,7 +837,7 @@ if module == "Single Stock Analysis":
         fundamental_df = pd.DataFrame(display_rows, columns=["Metric", "Value"])
         st.dataframe(fundamental_df, use_container_width=True, hide_index=True)
 
-        st.info("Note: NSE fundamentals depend on Yahoo Finance availability. This version uses multi-source fallback to reduce N/A values.")
+        st.info("This version uses multi-source fallback (info + fast_info + financial statements + derived ratios) to reduce NSE fundamental N/A values.")
 
     with tab3:
         df = result["df"]
@@ -945,7 +977,7 @@ elif module == "Portfolio Ranker":
 else:
     st.subheader("ℹ️ About")
     st.markdown("""
-### NSE Stock Intelligence Pro MAX
+### NSE Stock Intelligence Pro MAX V5.1
 
 This is a **single-file Streamlit Cloud friendly app** for:
 
@@ -955,6 +987,12 @@ This is a **single-file Streamlit Cloud friendly app** for:
 - Mini screener
 - Portfolio ranker
 - NSE (.NS) stocks
+
+### What was fixed in V5.1
+- Removed Streamlit cache serialization issue
+- Converted `fast_info` to plain dict
+- Safe handling of Yahoo Finance statement objects
+- Better cloud stability
 
 ### Fundamental Fix Included
 This version reduces **N/A problem for NSE stocks** by using:
@@ -985,5 +1023,5 @@ For educational and research purposes only. Not investment advice.
 # =========================================================
 st.markdown("---")
 st.caption(
-    f"Built with Streamlit + yfinance | NSE (.NS) | FINAL MAX SINGLE FILE | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
+    f"Built with Streamlit + yfinance | NSE (.NS) | FINAL V5.1 STREAMLIT CLOUD SAFE FIXED SINGLE FILE | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
 )
