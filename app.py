@@ -11,14 +11,14 @@ import time
 # PAGE CONFIG
 # =========================================================
 st.set_page_config(
-    page_title="NSE Stock Intelligence Pro MAX V7.1",
+    page_title="NSE Stock Intelligence Pro MAX V8.1",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # =========================================================
-# CSS / UI
+# UI / CSS
 # =========================================================
 st.markdown("""
 <style>
@@ -91,9 +91,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =========================================================
-# FULL NIFTY 50 LIST (2025/26 standard working NSE symbols)
-# NOTE: Some index constituents can change over time, but these are
-# widely used and yfinance-compatible NSE tickers.
+# NIFTY 50
 # =========================================================
 NIFTY_50 = sorted([
     "ADANIENT", "ADANIPORTS", "APOLLOHOSP", "ASIANPAINT", "AXISBANK",
@@ -108,30 +106,53 @@ NIFTY_50 = sorted([
     "TATASTEEL", "TCS", "TECHM", "TITAN", "TRENT"
 ])
 
+# =========================================================
+# NIFTY NEXT 50 (Cloud-safe curated list)
+# =========================================================
+NIFTY_NEXT_50 = sorted([
+    "ABB", "ADANIENSOL", "ADANIGREEN", "ADANIPOWER", "AMBUJACEM",
+    "BAJAJHLDNG", "BANKBARODA", "BOSCHLTD", "CANBK", "CGPOWER",
+    "CHOLAFIN", "DABUR", "DIVISLAB", "DLF", "DMART",
+    "GAIL", "GODREJCP", "HAL", "HAVELLS", "ICICIGI",
+    "ICICIPRULI", "INDIGO", "INDUSTOWER", "IOC", "IRCTC",
+    "JINDALSTEL", "LODHA", "MOTHERSON", "NAUKRI", "NMDC",
+    "PIDILITIND", "PNB", "RECLTD", "SAIL", "SHREECEM",
+    "SIEMENS", "TORNTPHARM", "TVSMOTOR", "UNITDSPR", "VBL",
+    "VEDL", "ZYDUSLIFE", "PFC", "HINDPETRO", "BHEL",
+    "BERGEPAINT", "CONCOR", "MARICO", "TATAPOWER", "UPL"
+])
+
+NIFTY_100 = sorted(list(set(NIFTY_50 + NIFTY_NEXT_50)))
+
+# =========================================================
 # QUICK PICKS
+# =========================================================
 QUICK_LIST = [
     "RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "TCS",
-    "INFY", "ITC", "LT", "BHARTIARTL", "SUNPHARMA"
+    "INFY", "ITC", "LT", "BHARTIARTL", "SUNPHARMA",
+    "HAL", "DIVISLAB", "DMART", "SIEMENS", "VBL"
 ]
 
 # =========================================================
-# SECTOR PACKS
+# SECTOR PACKS (Cloud-safe scan packs)
 # =========================================================
 SECTOR_PACKS = {
     "Nifty 50 Core": ["RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "TCS", "INFY", "ITC", "LT"],
-    "Full Nifty 50 (Top 8 Safe Scan)": ["RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "TCS", "INFY", "ITC", "LT"],
-    "Banking": ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK", "INDUSINDBK"],
+    "Nifty 50 Safe Scan": ["RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "TCS", "INFY", "ITC", "LT"],
+    "Nifty Next 50 Safe Scan": ["HAL", "DIVISLAB", "DMART", "SIEMENS", "VBL", "TVSMOTOR", "PIDILITIND", "DABUR"],
+    "Nifty 100 Safe Scan": ["RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "TCS", "INFY", "HAL", "DIVISLAB"],
+    "Banking": ["HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK", "INDUSINDBK", "BANKBARODA", "PNB", "CANBK"],
     "IT": ["TCS", "INFY", "HCLTECH", "WIPRO", "TECHM"],
-    "Auto": ["MARUTI", "TATAMOTORS", "M&M", "EICHERMOT", "HEROMOTOCO", "BAJAJ-AUTO"],
-    "Pharma": ["SUNPHARMA", "DRREDDY", "CIPLA", "APOLLOHOSP"],
-    "Energy": ["RELIANCE", "ONGC", "BPCL", "NTPC", "POWERGRID"],
-    "Consumer": ["ITC", "HINDUNILVR", "NESTLEIND", "BRITANNIA", "TATACONSUM", "TITAN"]
+    "Auto": ["MARUTI", "TATAMOTORS", "M&M", "EICHERMOT", "HEROMOTOCO", "BAJAJ-AUTO", "TVSMOTOR"],
+    "Pharma": ["SUNPHARMA", "DRREDDY", "CIPLA", "APOLLOHOSP", "DIVISLAB", "TORNTPHARM", "ZYDUSLIFE"],
+    "Energy": ["RELIANCE", "ONGC", "BPCL", "NTPC", "POWERGRID", "IOC", "HINDPETRO", "TATAPOWER"],
+    "Consumer": ["ITC", "HINDUNILVR", "NESTLEIND", "BRITANNIA", "TATACONSUM", "TITAN", "DABUR", "MARICO", "VBL"]
 }
 
-UNIVERSE = sorted(list(set(NIFTY_50 + ["WIPRO"] + sum(SECTOR_PACKS.values(), []))))
+UNIVERSE = sorted(list(set(NIFTY_100 + ["WIPRO"] + sum(SECTOR_PACKS.values(), []))))
 
 # =========================================================
-# NSE FALLBACK MAPPING
+# FALLBACK SECTOR/INDUSTRY MAP
 # =========================================================
 NSE_MASTER_FALLBACK = {
     "RELIANCE": {"sector": "Energy", "industry": "Oil & Gas / Conglomerate"},
@@ -146,6 +167,9 @@ NSE_MASTER_FALLBACK = {
     "AXISBANK": {"sector": "Financial Services", "industry": "Private Sector Bank"},
     "KOTAKBANK": {"sector": "Financial Services", "industry": "Private Sector Bank"},
     "INDUSINDBK": {"sector": "Financial Services", "industry": "Private Sector Bank"},
+    "BANKBARODA": {"sector": "Financial Services", "industry": "Public Sector Bank"},
+    "PNB": {"sector": "Financial Services", "industry": "Public Sector Bank"},
+    "CANBK": {"sector": "Financial Services", "industry": "Public Sector Bank"},
     "ITC": {"sector": "Consumer Defensive", "industry": "Diversified FMCG"},
     "LT": {"sector": "Industrials", "industry": "Engineering & Construction"},
     "BHARTIARTL": {"sector": "Communication Services", "industry": "Telecom"},
@@ -154,14 +178,18 @@ NSE_MASTER_FALLBACK = {
     "DRREDDY": {"sector": "Healthcare", "industry": "Pharmaceuticals"},
     "CIPLA": {"sector": "Healthcare", "industry": "Pharmaceuticals"},
     "APOLLOHOSP": {"sector": "Healthcare", "industry": "Hospitals"},
+    "DIVISLAB": {"sector": "Healthcare", "industry": "Pharmaceuticals"},
+    "TORNTPHARM": {"sector": "Healthcare", "industry": "Pharmaceuticals"},
+    "ZYDUSLIFE": {"sector": "Healthcare", "industry": "Pharmaceuticals"},
     "MARUTI": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
     "TATAMOTORS": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
     "M&M": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
     "EICHERMOT": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
     "HEROMOTOCO": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
     "BAJAJ-AUTO": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
-    "ASIANPAINT": {"sector": "Basic Materials", "industry": "Specialty Chemicals / Paints"},
-    "ADANIENT": {"sector": "Industrials", "industry": "Trading / Infrastructure"},
+    "TVSMOTOR": {"sector": "Consumer Cyclical", "industry": "Automobiles"},
+    "ASIANPAINT": {"sector": "Basic Materials", "industry": "Paints"},
+    "ADANIENT": {"sector": "Industrials", "industry": "Trading / Infra"},
     "ADANIPORTS": {"sector": "Industrials", "industry": "Ports & Logistics"},
     "BAJFINANCE": {"sector": "Financial Services", "industry": "NBFC"},
     "BAJAJFINSV": {"sector": "Financial Services", "industry": "Financial Services"},
@@ -183,8 +211,51 @@ NSE_MASTER_FALLBACK = {
     "SHRIRAMFIN": {"sector": "Financial Services", "industry": "NBFC"},
     "TATACONSUM": {"sector": "Consumer Defensive", "industry": "FMCG"},
     "TATASTEEL": {"sector": "Basic Materials", "industry": "Steel"},
-    "TITAN": {"sector": "Consumer Cyclical", "industry": "Jewellery / Retail"},
-    "TRENT": {"sector": "Consumer Cyclical", "industry": "Retail"}
+    "TITAN": {"sector": "Consumer Cyclical", "industry": "Retail / Jewellery"},
+    "TRENT": {"sector": "Consumer Cyclical", "industry": "Retail"},
+    "ABB": {"sector": "Industrials", "industry": "Electrical Equipment"},
+    "ADANIENSOL": {"sector": "Utilities", "industry": "Renewable Energy"},
+    "ADANIGREEN": {"sector": "Utilities", "industry": "Renewable Energy"},
+    "ADANIPOWER": {"sector": "Utilities", "industry": "Power Generation"},
+    "AMBUJACEM": {"sector": "Basic Materials", "industry": "Cement"},
+    "BAJAJHLDNG": {"sector": "Financial Services", "industry": "Investment Holding"},
+    "BOSCHLTD": {"sector": "Consumer Cyclical", "industry": "Auto Components"},
+    "CGPOWER": {"sector": "Industrials", "industry": "Electrical Equipment"},
+    "CHOLAFIN": {"sector": "Financial Services", "industry": "NBFC"},
+    "DABUR": {"sector": "Consumer Defensive", "industry": "FMCG"},
+    "DLF": {"sector": "Real Estate", "industry": "Real Estate Development"},
+    "DMART": {"sector": "Consumer Defensive", "industry": "Retail"},
+    "GAIL": {"sector": "Energy", "industry": "Gas Utility"},
+    "GODREJCP": {"sector": "Consumer Defensive", "industry": "FMCG"},
+    "HAL": {"sector": "Industrials", "industry": "Aerospace & Defence"},
+    "HAVELLS": {"sector": "Industrials", "industry": "Electrical Equipment"},
+    "ICICIGI": {"sector": "Financial Services", "industry": "General Insurance"},
+    "ICICIPRULI": {"sector": "Financial Services", "industry": "Life Insurance"},
+    "INDIGO": {"sector": "Industrials", "industry": "Airlines"},
+    "INDUSTOWER": {"sector": "Communication Services", "industry": "Telecom Infra"},
+    "IOC": {"sector": "Energy", "industry": "Oil & Gas"},
+    "IRCTC": {"sector": "Industrials", "industry": "Railway Services"},
+    "JINDALSTEL": {"sector": "Basic Materials", "industry": "Steel"},
+    "LODHA": {"sector": "Real Estate", "industry": "Real Estate Development"},
+    "MOTHERSON": {"sector": "Consumer Cyclical", "industry": "Auto Components"},
+    "NAUKRI": {"sector": "Communication Services", "industry": "Internet Services"},
+    "NMDC": {"sector": "Basic Materials", "industry": "Mining"},
+    "PIDILITIND": {"sector": "Basic Materials", "industry": "Specialty Chemicals"},
+    "RECLTD": {"sector": "Financial Services", "industry": "NBFC / PSU Lending"},
+    "SAIL": {"sector": "Basic Materials", "industry": "Steel"},
+    "SHREECEM": {"sector": "Basic Materials", "industry": "Cement"},
+    "SIEMENS": {"sector": "Industrials", "industry": "Industrial Engineering"},
+    "UNITDSPR": {"sector": "Consumer Defensive", "industry": "Beverages"},
+    "VBL": {"sector": "Consumer Defensive", "industry": "Beverages"},
+    "VEDL": {"sector": "Basic Materials", "industry": "Metals & Mining"},
+    "PFC": {"sector": "Financial Services", "industry": "NBFC / PSU Lending"},
+    "HINDPETRO": {"sector": "Energy", "industry": "Oil & Gas"},
+    "BHEL": {"sector": "Industrials", "industry": "Capital Goods"},
+    "BERGEPAINT": {"sector": "Basic Materials", "industry": "Paints"},
+    "CONCOR": {"sector": "Industrials", "industry": "Logistics"},
+    "MARICO": {"sector": "Consumer Defensive", "industry": "FMCG"},
+    "TATAPOWER": {"sector": "Utilities", "industry": "Power"},
+    "UPL": {"sector": "Basic Materials", "industry": "Agro Chemicals"}
 }
 
 # =========================================================
@@ -192,6 +263,9 @@ NSE_MASTER_FALLBACK = {
 # =========================================================
 if "portfolio_db" not in st.session_state:
     st.session_state.portfolio_db = []
+
+if "elite_watchlist" not in st.session_state:
+    st.session_state.elite_watchlist = []
 
 # =========================================================
 # HELPERS
@@ -274,7 +348,7 @@ def safe_run_block(fn, label="module"):
         return None
 
 # =========================================================
-# SERIALIZABLE CACHE ONLY (VERY IMPORTANT FOR STREAMLIT CLOUD)
+# SERIALIZABLE CACHE ONLY
 # =========================================================
 @st.cache_data(ttl=900, show_spinner=False)
 def cached_fetch_serializable(symbol: str, period: str = "1y"):
@@ -426,7 +500,7 @@ def add_indicators(df):
     return df
 
 # =========================================================
-# FUNDAMENTAL EXTRACTION (FULLER + HARDENED)
+# FUNDAMENTALS
 # =========================================================
 def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_sheet, cashflow, extra_data=None):
     extra_data = extra_data or {}
@@ -502,7 +576,6 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
     beta = safe_num(info.get("beta"))
     trailing_peg = safe_num(info.get("pegRatio"))
 
-    # Statement pulls
     net_income = get_safe_series_value(financials, "Net Income")
     if pd.isna(net_income):
         net_income = get_safe_series_value(financials, "Net Income Common Stockholders")
@@ -538,7 +611,6 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
     free_cashflow = get_safe_series_value(cashflow, "Free Cash Flow")
     capex = get_safe_series_value(cashflow, "Capital Expenditure")
 
-    # Derived values
     if pd.isna(market_cap) and pd.notna(current_price) and pd.notna(shares_outstanding) and shares_outstanding > 0:
         market_cap = current_price * shares_outstanding
 
@@ -681,7 +753,7 @@ def score_fundamentals_normalized(fd):
     score = round(num / den, 1) if den > 0 else 50.0
     return score, f"Normalized from {len(valid)} metrics", metrics
 
-def score_technical_v71(df):
+def score_technical_v81(df):
     if df is None or df.empty or len(df) < 50:
         return 45.0, "Not enough data", "Neutral", {}
 
@@ -812,7 +884,7 @@ def get_verdict(score):
 # =========================================================
 # ANALYSIS ENGINE
 # =========================================================
-def analyze_stock_v71(symbol, period="1y"):
+def analyze_stock_v81(symbol, period="1y"):
     hist, info, fast_info, financials, balance_sheet, cashflow, extra_data, err = fetch_full_stock_data(symbol, period)
     if err:
         return {"error": err}
@@ -835,7 +907,7 @@ def analyze_stock_v71(symbol, period="1y"):
     )
 
     fund_score, fund_note, fund_metric_map = score_fundamentals_normalized(fundamental_data)
-    tech_score, tech_note, trend, tech_metric_map = score_technical_v71(df)
+    tech_score, tech_note, trend, tech_metric_map = score_technical_v81(df)
 
     combined_long = round((fund_score * 0.65) + (tech_score * 0.35), 1)
     combined_swing = round((fund_score * 0.30) + (tech_score * 0.70), 1)
@@ -953,7 +1025,7 @@ def build_rsi_chart(df, symbol):
     return fig
 
 # =========================================================
-# BULK ANALYSIS (SAFE LIMIT)
+# BULK ANALYSIS
 # =========================================================
 def run_pack_analysis(symbols, period="1y", max_stocks=5):
     rows = []
@@ -965,7 +1037,7 @@ def run_pack_analysis(symbols, period="1y", max_stocks=5):
     for idx, sym in enumerate(symbols, start=1):
         try:
             progress.progress(min(idx / max(total, 1), 1.0), text=f"Scanning {sym} ({idx}/{total})")
-            res = analyze_stock_v71(sym, period)
+            res = analyze_stock_v81(sym, period)
             if "error" not in res:
                 rows.append({
                     "Symbol": sym,
@@ -1046,11 +1118,14 @@ def recommended_allocation(score):
 # SIDEBAR
 # =========================================================
 st.sidebar.markdown("## 📊 NSE Stock Intelligence Pro MAX")
-st.sidebar.caption("V7.1 ABSOLUTE PRODUCTION LOCKED • Cloud Safe • Full Nifty 50")
+st.sidebar.caption("V8.1 • Nifty 100 Master • Next 50 • Elite Watchlist • Cloud Safe")
 
 module_options = [
     "Single Stock Analysis",
     "Nifty 50 Explorer",
+    "Nifty Next 50 Explorer",
+    "Nifty 100 Explorer",
+    "Elite Watchlist",
     "Institutional Dashboard",
     "Breakout Scanner",
     "Reversal Scanner",
@@ -1069,9 +1144,9 @@ module = st.sidebar.radio("Choose Module", module_options)
 
 quick_pick = st.sidebar.selectbox("Quick NSE Pick", QUICK_LIST, index=0)
 manual_symbol = st.sidebar.selectbox(
-    "Select from Full Nifty 50 (or type below)",
-    options=NIFTY_50,
-    index=NIFTY_50.index(quick_pick) if quick_pick in NIFTY_50 else 0
+    "Select from Nifty 100",
+    options=NIFTY_100,
+    index=NIFTY_100.index(quick_pick) if quick_pick in NIFTY_100 else 0
 )
 custom_symbol = st.sidebar.text_input("Or Enter NSE Symbol Manually", value=manual_symbol)
 
@@ -1084,13 +1159,13 @@ period = period_map[period_label]
 # =========================================================
 st.markdown("""
 <div class="hero-box">
-    <div class="main-title">📊 NSE Stock Intelligence Pro MAX V7.1 ABSOLUTE PRODUCTION LOCKED</div>
-    <div class="sub-title">Full Nifty 50 • Streamlit Cloud safe • Hardened serializable cache • Fuller fundamentals • Stable scanners • Single full app.py</div>
-    <span class="pill">Absolute Production Locked</span>
+    <div class="main-title">📊 NSE Stock Intelligence Pro MAX V8.1</div>
+    <div class="sub-title">NIFTY 100 MASTER • NIFTY NEXT 50 • ELITE WATCHLIST • STREAMLIT CLOUD SAFE • SINGLE FULL app.py</div>
+    <span class="pill">Nifty 50</span>
+    <span class="pill">Nifty Next 50</span>
+    <span class="pill">Nifty 100</span>
+    <span class="pill">Elite Watchlist</span>
     <span class="pill">Cloud Safe</span>
-    <span class="pill">Full Nifty 50</span>
-    <span class="pill">Fuller Fundamentals</span>
-    <span class="pill">Stable Scanners</span>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1108,7 +1183,7 @@ if module == "Single Stock Analysis":
 
         if st.button("Analyze Stock", use_container_width=True):
             with st.spinner(f"Analyzing {symbol}.NS ..."):
-                result = analyze_stock_v71(symbol, period)
+                result = analyze_stock_v81(symbol, period)
 
             if "error" in result:
                 st.error(result["error"])
@@ -1154,6 +1229,7 @@ if module == "Single Stock Analysis":
                 "🏢 Fundamental Lab",
                 "⚖️ Score Breakdown",
                 "🎯 Trade Planner",
+                "⭐ Add to Watchlist",
                 "📂 Portfolio DB",
                 "⬇️ Export"
             ])
@@ -1223,7 +1299,7 @@ if module == "Single Stock Analysis":
 
                 available = sum(1 for _, v in rows if v != "N/A")
                 coverage = round((available / len(rows)) * 100, 1)
-                st.info(f"Fundamental Coverage: {coverage}% | V7.1 uses info + fast_info + statements + derived ratios + NSE fallback.")
+                st.info(f"Fundamental Coverage: {coverage}% | Uses info + fast_info + statements + derived ratios + fallback map.")
 
             with tabs[3]:
                 st.markdown("### 🧮 Fundamental Score Breakdown")
@@ -1248,13 +1324,13 @@ if module == "Single Stock Analysis":
 
                 tp1, tp2, tp3, tp4 = st.columns(4)
                 with tp1:
-                    entry = st.number_input("Entry", min_value=0.0, value=float(default_entry) if pd.notna(default_entry) else 0.0, step=0.1, key="tp_entry_v71")
+                    entry = st.number_input("Entry", min_value=0.0, value=float(default_entry) if pd.notna(default_entry) else 0.0, step=0.1, key="tp_entry_v81")
                 with tp2:
-                    stop = st.number_input("Stop Loss", min_value=0.0, value=float(default_stop) if pd.notna(default_stop) else 0.0, step=0.1, key="tp_stop_v71")
+                    stop = st.number_input("Stop Loss", min_value=0.0, value=float(default_stop) if pd.notna(default_stop) else 0.0, step=0.1, key="tp_stop_v81")
                 with tp3:
-                    target = st.number_input("Target", min_value=0.0, value=float(default_target) if pd.notna(default_target) else 0.0, step=0.1, key="tp_target_v71")
+                    target = st.number_input("Target", min_value=0.0, value=float(default_target) if pd.notna(default_target) else 0.0, step=0.1, key="tp_target_v81")
                 with tp4:
-                    capital = st.number_input("Capital", min_value=1000.0, value=100000.0, step=1000.0, key="tp_capital_v71")
+                    capital = st.number_input("Capital", min_value=1000.0, value=100000.0, step=1000.0, key="tp_capital_v81")
 
                 plan = compute_trade_plan(entry, stop, target)
                 if plan:
@@ -1271,9 +1347,24 @@ if module == "Single Stock Analysis":
                     st.info(f"Estimated total position risk at full capital allocation: ₹ {fmt(total_risk)}")
 
             with tabs[5]:
+                wl_note = st.text_input("Watchlist Note", value="High conviction / monitor", key="wl_note_v81")
+                if st.button("Add to Elite Watchlist", use_container_width=True):
+                    st.session_state.elite_watchlist.append({
+                        "Symbol": symbol,
+                        "Added At": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+                        "Balanced Score": result["combined_balanced"],
+                        "Swing Score": result["combined_swing"],
+                        "Long Score": result["combined_long"],
+                        "Entry Zone": result["entry_zone"],
+                        "Trend": result["trend"],
+                        "Note": wl_note
+                    })
+                    st.success(f"{symbol} added to Elite Watchlist.")
+
+            with tabs[6]:
                 st.subheader("📂 Add to Portfolio DB")
-                add_qty = st.number_input("Quantity", min_value=1, value=10, step=1, key="single_add_qty_v71")
-                add_avg = st.number_input("Average Buy Price", min_value=0.0, value=float(result["last_close"]) if pd.notna(result["last_close"]) else 0.0, step=0.1, key="single_add_avg_v71")
+                add_qty = st.number_input("Quantity", min_value=1, value=10, step=1, key="single_add_qty_v81")
+                add_avg = st.number_input("Average Buy Price", min_value=0.0, value=float(result["last_close"]) if pd.notna(result["last_close"]) else 0.0, step=0.1, key="single_add_avg_v81")
 
                 if st.button("Add This Stock To Portfolio DB", use_container_width=True):
                     st.session_state.portfolio_db.append({
@@ -1284,12 +1375,12 @@ if module == "Single Stock Analysis":
                     })
                     st.success(f"{symbol} added to Portfolio DB.")
 
-            with tabs[6]:
+            with tabs[7]:
                 csv = result["df"].reset_index().to_csv(index=False).encode("utf-8")
                 st.download_button(
                     "Download Full Price + Indicators CSV",
                     data=csv,
-                    file_name=f"{symbol}_v71_absolute_production_locked_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    file_name=f"{symbol}_v81_nifty100_master_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                     mime="text/csv"
                 )
         else:
@@ -1302,35 +1393,172 @@ if module == "Single Stock Analysis":
 # =========================================================
 elif module == "Nifty 50 Explorer":
     def render_nifty50():
-        st.subheader("🇮🇳 Full Nifty 50 Explorer")
-
-        st.success(f"Full Nifty 50 loaded: {len(NIFTY_50)} stocks")
+        st.subheader("🇮🇳 Nifty 50 Explorer")
+        st.success(f"Nifty 50 loaded: {len(NIFTY_50)} stocks")
 
         col1, col2 = st.columns([2, 1])
         with col1:
             selected = st.multiselect(
-                "Select Nifty 50 stocks for quick compare",
+                "Select Nifty 50 stocks",
                 options=NIFTY_50,
                 default=["RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "TCS"]
             )
         with col2:
-            max_stocks = st.slider("Max Scan (Cloud Safe)", 3, 8, 5)
+            max_stocks = st.slider("Max Scan", 3, 8, 5, key="n50_max_v81")
 
         st.dataframe(pd.DataFrame({"Nifty 50 Stocks": NIFTY_50}), use_container_width=True, hide_index=True)
 
         if st.button("Run Nifty 50 Compare", use_container_width=True):
             symbols = selected[:max_stocks] if selected else NIFTY_50[:max_stocks]
-            with st.spinner("Running selected Nifty 50 analysis..."):
+            with st.spinner("Running Nifty 50 analysis..."):
                 out = run_pack_analysis(symbols, period="1y", max_stocks=max_stocks)
-
             if out.empty:
                 st.warning("No data returned.")
             else:
                 st.dataframe(out, use_container_width=True, hide_index=True)
-                st.markdown("### 🏆 Top Ranked from Selected Set")
                 st.dataframe(out.head(3), use_container_width=True, hide_index=True)
 
     safe_run_block(render_nifty50, "Nifty 50 Explorer")
+
+# =========================================================
+# MODULE: NIFTY NEXT 50 EXPLORER
+# =========================================================
+elif module == "Nifty Next 50 Explorer":
+    def render_nifty_next_50():
+        st.subheader("🚀 Nifty Next 50 Explorer")
+        st.success(f"Nifty Next 50 loaded: {len(NIFTY_NEXT_50)} stocks")
+
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            selected = st.multiselect(
+                "Select Nifty Next 50 stocks",
+                options=NIFTY_NEXT_50,
+                default=["HAL", "DIVISLAB", "DMART", "SIEMENS", "VBL"]
+            )
+        with col2:
+            max_stocks = st.slider("Max Scan", 3, 8, 5, key="next50_max_v81")
+
+        st.dataframe(pd.DataFrame({"Nifty Next 50 Stocks": NIFTY_NEXT_50}), use_container_width=True, hide_index=True)
+
+        if st.button("Run Nifty Next 50 Compare", use_container_width=True):
+            symbols = selected[:max_stocks] if selected else NIFTY_NEXT_50[:max_stocks]
+            with st.spinner("Running Nifty Next 50 analysis..."):
+                out = run_pack_analysis(symbols, period="1y", max_stocks=max_stocks)
+            if out.empty:
+                st.warning("No data returned.")
+            else:
+                st.dataframe(out, use_container_width=True, hide_index=True)
+                st.dataframe(out.head(3), use_container_width=True, hide_index=True)
+
+    safe_run_block(render_nifty_next_50, "Nifty Next 50 Explorer")
+
+# =========================================================
+# MODULE: NIFTY 100 EXPLORER
+# =========================================================
+elif module == "Nifty 100 Explorer":
+    def render_nifty100():
+        st.subheader("🏛️ Nifty 100 Explorer")
+        st.success(f"Nifty 100 style universe loaded: {len(NIFTY_100)} stocks")
+
+        col1, col2 = st.columns([2, 1])
+        with col1:
+            selected = st.multiselect(
+                "Select Nifty 100 stocks",
+                options=NIFTY_100,
+                default=["RELIANCE", "HDFCBANK", "TCS", "HAL", "DIVISLAB"]
+            )
+        with col2:
+            max_stocks = st.slider("Max Scan", 3, 10, 6, key="n100_max_v81")
+
+        if st.button("Run Nifty 100 Compare", use_container_width=True):
+            symbols = selected[:max_stocks] if selected else NIFTY_100[:max_stocks]
+            with st.spinner("Running Nifty 100 analysis..."):
+                out = run_pack_analysis(symbols, period="1y", max_stocks=max_stocks)
+            if out.empty:
+                st.warning("No data returned.")
+            else:
+                st.dataframe(out, use_container_width=True, hide_index=True)
+                st.markdown("### 🏆 Top Ranked")
+                st.dataframe(out.head(5), use_container_width=True, hide_index=True)
+
+    safe_run_block(render_nifty100, "Nifty 100 Explorer")
+
+# =========================================================
+# MODULE: ELITE WATCHLIST
+# =========================================================
+elif module == "Elite Watchlist":
+    def render_watchlist():
+        st.subheader("⭐ Elite Watchlist")
+
+        c1, c2, c3 = st.columns([2, 1, 1])
+        with c1:
+            wl_symbol = st.selectbox("Select Symbol", NIFTY_100, key="wl_symbol_manual_v81")
+        with c2:
+            wl_note = st.text_input("Note", value="Monitor / High conviction", key="wl_manual_note_v81")
+        with c3:
+            st.write("")
+            st.write("")
+            if st.button("Add Manually", use_container_width=True):
+                st.session_state.elite_watchlist.append({
+                    "Symbol": wl_symbol,
+                    "Added At": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
+                    "Balanced Score": np.nan,
+                    "Swing Score": np.nan,
+                    "Long Score": np.nan,
+                    "Entry Zone": "Manual Add",
+                    "Trend": "Pending",
+                    "Note": wl_note
+                })
+                st.success(f"{wl_symbol} added to watchlist.")
+
+        if st.session_state.elite_watchlist:
+            wl_df = pd.DataFrame(st.session_state.elite_watchlist)
+            st.dataframe(wl_df, use_container_width=True, hide_index=True)
+
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("Analyze Watchlist", use_container_width=True):
+                    rows = []
+                    symbols = list(dict.fromkeys([x["Symbol"] for x in st.session_state.elite_watchlist]))[:10]
+
+                    with st.spinner("Analyzing watchlist..."):
+                        for sym in symbols:
+                            try:
+                                res = analyze_stock_v81(sym, "1y")
+                                if "error" not in res:
+                                    rows.append({
+                                        "Symbol": sym,
+                                        "Price": round(res["last_close"], 2) if pd.notna(res["last_close"]) else np.nan,
+                                        "Fund Score": res["fund_score"],
+                                        "Tech Score": res["tech_score"],
+                                        "RS Score": res["rs_score"],
+                                        "Balanced Score": res["combined_balanced"],
+                                        "Swing Score": res["combined_swing"],
+                                        "Long Score": res["combined_long"],
+                                        "Trend": res["trend"],
+                                        "Entry Zone": res["entry_zone"],
+                                        "Breakout": "YES" if res["breakout"] else "NO",
+                                        "Reversal": "YES" if res["reversal"] else "NO"
+                                    })
+                            except:
+                                continue
+
+                    if rows:
+                        out = pd.DataFrame(rows).sort_values("Balanced Score", ascending=False).reset_index(drop=True)
+                        st.markdown("### 📊 Watchlist Ranked Analysis")
+                        st.dataframe(out, use_container_width=True, hide_index=True)
+
+                        csv = out.to_csv(index=False).encode("utf-8")
+                        st.download_button("Download Watchlist Analysis CSV", csv, "elite_watchlist_analysis_v81.csv", "text/csv")
+
+            with c2:
+                if st.button("Clear Watchlist", use_container_width=True):
+                    st.session_state.elite_watchlist = []
+                    st.success("Watchlist cleared.")
+        else:
+            st.info("No stocks in Elite Watchlist yet. Add from Single Stock Analysis or manually here.")
+
+    safe_run_block(render_watchlist, "Elite Watchlist")
 
 # =========================================================
 # MODULE: INSTITUTIONAL DASHBOARD
@@ -1341,9 +1569,9 @@ elif module == "Institutional Dashboard":
 
         col1, col2 = st.columns([1, 1])
         with col1:
-            pack = st.selectbox("Choose Pack", list(SECTOR_PACKS.keys()), key="inst_pack_v71")
+            pack = st.selectbox("Choose Pack", list(SECTOR_PACKS.keys()), key="inst_pack_v81")
         with col2:
-            max_stocks = st.slider("Max Stocks (Cloud Safe)", 3, 8, 5)
+            max_stocks = st.slider("Max Stocks", 3, 8, 5, key="inst_max_v81")
 
         if st.button("Run Institutional Scan", use_container_width=True):
             with st.spinner("Scanning institutional universe..."):
@@ -1372,8 +1600,8 @@ elif module == "Institutional Dashboard":
 elif module == "Breakout Scanner":
     def render_breakout():
         st.subheader("🚀 Breakout Scanner")
-        pack = st.selectbox("Choose Universe", list(SECTOR_PACKS.keys()), key="breakout_pack_v71")
-        max_stocks = st.slider("Max Stocks (Cloud Safe)", 3, 8, 5, key="breakout_max_v71")
+        pack = st.selectbox("Choose Universe", list(SECTOR_PACKS.keys()), key="breakout_pack_v81")
+        max_stocks = st.slider("Max Stocks", 3, 8, 5, key="breakout_max_v81")
 
         if st.button("Run Breakout Scan", use_container_width=True):
             with st.spinner("Scanning for breakout candidates..."):
@@ -1398,8 +1626,8 @@ elif module == "Breakout Scanner":
 elif module == "Reversal Scanner":
     def render_reversal():
         st.subheader("🔄 Reversal Scanner")
-        pack = st.selectbox("Choose Universe", list(SECTOR_PACKS.keys()), key="reversal_pack_v71")
-        max_stocks = st.slider("Max Stocks (Cloud Safe)", 3, 8, 5, key="reversal_max_v71")
+        pack = st.selectbox("Choose Universe", list(SECTOR_PACKS.keys()), key="reversal_pack_v81")
+        max_stocks = st.slider("Max Stocks", 3, 8, 5, key="reversal_max_v81")
 
         if st.button("Run Reversal Scan", use_container_width=True):
             with st.spinner("Scanning for reversal candidates..."):
@@ -1424,7 +1652,7 @@ elif module == "Reversal Scanner":
 elif module == "Sector Rotation":
     def render_sector_rotation():
         st.subheader("🏦 Sector Relative Strength Monitor")
-        max_stocks = st.slider("Max Stocks Per Sector (Cloud Safe)", 3, 6, 4, key="sector_rotation_max_v71")
+        max_stocks = st.slider("Max Stocks Per Sector", 3, 6, 4, key="sector_rotation_max_v81")
 
         if st.button("Run Sector Rotation Monitor", use_container_width=True):
             rows = []
@@ -1495,11 +1723,11 @@ elif module == "Portfolio DB":
 
         c1, c2, c3 = st.columns(3)
         with c1:
-            p_symbol = st.selectbox("Symbol", NIFTY_50 + [x for x in UNIVERSE if x not in NIFTY_50], key="pdb_symbol_v71")
+            p_symbol = st.selectbox("Symbol", NIFTY_100 + [x for x in UNIVERSE if x not in NIFTY_100], key="pdb_symbol_v81")
         with c2:
-            p_qty = st.number_input("Qty", min_value=1, value=10, step=1, key="pdb_qty_v71")
+            p_qty = st.number_input("Qty", min_value=1, value=10, step=1, key="pdb_qty_v81")
         with c3:
-            p_avg = st.number_input("Avg Buy Price", min_value=0.0, value=100.0, step=0.1, key="pdb_avg_v71")
+            p_avg = st.number_input("Avg Buy Price", min_value=0.0, value=100.0, step=0.1, key="pdb_avg_v81")
 
         if st.button("Add to Portfolio DB", use_container_width=True):
             st.session_state.portfolio_db.append({
@@ -1523,7 +1751,7 @@ elif module == "Portfolio DB":
                         avg_buy = row["Avg Buy"]
 
                         try:
-                            res = analyze_stock_v71(sym, "1y")
+                            res = analyze_stock_v81(sym, "1y")
                             if "error" not in res:
                                 ltp = res["last_close"]
                                 invested = qty * avg_buy
@@ -1571,7 +1799,7 @@ elif module == "Portfolio Allocation Engine":
             value="RELIANCE,HDFCBANK,ICICIBANK,SBIN,ITC"
         )
 
-        max_stocks = st.slider("Max Symbols (Cloud Safe)", 3, 10, 5, key="alloc_max_v71")
+        max_stocks = st.slider("Max Symbols", 3, 10, 5, key="alloc_max_v81")
         total_capital = st.number_input("Total Capital (₹)", min_value=10000.0, value=500000.0, step=10000.0)
 
         if st.button("Generate Allocation Plan", use_container_width=True):
@@ -1582,7 +1810,7 @@ elif module == "Portfolio Allocation Engine":
             with st.spinner("Building allocation plan..."):
                 for sym in symbols:
                     try:
-                        res = analyze_stock_v71(sym, "1y")
+                        res = analyze_stock_v81(sym, "1y")
                         if "error" not in res:
                             score = res["combined_balanced"]
                             alloc_pct = recommended_allocation(score)
@@ -1625,8 +1853,8 @@ elif module == "Portfolio Allocation Engine":
 elif module == "Mini Screener":
     def render_mini_screener():
         st.subheader("🔎 Mini Screener")
-        pack = st.selectbox("Choose Sector Pack", list(SECTOR_PACKS.keys()), key="mini_pack_v71")
-        max_stocks = st.slider("Max Stocks (Cloud Safe)", 3, 8, 5, key="mini_max_v71")
+        pack = st.selectbox("Choose Sector Pack", list(SECTOR_PACKS.keys()), key="mini_pack_v81")
+        max_stocks = st.slider("Max Stocks", 3, 8, 5, key="mini_max_v81")
 
         if st.button("Run Screener", use_container_width=True):
             with st.spinner("Running screener..."):
@@ -1637,7 +1865,7 @@ elif module == "Mini Screener":
             else:
                 st.dataframe(out, use_container_width=True, hide_index=True)
                 csv = out.to_csv(index=False).encode("utf-8")
-                st.download_button("Download Screener CSV", csv, f"{pack.lower().replace(' ','_')}_v71_screener.csv", "text/csv")
+                st.download_button("Download Screener CSV", csv, f"{pack.lower().replace(' ','_')}_v81_screener.csv", "text/csv")
         else:
             st.info("Screener runs only when you click the button.")
 
@@ -1653,10 +1881,10 @@ elif module == "Portfolio Ranker":
         portfolio_input = st.text_area(
             "Enter comma-separated NSE symbols",
             value="RELIANCE,HDFCBANK,ICICIBANK,SBIN,ITC",
-            key="ranker_input_v71"
+            key="ranker_input_v81"
         )
 
-        max_stocks = st.slider("Max Symbols to Rank (Cloud Safe)", 3, 10, 5, key="ranker_max_v71")
+        max_stocks = st.slider("Max Symbols to Rank", 3, 10, 5, key="ranker_max_v81")
 
         if st.button("Rank Portfolio", use_container_width=True):
             symbols = [x.strip().upper().replace(".NS", "") for x in portfolio_input.split(",") if x.strip()]
@@ -1712,9 +1940,9 @@ elif module == "Wealth Planner":
             with c1:
                 lumpsum = st.number_input("Lumpsum Amount (₹)", min_value=1000, value=100000, step=1000)
             with c2:
-                lump_return = st.number_input("Expected Annual Return (%)", min_value=0.0, value=12.0, step=0.5, key="lump_return_v71")
+                lump_return = st.number_input("Expected Annual Return (%)", min_value=0.0, value=12.0, step=0.5, key="lump_return_v81")
             with c3:
-                lump_years = st.number_input("Years", min_value=1, value=10, step=1, key="lump_years_v71")
+                lump_years = st.number_input("Years", min_value=1, value=10, step=1, key="lump_years_v81")
 
             fv_lump = future_value_lumpsum(lumpsum, lump_return, lump_years)
             gain_lump = fv_lump - lumpsum
@@ -1759,24 +1987,28 @@ elif module == "Returns Analyzer":
 # =========================================================
 else:
     def render_about():
-        st.subheader("ℹ️ About V7.1 ABSOLUTE PRODUCTION LOCKED")
+        st.subheader("ℹ️ About V8.1 NIFTY 100 MASTER")
         st.markdown(f"""
-### FINAL V7.1 ABSOLUTE PRODUCTION LOCKED STREAMLIT CLOUD SAFE SINGLE FULL app.py
+### FINAL V8.1 NIFTY 100 MASTER + NIFTY NEXT 50 + ELITE WATCHLIST + CLOUD SAFE SINGLE FULL app.py
 
-This is your **most stable premium production-grade Streamlit Cloud build**.
+This is your **flagship stable production-grade Streamlit Cloud build**.
 
-### Major V7.1 Upgrades
-- Full Nifty 50 stock universe included
-- Hardened serializable cache (Cloud safe)
+### Major V8.1 Upgrades
+- Full Nifty 50 stock universe
+- Full Nifty Next 50 stock universe
+- Nifty 100 explorer (combined)
+- Elite Watchlist database
+- Hardened serializable cache
 - Fuller fundamental panel
 - Safer lazy loading
 - Stable scanners (manual click only)
-- Stronger fallback handling
 - No app-wide crash on single stock failure
 - Single-file architecture
 
-### Full Nifty 50 Loaded
-**{len(NIFTY_50)} stocks** available in the app.
+### Universe Loaded
+- **Nifty 50:** {len(NIFTY_50)}
+- **Nifty Next 50:** {len(NIFTY_NEXT_50)}
+- **Nifty 100 Combined:** {len(NIFTY_100)}
 
 ### Important Note
 Yahoo Finance may still have partial NSE data for some symbols.  
@@ -1793,5 +2025,5 @@ For educational and research purposes only. Not investment advice.
 # =========================================================
 st.markdown("---")
 st.caption(
-    f"Built with Streamlit + yfinance | NSE (.NS) | FINAL V7.1 ABSOLUTE PRODUCTION LOCKED STREAMLIT CLOUD SAFE SINGLE FULL app.py | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
+    f"Built with Streamlit + yfinance | NSE (.NS) | FINAL V8.1 NIFTY 100 MASTER + NIFTY NEXT 50 + ELITE WATCHLIST + CLOUD SAFE SINGLE FULL app.py | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
 )
