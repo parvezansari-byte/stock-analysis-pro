@@ -1498,7 +1498,43 @@ elif module == "Elite Watchlist":
         with c3:
             st.write("")
             st.write("")
-            if st.button("Add Manually", use_container_width=True):
+            if st.button("Analyze Watchlist + Auto Score", use_container_width=True):
+    rows = []
+    symbols = list(dict.fromkeys([x["Symbol"] for x in st.session_state.elite_watchlist]))[:10]
+
+    with st.spinner("Analyzing watchlist and auto-scoring..."):
+        for sym in symbols:
+            try:
+                res = analyze_stock_v81(sym, "1y")
+                if "error" not in res:
+                    rows.append({
+                        "Symbol": sym,
+                        "Price": round(res["last_close"], 2) if pd.notna(res["last_close"]) else np.nan,
+                        "Fund Score": res["fund_score"],
+                        "Tech Score": res["tech_score"],
+                        "RS Score": res["rs_score"],
+                        "Balanced Score": res["combined_balanced"],
+                        "Swing Score": res["combined_swing"],
+                        "Long Score": res["combined_long"],
+                        "Trend": res["trend"],
+                        "Entry Zone": res["entry_zone"],
+                        "Breakout": "YES" if res["breakout"] else "NO",
+                        "Reversal": "YES" if res["reversal"] else "NO"
+                    })
+            except:
+                continue
+
+    if rows:
+        out = pd.DataFrame(rows).sort_values("Balanced Score", ascending=False).reset_index(drop=True)
+
+        st.markdown("### 📊 Watchlist Ranked Analysis")
+        st.dataframe(out, use_container_width=True, hide_index=True)
+
+        st.markdown("### 🏆 Top 10 Watchlist Leaders")
+        st.dataframe(out.head(10), use_container_width=True, hide_index=True)
+
+        csv = out.to_csv(index=False).encode("utf-8")
+        st.download_button("Download Watchlist Analysis CSV", csv, "elite_watchlist_analysis_v9.csv", "text/csv")
                 st.session_state.elite_watchlist.append({
                     "Symbol": wl_symbol,
                     "Added At": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
@@ -1870,7 +1906,52 @@ elif module == "Mini Screener":
             st.info("Screener runs only when you click the button.")
 
     safe_run_block(render_mini_screener, "Mini Screener")
+  # =========================================================
+# MODULE: Portfolio Concentration Analysis
+# =========================================================  
+elif module == "Portfolio Concentration Analysis":
+    def render_concentration():
+        st.subheader("🧠 Portfolio Concentration Analysis")
 
+        if not st.session_state.portfolio_db:
+            st.info("Add stocks first in Portfolio DB.")
+            return
+
+        db_df = pd.DataFrame(st.session_state.portfolio_db)
+        db_df["Invested Value"] = db_df["Qty"] * db_df["Avg Buy"]
+
+        total_invested = db_df["Invested Value"].sum()
+        if total_invested <= 0:
+            st.warning("Invalid invested values.")
+            return
+
+        db_df["Weight %"] = (db_df["Invested Value"] / total_invested * 100).round(2)
+        db_df = db_df.sort_values("Weight %", ascending=False).reset_index(drop=True)
+
+        st.metric("Total Invested", f"₹ {total_invested:,.2f}")
+        st.dataframe(db_df, use_container_width=True, hide_index=True)
+
+        top1 = db_df["Weight %"].iloc[0] if len(db_df) >= 1 else 0
+        top3 = db_df["Weight %"].head(3).sum() if len(db_df) >= 3 else db_df["Weight %"].sum()
+        top5 = db_df["Weight %"].head(5).sum() if len(db_df) >= 5 else db_df["Weight %"].sum()
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric("Top 1 Weight", f"{top1:.2f}%")
+        with c2:
+            st.metric("Top 3 Weight", f"{top3:.2f}%")
+        with c3:
+            st.metric("Top 5 Weight", f"{top5:.2f}%")
+
+        if top1 > 30:
+            st.error("⚠️ Very high single-stock concentration risk.")
+        elif top1 > 20:
+            st.warning("⚠️ Moderate single-stock concentration risk.")
+        else:
+            st.success("✅ Concentration looks healthier.")
+
+    safe_run_block(render_concentration, "Portfolio Concentration Analysis")
+    
 # =========================================================
 # MODULE: PORTFOLIO RANKER
 # =========================================================
