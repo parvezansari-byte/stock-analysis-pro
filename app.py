@@ -11,7 +11,7 @@ import time
 # PAGE CONFIG
 # =========================================================
 st.set_page_config(
-    page_title="NSE Stock Intelligence Pro MAX V8.1",
+    page_title="NSE Stock Intelligence Pro MAX V9.1",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -134,7 +134,7 @@ QUICK_LIST = [
 ]
 
 # =========================================================
-# SECTOR PACKS (Cloud-safe scan packs)
+# SECTOR PACKS
 # =========================================================
 SECTOR_PACKS = {
     "Nifty 50 Core": ["RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "TCS", "INFY", "ITC", "LT"],
@@ -152,7 +152,7 @@ SECTOR_PACKS = {
 UNIVERSE = sorted(list(set(NIFTY_100 + ["WIPRO"] + sum(SECTOR_PACKS.values(), []))))
 
 # =========================================================
-# FALLBACK SECTOR/INDUSTRY MAP
+# FALLBACK MAP
 # =========================================================
 NSE_MASTER_FALLBACK = {
     "RELIANCE": {"sector": "Energy", "industry": "Oil & Gas / Conglomerate"},
@@ -348,7 +348,7 @@ def safe_run_block(fn, label="module"):
         return None
 
 # =========================================================
-# SERIALIZABLE CACHE ONLY
+# CACHE
 # =========================================================
 @st.cache_data(ttl=900, show_spinner=False)
 def cached_fetch_serializable(symbol: str, period: str = "1y"):
@@ -493,7 +493,6 @@ def add_indicators(df):
     df["ATR14"] = tr.rolling(14).mean()
 
     df["VOL20"] = df["Volume"].rolling(20).mean()
-
     df["RS_50"] = ((df["Close"] / df["SMA50"]) - 1) * 100
     df["RS_200"] = ((df["Close"] / df["SMA200"]) - 1) * 100
 
@@ -572,7 +571,6 @@ def extract_fundamentals_robust(symbol, info, fast_info, financials, balance_she
 
     current_ratio = safe_num(info.get("currentRatio"))
     quick_ratio = safe_num(info.get("quickRatio"))
-
     beta = safe_num(info.get("beta"))
     trailing_peg = safe_num(info.get("pegRatio"))
 
@@ -753,7 +751,7 @@ def score_fundamentals_normalized(fd):
     score = round(num / den, 1) if den > 0 else 50.0
     return score, f"Normalized from {len(valid)} metrics", metrics
 
-def score_technical_v81(df):
+def score_technical_v91(df):
     if df is None or df.empty or len(df) < 50:
         return 45.0, "Not enough data", "Neutral", {}
 
@@ -884,7 +882,7 @@ def get_verdict(score):
 # =========================================================
 # ANALYSIS ENGINE
 # =========================================================
-def analyze_stock_v81(symbol, period="1y"):
+def analyze_stock_v91(symbol, period="1y"):
     hist, info, fast_info, financials, balance_sheet, cashflow, extra_data, err = fetch_full_stock_data(symbol, period)
     if err:
         return {"error": err}
@@ -907,7 +905,7 @@ def analyze_stock_v81(symbol, period="1y"):
     )
 
     fund_score, fund_note, fund_metric_map = score_fundamentals_normalized(fundamental_data)
-    tech_score, tech_note, trend, tech_metric_map = score_technical_v81(df)
+    tech_score, tech_note, trend, tech_metric_map = score_technical_v91(df)
 
     combined_long = round((fund_score * 0.65) + (tech_score * 0.35), 1)
     combined_swing = round((fund_score * 0.30) + (tech_score * 0.70), 1)
@@ -1037,7 +1035,7 @@ def run_pack_analysis(symbols, period="1y", max_stocks=5):
     for idx, sym in enumerate(symbols, start=1):
         try:
             progress.progress(min(idx / max(total, 1), 1.0), text=f"Scanning {sym} ({idx}/{total})")
-            res = analyze_stock_v81(sym, period)
+            res = analyze_stock_v91(sym, period)
             if "error" not in res:
                 rows.append({
                     "Symbol": sym,
@@ -1118,7 +1116,7 @@ def recommended_allocation(score):
 # SIDEBAR
 # =========================================================
 st.sidebar.markdown("## 📊 NSE Stock Intelligence Pro MAX")
-st.sidebar.caption("V8.1 • Nifty 100 Master • Next 50 • Elite Watchlist • Cloud Safe")
+st.sidebar.caption("V9.1 • Nifty 100 Master • Watchlist Scoring • Cloud Safe")
 
 module_options = [
     "Single Stock Analysis",
@@ -1135,6 +1133,8 @@ module_options = [
     "Portfolio Allocation Engine",
     "Mini Screener",
     "Portfolio Ranker",
+    "Multi-Stock Compare",
+    "Portfolio Concentration Analysis",
     "Wealth Planner",
     "Returns Analyzer",
     "About"
@@ -1159,12 +1159,12 @@ period = period_map[period_label]
 # =========================================================
 st.markdown("""
 <div class="hero-box">
-    <div class="main-title">📊 NSE Stock Intelligence Pro MAX V8.1</div>
-    <div class="sub-title">NIFTY 100 MASTER • NIFTY NEXT 50 • ELITE WATCHLIST • STREAMLIT CLOUD SAFE • SINGLE FULL app.py</div>
+    <div class="main-title">📊 NSE Stock Intelligence Pro MAX V9.1</div>
+    <div class="sub-title">NIFTY 100 MASTER • AUTO WATCHLIST SCORING • MULTI-STOCK COMPARE • CLOUD SAFE • SINGLE FULL app.py</div>
     <span class="pill">Nifty 50</span>
     <span class="pill">Nifty Next 50</span>
     <span class="pill">Nifty 100</span>
-    <span class="pill">Elite Watchlist</span>
+    <span class="pill">Watchlist Auto Score</span>
     <span class="pill">Cloud Safe</span>
 </div>
 """, unsafe_allow_html=True)
@@ -1183,7 +1183,7 @@ if module == "Single Stock Analysis":
 
         if st.button("Analyze Stock", use_container_width=True):
             with st.spinner(f"Analyzing {symbol}.NS ..."):
-                result = analyze_stock_v81(symbol, period)
+                result = analyze_stock_v91(symbol, period)
 
             if "error" in result:
                 st.error(result["error"])
@@ -1324,13 +1324,13 @@ if module == "Single Stock Analysis":
 
                 tp1, tp2, tp3, tp4 = st.columns(4)
                 with tp1:
-                    entry = st.number_input("Entry", min_value=0.0, value=float(default_entry) if pd.notna(default_entry) else 0.0, step=0.1, key="tp_entry_v81")
+                    entry = st.number_input("Entry", min_value=0.0, value=float(default_entry) if pd.notna(default_entry) else 0.0, step=0.1, key="tp_entry_v91")
                 with tp2:
-                    stop = st.number_input("Stop Loss", min_value=0.0, value=float(default_stop) if pd.notna(default_stop) else 0.0, step=0.1, key="tp_stop_v81")
+                    stop = st.number_input("Stop Loss", min_value=0.0, value=float(default_stop) if pd.notna(default_stop) else 0.0, step=0.1, key="tp_stop_v91")
                 with tp3:
-                    target = st.number_input("Target", min_value=0.0, value=float(default_target) if pd.notna(default_target) else 0.0, step=0.1, key="tp_target_v81")
+                    target = st.number_input("Target", min_value=0.0, value=float(default_target) if pd.notna(default_target) else 0.0, step=0.1, key="tp_target_v91")
                 with tp4:
-                    capital = st.number_input("Capital", min_value=1000.0, value=100000.0, step=1000.0, key="tp_capital_v81")
+                    capital = st.number_input("Capital", min_value=1000.0, value=100000.0, step=1000.0, key="tp_capital_v91")
 
                 plan = compute_trade_plan(entry, stop, target)
                 if plan:
@@ -1347,7 +1347,7 @@ if module == "Single Stock Analysis":
                     st.info(f"Estimated total position risk at full capital allocation: ₹ {fmt(total_risk)}")
 
             with tabs[5]:
-                wl_note = st.text_input("Watchlist Note", value="High conviction / monitor", key="wl_note_v81")
+                wl_note = st.text_input("Watchlist Note", value="High conviction / monitor", key="wl_note_v91")
                 if st.button("Add to Elite Watchlist", use_container_width=True):
                     st.session_state.elite_watchlist.append({
                         "Symbol": symbol,
@@ -1363,8 +1363,8 @@ if module == "Single Stock Analysis":
 
             with tabs[6]:
                 st.subheader("📂 Add to Portfolio DB")
-                add_qty = st.number_input("Quantity", min_value=1, value=10, step=1, key="single_add_qty_v81")
-                add_avg = st.number_input("Average Buy Price", min_value=0.0, value=float(result["last_close"]) if pd.notna(result["last_close"]) else 0.0, step=0.1, key="single_add_avg_v81")
+                add_qty = st.number_input("Quantity", min_value=1, value=10, step=1, key="single_add_qty_v91")
+                add_avg = st.number_input("Average Buy Price", min_value=0.0, value=float(result["last_close"]) if pd.notna(result["last_close"]) else 0.0, step=0.1, key="single_add_avg_v91")
 
                 if st.button("Add This Stock To Portfolio DB", use_container_width=True):
                     st.session_state.portfolio_db.append({
@@ -1380,7 +1380,7 @@ if module == "Single Stock Analysis":
                 st.download_button(
                     "Download Full Price + Indicators CSV",
                     data=csv,
-                    file_name=f"{symbol}_v81_nifty100_master_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    file_name=f"{symbol}_v91_nifty100_master_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                     mime="text/csv"
                 )
         else:
@@ -1404,7 +1404,7 @@ elif module == "Nifty 50 Explorer":
                 default=["RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "TCS"]
             )
         with col2:
-            max_stocks = st.slider("Max Scan", 3, 8, 5, key="n50_max_v81")
+            max_stocks = st.slider("Max Scan", 3, 8, 5, key="n50_max_v91")
 
         st.dataframe(pd.DataFrame({"Nifty 50 Stocks": NIFTY_50}), use_container_width=True, hide_index=True)
 
@@ -1416,6 +1416,7 @@ elif module == "Nifty 50 Explorer":
                 st.warning("No data returned.")
             else:
                 st.dataframe(out, use_container_width=True, hide_index=True)
+                st.markdown("### 🏆 Top Ranked")
                 st.dataframe(out.head(3), use_container_width=True, hide_index=True)
 
     safe_run_block(render_nifty50, "Nifty 50 Explorer")
@@ -1436,7 +1437,7 @@ elif module == "Nifty Next 50 Explorer":
                 default=["HAL", "DIVISLAB", "DMART", "SIEMENS", "VBL"]
             )
         with col2:
-            max_stocks = st.slider("Max Scan", 3, 8, 5, key="next50_max_v81")
+            max_stocks = st.slider("Max Scan", 3, 8, 5, key="next50_max_v91")
 
         st.dataframe(pd.DataFrame({"Nifty Next 50 Stocks": NIFTY_NEXT_50}), use_container_width=True, hide_index=True)
 
@@ -1448,6 +1449,7 @@ elif module == "Nifty Next 50 Explorer":
                 st.warning("No data returned.")
             else:
                 st.dataframe(out, use_container_width=True, hide_index=True)
+                st.markdown("### 🏆 Top Ranked")
                 st.dataframe(out.head(3), use_container_width=True, hide_index=True)
 
     safe_run_block(render_nifty_next_50, "Nifty Next 50 Explorer")
@@ -1468,7 +1470,7 @@ elif module == "Nifty 100 Explorer":
                 default=["RELIANCE", "HDFCBANK", "TCS", "HAL", "DIVISLAB"]
             )
         with col2:
-            max_stocks = st.slider("Max Scan", 3, 10, 6, key="n100_max_v81")
+            max_stocks = st.slider("Max Scan", 3, 10, 6, key="n100_max_v91")
 
         if st.button("Run Nifty 100 Compare", use_container_width=True):
             symbols = selected[:max_stocks] if selected else NIFTY_100[:max_stocks]
@@ -1492,49 +1494,13 @@ elif module == "Elite Watchlist":
 
         c1, c2, c3 = st.columns([2, 1, 1])
         with c1:
-            wl_symbol = st.selectbox("Select Symbol", NIFTY_100, key="wl_symbol_manual_v81")
+            wl_symbol = st.selectbox("Select Symbol", NIFTY_100, key="wl_symbol_manual_v91")
         with c2:
-            wl_note = st.text_input("Note", value="Monitor / High conviction", key="wl_manual_note_v81")
+            wl_note = st.text_input("Note", value="Monitor / High conviction", key="wl_manual_note_v91")
         with c3:
             st.write("")
             st.write("")
-            if st.button("Analyze Watchlist + Auto Score", use_container_width=True):
-    rows = []
-    symbols = list(dict.fromkeys([x["Symbol"] for x in st.session_state.elite_watchlist]))[:10]
-
-    with st.spinner("Analyzing watchlist and auto-scoring..."):
-        for sym in symbols:
-            try:
-                res = analyze_stock_v81(sym, "1y")
-                if "error" not in res:
-                    rows.append({
-                        "Symbol": sym,
-                        "Price": round(res["last_close"], 2) if pd.notna(res["last_close"]) else np.nan,
-                        "Fund Score": res["fund_score"],
-                        "Tech Score": res["tech_score"],
-                        "RS Score": res["rs_score"],
-                        "Balanced Score": res["combined_balanced"],
-                        "Swing Score": res["combined_swing"],
-                        "Long Score": res["combined_long"],
-                        "Trend": res["trend"],
-                        "Entry Zone": res["entry_zone"],
-                        "Breakout": "YES" if res["breakout"] else "NO",
-                        "Reversal": "YES" if res["reversal"] else "NO"
-                    })
-            except:
-                continue
-
-    if rows:
-        out = pd.DataFrame(rows).sort_values("Balanced Score", ascending=False).reset_index(drop=True)
-
-        st.markdown("### 📊 Watchlist Ranked Analysis")
-        st.dataframe(out, use_container_width=True, hide_index=True)
-
-        st.markdown("### 🏆 Top 10 Watchlist Leaders")
-        st.dataframe(out.head(10), use_container_width=True, hide_index=True)
-
-        csv = out.to_csv(index=False).encode("utf-8")
-        st.download_button("Download Watchlist Analysis CSV", csv, "elite_watchlist_analysis_v9.csv", "text/csv")
+            if st.button("Add Manually", use_container_width=True):
                 st.session_state.elite_watchlist.append({
                     "Symbol": wl_symbol,
                     "Added At": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
@@ -1552,15 +1518,16 @@ elif module == "Elite Watchlist":
             st.dataframe(wl_df, use_container_width=True, hide_index=True)
 
             c1, c2 = st.columns(2)
+
             with c1:
-                if st.button("Analyze Watchlist", use_container_width=True):
+                if st.button("Analyze Watchlist + Auto Score", use_container_width=True):
                     rows = []
                     symbols = list(dict.fromkeys([x["Symbol"] for x in st.session_state.elite_watchlist]))[:10]
 
-                    with st.spinner("Analyzing watchlist..."):
+                    with st.spinner("Analyzing watchlist and auto-scoring..."):
                         for sym in symbols:
                             try:
-                                res = analyze_stock_v81(sym, "1y")
+                                res = analyze_stock_v91(sym, "1y")
                                 if "error" not in res:
                                     rows.append({
                                         "Symbol": sym,
@@ -1581,11 +1548,22 @@ elif module == "Elite Watchlist":
 
                     if rows:
                         out = pd.DataFrame(rows).sort_values("Balanced Score", ascending=False).reset_index(drop=True)
+
                         st.markdown("### 📊 Watchlist Ranked Analysis")
                         st.dataframe(out, use_container_width=True, hide_index=True)
 
+                        st.markdown("### 🏆 Top 10 Watchlist Leaders")
+                        st.dataframe(out.head(10), use_container_width=True, hide_index=True)
+
                         csv = out.to_csv(index=False).encode("utf-8")
-                        st.download_button("Download Watchlist Analysis CSV", csv, "elite_watchlist_analysis_v81.csv", "text/csv")
+                        st.download_button(
+                            "Download Watchlist Analysis CSV",
+                            csv,
+                            "elite_watchlist_analysis_v91.csv",
+                            "text/csv"
+                        )
+                    else:
+                        st.warning("No valid watchlist data returned.")
 
             with c2:
                 if st.button("Clear Watchlist", use_container_width=True):
@@ -1605,9 +1583,9 @@ elif module == "Institutional Dashboard":
 
         col1, col2 = st.columns([1, 1])
         with col1:
-            pack = st.selectbox("Choose Pack", list(SECTOR_PACKS.keys()), key="inst_pack_v81")
+            pack = st.selectbox("Choose Pack", list(SECTOR_PACKS.keys()), key="inst_pack_v91")
         with col2:
-            max_stocks = st.slider("Max Stocks", 3, 8, 5, key="inst_max_v81")
+            max_stocks = st.slider("Max Stocks", 3, 8, 5, key="inst_max_v91")
 
         if st.button("Run Institutional Scan", use_container_width=True):
             with st.spinner("Scanning institutional universe..."):
@@ -1636,8 +1614,8 @@ elif module == "Institutional Dashboard":
 elif module == "Breakout Scanner":
     def render_breakout():
         st.subheader("🚀 Breakout Scanner")
-        pack = st.selectbox("Choose Universe", list(SECTOR_PACKS.keys()), key="breakout_pack_v81")
-        max_stocks = st.slider("Max Stocks", 3, 8, 5, key="breakout_max_v81")
+        pack = st.selectbox("Choose Universe", list(SECTOR_PACKS.keys()), key="breakout_pack_v91")
+        max_stocks = st.slider("Max Stocks", 3, 8, 5, key="breakout_max_v91")
 
         if st.button("Run Breakout Scan", use_container_width=True):
             with st.spinner("Scanning for breakout candidates..."):
@@ -1662,8 +1640,8 @@ elif module == "Breakout Scanner":
 elif module == "Reversal Scanner":
     def render_reversal():
         st.subheader("🔄 Reversal Scanner")
-        pack = st.selectbox("Choose Universe", list(SECTOR_PACKS.keys()), key="reversal_pack_v81")
-        max_stocks = st.slider("Max Stocks", 3, 8, 5, key="reversal_max_v81")
+        pack = st.selectbox("Choose Universe", list(SECTOR_PACKS.keys()), key="reversal_pack_v91")
+        max_stocks = st.slider("Max Stocks", 3, 8, 5, key="reversal_max_v91")
 
         if st.button("Run Reversal Scan", use_container_width=True):
             with st.spinner("Scanning for reversal candidates..."):
@@ -1688,7 +1666,7 @@ elif module == "Reversal Scanner":
 elif module == "Sector Rotation":
     def render_sector_rotation():
         st.subheader("🏦 Sector Relative Strength Monitor")
-        max_stocks = st.slider("Max Stocks Per Sector", 3, 6, 4, key="sector_rotation_max_v81")
+        max_stocks = st.slider("Max Stocks Per Sector", 3, 6, 4, key="sector_rotation_max_v91")
 
         if st.button("Run Sector Rotation Monitor", use_container_width=True):
             rows = []
@@ -1759,11 +1737,11 @@ elif module == "Portfolio DB":
 
         c1, c2, c3 = st.columns(3)
         with c1:
-            p_symbol = st.selectbox("Symbol", NIFTY_100 + [x for x in UNIVERSE if x not in NIFTY_100], key="pdb_symbol_v81")
+            p_symbol = st.selectbox("Symbol", NIFTY_100 + [x for x in UNIVERSE if x not in NIFTY_100], key="pdb_symbol_v91")
         with c2:
-            p_qty = st.number_input("Qty", min_value=1, value=10, step=1, key="pdb_qty_v81")
+            p_qty = st.number_input("Qty", min_value=1, value=10, step=1, key="pdb_qty_v91")
         with c3:
-            p_avg = st.number_input("Avg Buy Price", min_value=0.0, value=100.0, step=0.1, key="pdb_avg_v81")
+            p_avg = st.number_input("Avg Buy Price", min_value=0.0, value=100.0, step=0.1, key="pdb_avg_v91")
 
         if st.button("Add to Portfolio DB", use_container_width=True):
             st.session_state.portfolio_db.append({
@@ -1787,7 +1765,7 @@ elif module == "Portfolio DB":
                         avg_buy = row["Avg Buy"]
 
                         try:
-                            res = analyze_stock_v81(sym, "1y")
+                            res = analyze_stock_v91(sym, "1y")
                             if "error" not in res:
                                 ltp = res["last_close"]
                                 invested = qty * avg_buy
@@ -1835,7 +1813,7 @@ elif module == "Portfolio Allocation Engine":
             value="RELIANCE,HDFCBANK,ICICIBANK,SBIN,ITC"
         )
 
-        max_stocks = st.slider("Max Symbols", 3, 10, 5, key="alloc_max_v81")
+        max_stocks = st.slider("Max Symbols", 3, 10, 5, key="alloc_max_v91")
         total_capital = st.number_input("Total Capital (₹)", min_value=10000.0, value=500000.0, step=10000.0)
 
         if st.button("Generate Allocation Plan", use_container_width=True):
@@ -1846,7 +1824,7 @@ elif module == "Portfolio Allocation Engine":
             with st.spinner("Building allocation plan..."):
                 for sym in symbols:
                     try:
-                        res = analyze_stock_v81(sym, "1y")
+                        res = analyze_stock_v91(sym, "1y")
                         if "error" not in res:
                             score = res["combined_balanced"]
                             alloc_pct = recommended_allocation(score)
@@ -1889,8 +1867,8 @@ elif module == "Portfolio Allocation Engine":
 elif module == "Mini Screener":
     def render_mini_screener():
         st.subheader("🔎 Mini Screener")
-        pack = st.selectbox("Choose Sector Pack", list(SECTOR_PACKS.keys()), key="mini_pack_v81")
-        max_stocks = st.slider("Max Stocks", 3, 8, 5, key="mini_max_v81")
+        pack = st.selectbox("Choose Sector Pack", list(SECTOR_PACKS.keys()), key="mini_pack_v91")
+        max_stocks = st.slider("Max Stocks", 3, 8, 5, key="mini_max_v91")
 
         if st.button("Run Screener", use_container_width=True):
             with st.spinner("Running screener..."):
@@ -1901,14 +1879,86 @@ elif module == "Mini Screener":
             else:
                 st.dataframe(out, use_container_width=True, hide_index=True)
                 csv = out.to_csv(index=False).encode("utf-8")
-                st.download_button("Download Screener CSV", csv, f"{pack.lower().replace(' ','_')}_v81_screener.csv", "text/csv")
+                st.download_button("Download Screener CSV", csv, f"{pack.lower().replace(' ','_')}_v91_screener.csv", "text/csv")
         else:
             st.info("Screener runs only when you click the button.")
 
     safe_run_block(render_mini_screener, "Mini Screener")
-  # =========================================================
-# MODULE: Portfolio Concentration Analysis
-# =========================================================  
+
+# =========================================================
+# MODULE: PORTFOLIO RANKER
+# =========================================================
+elif module == "Portfolio Ranker":
+    def render_portfolio_ranker():
+        st.subheader("🏆 Portfolio Ranker")
+
+        portfolio_input = st.text_area(
+            "Enter comma-separated NSE symbols",
+            value="RELIANCE,HDFCBANK,ICICIBANK,SBIN,ITC",
+            key="ranker_input_v91"
+        )
+
+        max_stocks = st.slider("Max Symbols to Rank", 3, 10, 5, key="ranker_max_v91")
+
+        if st.button("Rank Portfolio", use_container_width=True):
+            symbols = [x.strip().upper().replace(".NS", "") for x in portfolio_input.split(",") if x.strip()]
+            symbols = list(dict.fromkeys(symbols))[:max_stocks]
+
+            if not symbols:
+                st.warning("Please enter valid symbols.")
+                return
+
+            with st.spinner("Ranking portfolio..."):
+                out = run_pack_analysis(symbols, period="1y", max_stocks=max_stocks)
+
+            if out.empty:
+                st.warning("No ranking data.")
+            else:
+                st.dataframe(out, use_container_width=True, hide_index=True)
+                st.markdown("### 🏅 Top 3")
+                st.dataframe(out.head(3), use_container_width=True, hide_index=True)
+        else:
+            st.info("Ranking runs only when you click the button.")
+
+    safe_run_block(render_portfolio_ranker, "Portfolio Ranker")
+
+# =========================================================
+# MODULE: MULTI-STOCK COMPARE
+# =========================================================
+elif module == "Multi-Stock Compare":
+    def render_multi_compare():
+        st.subheader("📊 Multi-Stock Side-by-Side Compare")
+
+        compare_input = st.text_area(
+            "Enter comma-separated NSE symbols",
+            value="RELIANCE,HDFCBANK,ICICIBANK,SBIN,TCS"
+        )
+
+        max_stocks = st.slider("Max Compare Stocks", 2, 8, 5, key="multi_compare_max_v91")
+
+        if st.button("Run Side-by-Side Compare", use_container_width=True):
+            symbols = [x.strip().upper().replace(".NS", "") for x in compare_input.split(",") if x.strip()]
+            symbols = list(dict.fromkeys(symbols))[:max_stocks]
+
+            with st.spinner("Running side-by-side compare..."):
+                out = run_pack_analysis(symbols, period="1y", max_stocks=max_stocks)
+
+            if out.empty:
+                st.warning("No data available.")
+            else:
+                st.dataframe(out, use_container_width=True, hide_index=True)
+
+                st.markdown("### 🏆 Best Ranked")
+                st.dataframe(out.head(3), use_container_width=True, hide_index=True)
+
+                csv = out.to_csv(index=False).encode("utf-8")
+                st.download_button("Download Compare CSV", csv, "multi_stock_compare_v91.csv", "text/csv")
+
+    safe_run_block(render_multi_compare, "Multi-Stock Compare")
+
+# =========================================================
+# MODULE: PORTFOLIO CONCENTRATION ANALYSIS
+# =========================================================
 elif module == "Portfolio Concentration Analysis":
     def render_concentration():
         st.subheader("🧠 Portfolio Concentration Analysis")
@@ -1951,43 +2001,6 @@ elif module == "Portfolio Concentration Analysis":
             st.success("✅ Concentration looks healthier.")
 
     safe_run_block(render_concentration, "Portfolio Concentration Analysis")
-    
-# =========================================================
-# MODULE: PORTFOLIO RANKER
-# =========================================================
-elif module == "Portfolio Ranker":
-    def render_portfolio_ranker():
-        st.subheader("🏆 Portfolio Ranker")
-
-        portfolio_input = st.text_area(
-            "Enter comma-separated NSE symbols",
-            value="RELIANCE,HDFCBANK,ICICIBANK,SBIN,ITC",
-            key="ranker_input_v81"
-        )
-
-        max_stocks = st.slider("Max Symbols to Rank", 3, 10, 5, key="ranker_max_v81")
-
-        if st.button("Rank Portfolio", use_container_width=True):
-            symbols = [x.strip().upper().replace(".NS", "") for x in portfolio_input.split(",") if x.strip()]
-            symbols = list(dict.fromkeys(symbols))[:max_stocks]
-
-            if not symbols:
-                st.warning("Please enter valid symbols.")
-                return
-
-            with st.spinner("Ranking portfolio..."):
-                out = run_pack_analysis(symbols, period="1y", max_stocks=max_stocks)
-
-            if out.empty:
-                st.warning("No ranking data.")
-            else:
-                st.dataframe(out, use_container_width=True, hide_index=True)
-                st.markdown("### 🏅 Top 3")
-                st.dataframe(out.head(3), use_container_width=True, hide_index=True)
-        else:
-            st.info("Ranking runs only when you click the button.")
-
-    safe_run_block(render_portfolio_ranker, "Portfolio Ranker")
 
 # =========================================================
 # MODULE: WEALTH PLANNER
@@ -2021,9 +2034,9 @@ elif module == "Wealth Planner":
             with c1:
                 lumpsum = st.number_input("Lumpsum Amount (₹)", min_value=1000, value=100000, step=1000)
             with c2:
-                lump_return = st.number_input("Expected Annual Return (%)", min_value=0.0, value=12.0, step=0.5, key="lump_return_v81")
+                lump_return = st.number_input("Expected Annual Return (%)", min_value=0.0, value=12.0, step=0.5, key="lump_return_v91")
             with c3:
-                lump_years = st.number_input("Years", min_value=1, value=10, step=1, key="lump_years_v81")
+                lump_years = st.number_input("Years", min_value=1, value=10, step=1, key="lump_years_v91")
 
             fv_lump = future_value_lumpsum(lumpsum, lump_return, lump_years)
             gain_lump = fv_lump - lumpsum
@@ -2068,22 +2081,23 @@ elif module == "Returns Analyzer":
 # =========================================================
 else:
     def render_about():
-        st.subheader("ℹ️ About V8.1 NIFTY 100 MASTER")
+        st.subheader("ℹ️ About V9.1")
         st.markdown(f"""
-### FINAL V8.1 NIFTY 100 MASTER + NIFTY NEXT 50 + ELITE WATCHLIST + CLOUD SAFE SINGLE FULL app.py
+### FINAL V9.1 FULL MERGED STABLE SINGLE FULL app.py
 
-This is your **flagship stable production-grade Streamlit Cloud build**.
+This is your **full merged stable production-grade Streamlit Cloud build**.
 
-### Major V8.1 Upgrades
-- Full Nifty 50 stock universe
-- Full Nifty Next 50 stock universe
-- Nifty 100 explorer (combined)
-- Elite Watchlist database
-- Hardened serializable cache
-- Fuller fundamental panel
-- Safer lazy loading
+### Major V9.1 Upgrades
+- Full Nifty 50
+- Full Nifty Next 50
+- Nifty 100 Explorer
+- Elite Watchlist
+- **Auto Watchlist Scoring (fixed indentation)**
+- Institutional Dashboard
+- Multi-Stock Compare
+- Portfolio Concentration Analysis
 - Stable scanners (manual click only)
-- No app-wide crash on single stock failure
+- Cloud-safe lazy loading
 - Single-file architecture
 
 ### Universe Loaded
@@ -2093,7 +2107,7 @@ This is your **flagship stable production-grade Streamlit Cloud build**.
 
 ### Important Note
 Yahoo Finance may still have partial NSE data for some symbols.  
-This app uses multiple fallback layers, but 100% perfect fundamentals for every NSE stock cannot be guaranteed.
+This app uses fallback layers, but 100% perfect fundamentals for every NSE stock cannot be guaranteed.
 
 ### Disclaimer
 For educational and research purposes only. Not investment advice.
@@ -2106,5 +2120,5 @@ For educational and research purposes only. Not investment advice.
 # =========================================================
 st.markdown("---")
 st.caption(
-    f"Built with Streamlit + yfinance | NSE (.NS) | FINAL V8.1 NIFTY 100 MASTER + NIFTY NEXT 50 + ELITE WATCHLIST + CLOUD SAFE SINGLE FULL app.py | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
+    f"Built with Streamlit + yfinance | NSE (.NS) | FINAL V9.1 FULL MERGED STABLE SINGLE FULL app.py | {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
 )
