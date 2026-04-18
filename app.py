@@ -488,6 +488,242 @@ def colorize_rating(rating):
         return "gold-text"
     else:
         return "red-text"
+        def get_fundamental_analysis_text(row):
+    analysis = []
+
+    pe = row.get("PE", np.nan)
+    pb = row.get("PB", np.nan)
+    roe = row.get("ROE", np.nan)
+    de = row.get("Debt/Equity", np.nan)
+    margin = row.get("Profit Margin", np.nan)
+    growth = row.get("Revenue Growth", np.nan)
+    div_yield = row.get("Dividend Yield", np.nan)
+    fund_score = row.get("Fundamental Score", 0)
+
+    # PE Analysis
+    if pd.notna(pe):
+        if pe < 20:
+            analysis.append(("PE Ratio", f"{pe:.2f}", "Attractive valuation (reasonably valued)"))
+        elif pe < 35:
+            analysis.append(("PE Ratio", f"{pe:.2f}", "Fair valuation"))
+        else:
+            analysis.append(("PE Ratio", f"{pe:.2f}", "Premium / expensive valuation"))
+    else:
+        analysis.append(("PE Ratio", "N/A", "Data not available"))
+
+    # PB Analysis
+    if pd.notna(pb):
+        if pb < 3:
+            analysis.append(("PB Ratio", f"{pb:.2f}", "Healthy price-to-book valuation"))
+        elif pb < 6:
+            analysis.append(("PB Ratio", f"{pb:.2f}", "Acceptable premium"))
+        else:
+            analysis.append(("PB Ratio", f"{pb:.2f}", "Rich valuation vs book value"))
+    else:
+        analysis.append(("PB Ratio", "N/A", "Data not available"))
+
+    # ROE
+    if pd.notna(roe):
+        if roe > 20:
+            analysis.append(("ROE", f"{roe:.2f}%", "Excellent capital efficiency (elite quality)"))
+        elif roe > 15:
+            analysis.append(("ROE", f"{roe:.2f}%", "Strong business quality"))
+        elif roe > 10:
+            analysis.append(("ROE", f"{roe:.2f}%", "Average to good"))
+        else:
+            analysis.append(("ROE", f"{roe:.2f}%", "Weak or average quality"))
+    else:
+        analysis.append(("ROE", "N/A", "Data not available"))
+
+    # Debt/Equity
+    if pd.notna(de):
+        if de < 50:
+            analysis.append(("Debt/Equity", f"{de:.2f}", "Strong balance sheet / low leverage"))
+        elif de < 100:
+            analysis.append(("Debt/Equity", f"{de:.2f}", "Manageable leverage"))
+        else:
+            analysis.append(("Debt/Equity", f"{de:.2f}", "Higher debt risk - monitor carefully"))
+    else:
+        analysis.append(("Debt/Equity", "N/A", "Data not available"))
+
+    # Profit Margin
+    if pd.notna(margin):
+        if margin > 20:
+            analysis.append(("Profit Margin", f"{margin:.2f}%", "Excellent profitability"))
+        elif margin > 10:
+            analysis.append(("Profit Margin", f"{margin:.2f}%", "Healthy profitability"))
+        elif margin > 5:
+            analysis.append(("Profit Margin", f"{margin:.2f}%", "Moderate profitability"))
+        else:
+            analysis.append(("Profit Margin", f"{margin:.2f}%", "Thin profitability"))
+    else:
+        analysis.append(("Profit Margin", "N/A", "Data not available"))
+
+    # Revenue Growth
+    if pd.notna(growth):
+        if growth > 20:
+            analysis.append(("Revenue Growth", f"{growth:.2f}%", "High growth business"))
+        elif growth > 10:
+            analysis.append(("Revenue Growth", f"{growth:.2f}%", "Healthy growth"))
+        elif growth > 5:
+            analysis.append(("Revenue Growth", f"{growth:.2f}%", "Moderate growth"))
+        else:
+            analysis.append(("Revenue Growth", f"{growth:.2f}%", "Low growth / mature business"))
+    else:
+        analysis.append(("Revenue Growth", "N/A", "Data not available"))
+
+    # Dividend
+    if pd.notna(div_yield):
+        if div_yield > 2:
+            analysis.append(("Dividend Yield", f"{div_yield:.2f}%", "Good shareholder payout support"))
+        elif div_yield > 0:
+            analysis.append(("Dividend Yield", f"{div_yield:.2f}%", "Moderate dividend support"))
+        else:
+            analysis.append(("Dividend Yield", f"{div_yield:.2f}%", "Low / no dividend"))
+    else:
+        analysis.append(("Dividend Yield", "N/A", "Data not available"))
+
+    # Summary
+    if fund_score >= 80:
+        summary = "Institutional Fundamental View: ELITE QUALITY / STRONG FUNDAMENTAL COMPOUNDER"
+    elif fund_score >= 65:
+        summary = "Institutional Fundamental View: STRONG FUNDAMENTAL PROFILE"
+    elif fund_score >= 50:
+        summary = "Institutional Fundamental View: DECENT / MIXED FUNDAMENTALS"
+    else:
+        summary = "Institutional Fundamental View: WEAK / NEEDS CAUTION"
+
+    return analysis, summary
+
+
+def get_technical_analysis_text(row):
+    analysis = []
+
+    price = row.get("Price", np.nan)
+    rsi = row.get("RSI", np.nan)
+    sma20 = row.get("Hist").iloc[-1]["SMA20"] if row.get("Hist") is not None and not row.get("Hist").empty else np.nan
+    sma50 = row.get("SMA50", np.nan)
+    sma200 = row.get("SMA200", np.nan)
+    macd = row.get("MACD", np.nan)
+    macd_signal = row.get("MACD Signal", np.nan)
+    high_52 = row.get("52W High", np.nan)
+    low_52 = row.get("52W Low", np.nan)
+    ret_1m = row.get("1M %", np.nan)
+    ret_3m = row.get("3M %", np.nan)
+    ret_6m = row.get("6M %", np.nan)
+    ret_1y = row.get("1Y %", np.nan)
+    tech_score = row.get("Technical Score", 0)
+
+    # Price vs MA
+    if pd.notna(price) and pd.notna(sma20):
+        verdict = "Bullish above 20DMA" if price > sma20 else "Below 20DMA (short-term weakness)"
+        analysis.append(("Price vs 20DMA", f"₹{price:.2f} vs ₹{sma20:.2f}", verdict))
+
+    if pd.notna(price) and pd.notna(sma50):
+        verdict = "Bullish above 50DMA" if price > sma50 else "Below 50DMA (medium-term caution)"
+        analysis.append(("Price vs 50DMA", f"₹{price:.2f} vs ₹{sma50:.2f}", verdict))
+
+    if pd.notna(price) and pd.notna(sma200):
+        verdict = "Bullish above 200DMA" if price > sma200 else "Below 200DMA (long-term weak structure)"
+        analysis.append(("Price vs 200DMA", f"₹{price:.2f} vs ₹{sma200:.2f}", verdict))
+
+    # RSI
+    if pd.notna(rsi):
+        if rsi > 70:
+            verdict = "Overbought zone - strong momentum but caution"
+        elif rsi < 30:
+            verdict = "Oversold zone - possible bounce candidate"
+        elif 45 <= rsi <= 65:
+            verdict = "Healthy momentum zone"
+        else:
+            verdict = "Neutral momentum zone"
+        analysis.append(("RSI", f"{rsi:.2f}", verdict))
+
+    # MACD
+    if pd.notna(macd) and pd.notna(macd_signal):
+        verdict = "Bullish MACD crossover / momentum positive" if macd > macd_signal else "Bearish MACD setup / momentum weak"
+        analysis.append(("MACD", f"{macd:.2f} vs Signal {macd_signal:.2f}", verdict))
+
+    # 52 week range
+    if pd.notna(price) and pd.notna(high_52) and pd.notna(low_52) and high_52 != low_52:
+        pos = ((price - low_52) / (high_52 - low_52)) * 100
+        if pos > 80:
+            verdict = "Trading near 52W high (leadership strength)"
+        elif pos > 60:
+            verdict = "Upper range strength"
+        elif pos > 40:
+            verdict = "Mid range"
+        else:
+            verdict = "Lower range / weak structure"
+        analysis.append(("52W Range Position", f"{pos:.2f}%", verdict))
+
+    # Momentum
+    momentum_text = f"1M: {ret_1m:.2f}% | 3M: {ret_3m:.2f}% | 6M: {ret_6m:.2f}% | 1Y: {ret_1y:.2f}%"
+    if pd.notna(ret_3m) and pd.notna(ret_6m):
+        if ret_3m > 0 and ret_6m > 0:
+            momentum_verdict = "Positive multi-timeframe momentum"
+        else:
+            momentum_verdict = "Mixed / weak momentum"
+    else:
+        momentum_verdict = "Momentum data partially unavailable"
+    analysis.append(("Momentum", momentum_text, momentum_verdict))
+
+    # Summary
+    if tech_score >= 80:
+        summary = "Institutional Technical View: STRONG UPTREND / MOMENTUM LEADER"
+    elif tech_score >= 65:
+        summary = "Institutional Technical View: BULLISH TECHNICAL STRUCTURE"
+    elif tech_score >= 50:
+        summary = "Institutional Technical View: NEUTRAL TO POSITIVE"
+    else:
+        summary = "Institutional Technical View: WEAK / CAUTION"
+
+    return analysis, summary
+
+
+def get_institutional_strategy_view(row):
+    styles = []
+
+    fund_score = row.get("Fundamental Score", 0)
+    tech_score = row.get("Technical Score", 0)
+    total_score = row.get("Total Score", 0)
+    pe = row.get("PE", np.nan)
+    roe = row.get("ROE", np.nan)
+    de = row.get("Debt/Equity", np.nan)
+    ret_3m = row.get("3M %", np.nan)
+    ret_6m = row.get("6M %", np.nan)
+    price = row.get("Price", np.nan)
+    sma50 = row.get("SMA50", np.nan)
+
+    if pd.notna(pe) and pe < 25 and fund_score >= 65:
+        styles.append("✅ Value / GARP Candidate")
+    if pd.notna(roe) and roe > 15 and pd.notna(de) and de < 100:
+        styles.append("✅ Quality Compounder Candidate")
+    if pd.notna(ret_3m) and pd.notna(ret_6m) and ret_3m > 0 and ret_6m > 0 and tech_score >= 65:
+        styles.append("✅ Momentum Candidate")
+    if pd.notna(price) and pd.notna(sma50) and price > sma50 and tech_score >= 60:
+        styles.append("✅ Swing / Positional Candidate")
+    if total_score < 50:
+        styles.append("⚠️ Not ideal for fresh aggressive entry")
+
+    if pd.notna(price) and pd.notna(sma50):
+        if price > sma50:
+            entry_view = "Preferred on dips near 20DMA / 50DMA support"
+        else:
+            entry_view = "Wait for trend confirmation above 50DMA"
+    else:
+        entry_view = "Wait for confirmation setup"
+
+    if tech_score >= 70 and fund_score >= 65:
+        action_bias = "🏛️ Institutional Bias: ACCUMULATE ON DIPS"
+    elif total_score >= 60:
+        action_bias = "🏛️ Institutional Bias: SELECTIVE BUY / WATCHLIST"
+    elif total_score >= 50:
+        action_bias = "🏛️ Institutional Bias: HOLD / MONITOR"
+    else:
+        action_bias = "🏛️ Institutional Bias: AVOID / WAIT"
+
+    return styles, entry_view, action_bias
 
 # =========================
 # SIDEBAR
@@ -655,6 +891,7 @@ with tab1:
 # TAB 2: SINGLE STOCK
 # =========================
 with tab2:
+    with tab2:
     st.subheader("🔍 Single Stock Deep Analysis")
 
     single_result = analyze_stock(selected_stock)
@@ -676,18 +913,22 @@ with tab2:
         hist_df = single_result["Hist"]
         st.line_chart(hist_df["Close"], height=350)
 
-        st.markdown("### 📊 Technical Indicators")
-        tc1, tc2, tc3, tc4 = st.columns(4)
-        with tc1:
-            st.metric("RSI", f"{single_result['RSI']:.2f}" if pd.notna(single_result["RSI"]) else "N/A")
-        with tc2:
-            st.metric("SMA50", f"₹{single_result['SMA50']:.2f}" if pd.notna(single_result["SMA50"]) else "N/A")
-        with tc3:
-            st.metric("SMA200", f"₹{single_result['SMA200']:.2f}" if pd.notna(single_result["SMA200"]) else "N/A")
-        with tc4:
-            st.metric("MACD", f"{single_result['MACD']:.2f}" if pd.notna(single_result["MACD"]) else "N/A")
+        # =========================
+        # QUICK SCORECARDS
+        # =========================
+        st.markdown("### 🏛️ Institutional Scorecards")
+        s1, s2, s3 = st.columns(3)
+        with s1:
+            st.metric("Fundamental Score", f"{single_result['Fundamental Score']}/100")
+        with s2:
+            st.metric("Technical Score", f"{single_result['Technical Score']}/100")
+        with s3:
+            st.metric("Final Institutional Score", f"{single_result['Total Score']}/100")
 
-        st.markdown("### 🏛️ Fundamental Snapshot")
+        # =========================
+        # FUNDAMENTAL SNAPSHOT
+        # =========================
+        st.markdown("### 🏦 Fundamental Snapshot")
         fc1, fc2, fc3, fc4 = st.columns(4)
         with fc1:
             st.metric("PE", f"{single_result['PE']:.2f}" if pd.notna(single_result["PE"]) else "N/A")
@@ -698,68 +939,106 @@ with tab2:
         with fc4:
             st.metric("Debt/Equity", f"{single_result['Debt/Equity']:.2f}" if pd.notna(single_result["Debt/Equity"]) else "N/A")
 
+        fc5, fc6, fc7, fc8 = st.columns(4)
+        with fc5:
+            st.metric("Profit Margin", f"{single_result['Profit Margin']:.2f}%" if pd.notna(single_result["Profit Margin"]) else "N/A")
+        with fc6:
+            st.metric("Revenue Growth", f"{single_result['Revenue Growth']:.2f}%" if pd.notna(single_result["Revenue Growth"]) else "N/A")
+        with fc7:
+            st.metric("Dividend Yield", f"{single_result['Dividend Yield']:.2f}%" if pd.notna(single_result["Dividend Yield"]) else "N/A")
+        with fc8:
+            st.metric("Market Cap", format_large_num(single_result["Market Cap"]))
+
+        # =========================
+        # TECHNICAL SNAPSHOT
+        # =========================
+        st.markdown("### 📊 Technical Snapshot")
+        tc1, tc2, tc3, tc4 = st.columns(4)
+        with tc1:
+            st.metric("RSI", f"{single_result['RSI']:.2f}" if pd.notna(single_result["RSI"]) else "N/A")
+        with tc2:
+            st.metric("SMA50", f"₹{single_result['SMA50']:.2f}" if pd.notna(single_result["SMA50"]) else "N/A")
+        with tc3:
+            st.metric("SMA200", f"₹{single_result['SMA200']:.2f}" if pd.notna(single_result["SMA200"]) else "N/A")
+        with tc4:
+            st.metric("MACD", f"{single_result['MACD']:.2f}" if pd.notna(single_result["MACD"]) else "N/A")
+
+        tc5, tc6, tc7, tc8 = st.columns(4)
+        with tc5:
+            st.metric("1M Return", f"{single_result['1M %']:.2f}%" if pd.notna(single_result["1M %"]) else "N/A")
+        with tc6:
+            st.metric("3M Return", f"{single_result['3M %']:.2f}%" if pd.notna(single_result["3M %"]) else "N/A")
+        with tc7:
+            st.metric("6M Return", f"{single_result['6M %']:.2f}%" if pd.notna(single_result["6M %"]) else "N/A")
+        with tc8:
+            st.metric("1Y Return", f"{single_result['1Y %']:.2f}%" if pd.notna(single_result["1Y %"]) else "N/A")
+
+        # =========================
+        # PER-STOCK FUNDAMENTAL ANALYSIS
+        # =========================
+        st.markdown("### 🧾 Per-Stock Fundamental Analysis")
+        fund_analysis, fund_summary = get_fundamental_analysis_text(single_result)
+        fund_df = pd.DataFrame(fund_analysis, columns=["Fundamental Metric", "Value", "Institutional Interpretation"])
+        st.dataframe(fund_df, use_container_width=True, height=320)
+        st.success(fund_summary)
+
+        # =========================
+        # PER-STOCK TECHNICAL ANALYSIS
+        # =========================
+        st.markdown("### 📉 Per-Stock Technical Analysis")
+        tech_analysis, tech_summary = get_technical_analysis_text(single_result)
+        tech_df = pd.DataFrame(tech_analysis, columns=["Technical Metric", "Value", "Institutional Interpretation"])
+        st.dataframe(tech_df, use_container_width=True, height=320)
+        st.info(tech_summary)
+
+        # =========================
+        # ADVANCED INSTITUTIONAL DATA
+        # =========================
         st.markdown("### 💼 Advanced Institutional Data")
         adv_df = pd.DataFrame({
             "Metric": [
-                "Sector", "Market Cap", "Profit Margin", "Revenue Growth",
-                "Dividend Yield", "Beta", "Volume", "52W High", "52W Low",
-                "1M Return", "3M Return", "6M Return", "1Y Return"
+                "Sector", "Market Cap", "Beta", "Volume", "52W High", "52W Low",
+                "Price vs 52W High %", "Price vs 52W Low %", "Final Rating"
             ],
             "Value": [
                 single_result["Sector"],
                 format_large_num(single_result["Market Cap"]),
-                f"{single_result['Profit Margin']:.2f}%" if pd.notna(single_result["Profit Margin"]) else "N/A",
-                f"{single_result['Revenue Growth']:.2f}%" if pd.notna(single_result["Revenue Growth"]) else "N/A",
-                f"{single_result['Dividend Yield']:.2f}%" if pd.notna(single_result["Dividend Yield"]) else "N/A",
                 f"{single_result['Beta']:.2f}" if pd.notna(single_result["Beta"]) else "N/A",
                 f"{int(single_result['Volume']):,}" if pd.notna(single_result["Volume"]) else "N/A",
                 f"₹{single_result['52W High']:.2f}" if pd.notna(single_result["52W High"]) else "N/A",
                 f"₹{single_result['52W Low']:.2f}" if pd.notna(single_result["52W Low"]) else "N/A",
-                f"{single_result['1M %']:.2f}%" if pd.notna(single_result["1M %"]) else "N/A",
-                f"{single_result['3M %']:.2f}%" if pd.notna(single_result["3M %"]) else "N/A",
-                f"{single_result['6M %']:.2f}%" if pd.notna(single_result["6M %"]) else "N/A",
-                f"{single_result['1Y %']:.2f}%" if pd.notna(single_result["1Y %"]) else "N/A",
+                f"{((single_result['Price'] / single_result['52W High']) - 1) * 100:.2f}%" if pd.notna(single_result["52W High"]) and single_result["52W High"] != 0 else "N/A",
+                f"{((single_result['Price'] / single_result['52W Low']) - 1) * 100:.2f}%" if pd.notna(single_result["52W Low"]) and single_result["52W Low"] != 0 else "N/A",
+                single_result["Rating"]
             ]
         })
-        st.dataframe(adv_df, use_container_width=True, height=460)
+        st.dataframe(adv_df, use_container_width=True, height=300)
 
-        st.markdown("### 🧠 Institutional Interpretation")
-        interpretation = []
-        if pd.notna(single_result["RSI"]):
-            if single_result["RSI"] > 70:
-                interpretation.append("• RSI indicates overbought zone.")
-            elif single_result["RSI"] < 30:
-                interpretation.append("• RSI indicates oversold zone.")
-            else:
-                interpretation.append("• RSI is in healthy momentum range.")
+        # =========================
+        # INSTITUTIONAL STRATEGY VIEW
+        # =========================
+        st.markdown("### 🧠 Institutional Strategy View")
+        styles, entry_view, action_bias = get_institutional_strategy_view(single_result)
 
-        if pd.notna(single_result["Price"]) and pd.notna(single_result["SMA50"]):
-            if single_result["Price"] > single_result["SMA50"]:
-                interpretation.append("• Price is above 50 DMA (bullish short-medium trend).")
-            else:
-                interpretation.append("• Price is below 50 DMA (trend weakness).")
+        if styles:
+            for style in styles:
+                st.write(style)
 
-        if pd.notna(single_result["Price"]) and pd.notna(single_result["SMA200"]):
-            if single_result["Price"] > single_result["SMA200"]:
-                interpretation.append("• Price is above 200 DMA (long-term bullish structure).")
-            else:
-                interpretation.append("• Price is below 200 DMA (long-term caution).")
+        st.write(f"📌 Entry View: {entry_view}")
+        st.write(action_bias)
 
-        if pd.notna(single_result["ROE"]):
-            if single_result["ROE"] > 15:
-                interpretation.append("• ROE indicates strong business quality.")
-            else:
-                interpretation.append("• ROE is average or below elite quality threshold.")
-
-        if pd.notna(single_result["Debt/Equity"]):
-            if single_result["Debt/Equity"] < 100:
-                interpretation.append("• Debt profile appears manageable.")
-            else:
-                interpretation.append("• Leverage is relatively high — monitor debt risk.")
-
-        for line in interpretation:
-            st.write(line)
-
+        # =========================
+        # FINAL DECISION BOX
+        # =========================
+        st.markdown("### 🎯 Final Per-Stock Institutional Verdict")
+        if single_result["Total Score"] >= 80:
+            st.success("This stock qualifies as a HIGH-CONVICTION institutional-grade candidate. Best suited for accumulation on dips if market trend supports.")
+        elif single_result["Total Score"] >= 65:
+            st.success("This stock is a strong watchlist / buy candidate with healthy fundamentals and/or technical structure.")
+        elif single_result["Total Score"] >= 50:
+            st.warning("This stock is acceptable but mixed. Better to wait for stronger setup or better valuation.")
+        else:
+            st.error("This stock currently lacks strong institutional conviction. Avoid aggressive fresh entry until improvement.")
 # =========================
 # TAB 3: COMPARE
 # =========================
