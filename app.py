@@ -1,17 +1,20 @@
-# FINAL V12.1.1 BLACKROCK PRIME HOTFIX CLOUD SAFE - SINGLE FULL STREAMLIT APP.PY
-# ==================================================================================================
-# REAL FIXED VERSION FOR STREAMLIT CLOUD / YFINANCE STABILITY
+# FINAL V12.1.2 ULTRA STABLE DEPLOY SAFE - SINGLE FULL STREAMLIT APP.PY
+# ======================================================================================
+# REAL PRODUCTION-SAFE VERSION FOR STREAMLIT CLOUD / YFINANCE NSE STABILITY
 #
-# HOTFIXES INCLUDED:
-# - Auto fallback to NIFTY 50 if selected universe fails
-# - Safer yfinance download wrapper + retry logic
-# - Cleaner PSEUDO NIFTY 500 list (removed unstable symbols)
-# - Default fast-scan behavior optimized for Streamlit Cloud
-# - No blank screen / no hard fail on empty universe
-# - Graceful degradation when some symbols fail
-# - Optional heavy scanners behind toggle (OFF by default)
-# - Persistent watchlist + notes + export
-# - Premium dark UI + cloud-safe single file
+# KEY FIXES IN V12.1.2:
+# - Ticker.history() PRIMARY fetch (more stable for NSE)
+# - yf.download() FALLBACK fetch
+# - Shorter-period retry fallback (6mo)
+# - CUSTOM universe empty bug fixed (never empty)
+# - NIFTY fetch uses stable wrapper too
+# - Diagnostic mode if live fetch fails
+# - Auto fallback to NIFTY 50 top 25 if selected universe fails
+# - Optional demo mode if Yahoo is blocked in cloud
+# - Cloud-safe defaults (scan=25, heavy scan OFF)
+# - Graceful skip of failed symbols
+# - Persistent watchlist + notes + CSV export
+# - Premium dark UI + single-file deploy-safe structure
 #
 # REQUIREMENTS:
 # streamlit
@@ -39,20 +42,15 @@ from plotly.subplots import make_subplots
 warnings.filterwarnings("ignore")
 
 # ==================================================
-# PAGE CONFIG
+# PAGE CONFIG + THEME
 # ==================================================
-st.set_page_config(page_title="FINAL V12.1.1 BLACKROCK PRIME HOTFIX CLOUD SAFE", page_icon="🏦", layout="wide")
+st.set_page_config(page_title="FINAL V12.1.2 ULTRA STABLE DEPLOY SAFE", page_icon="🏦", layout="wide")
 
 st.markdown("""
 <style>
 html, body, [class*="css"] {font-family: 'Inter', sans-serif;}
-.main {
-    background: linear-gradient(180deg, #020617 0%, #0b1220 45%, #111827 100%);
-}
-.block-container {
-    padding-top: 0.8rem;
-    padding-bottom: 2rem;
-}
+.main { background: linear-gradient(180deg, #020617 0%, #0b1220 45%, #111827 100%); }
+.block-container { padding-top: 0.8rem; padding-bottom: 2rem; }
 .card {
     background: rgba(255,255,255,0.04);
     border: 1px solid rgba(255,255,255,0.08);
@@ -106,7 +104,6 @@ NIFTY_200 = sorted(set(NIFTY_100 + [
     "UBL.NS","COLPAL.NS","MARICO.NS","TATACHEM.NS","PETRONET.NS","NAUKRI.NS","COFORGE.NS","PERSISTENT.NS"
 ]))
 
-# Cleaned / more stable pseudo list for Yahoo Finance cloud behavior
 PSEUDO_NIFTY_500 = sorted(set(NIFTY_200 + DEFAULT_UNIVERSE + [
     "BSE.NS","MCX.NS","KPITTECH.NS","DELHIVERY.NS","SONACOMS.NS","TUBEINVEST.NS",
     "DEEPAKNTR.NS","BALRAMCHIN.NS","APLAPOLLO.NS","KEI.NS","FINCABLES.NS","CHOLAFIN.NS",
@@ -115,8 +112,8 @@ PSEUDO_NIFTY_500 = sorted(set(NIFTY_200 + DEFAULT_UNIVERSE + [
 ]))
 
 NIFTY_SYMBOL = "^NSEI"
-WATCHLIST_FILE = "watchlist_v12_1_1_hotfix.json"
-WATCHLIST_META_FILE = "watchlist_meta_v12_1_1_hotfix.json"
+WATCHLIST_FILE = "watchlist_v12_1_2_ultra_stable.json"
+WATCHLIST_META_FILE = "watchlist_meta_v12_1_2_ultra_stable.json"
 
 # ==================================================
 # HELPERS
@@ -136,47 +133,72 @@ def infer_sector(symbol: str) -> str:
             return sec
     return "OTHER"
 
+
+def _normalize_ohlcv(df: pd.DataFrame) -> pd.DataFrame:
+    if df is None or df.empty:
+        return pd.DataFrame()
+    try:
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
+        required = ["Open", "High", "Low", "Close", "Volume"]
+        if not all(c in df.columns for c in required):
+            return pd.DataFrame()
+        df = df[required].dropna().copy()
+        if len(df) < 30:
+            return pd.DataFrame()
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+
 @st.cache_data(ttl=1800, show_spinner=False)
 def get_hist(symbol, period="1y", interval="1d"):
-    for _ in range(2):
-        try:
-            df = yf.download(
-                symbol,
-                period=period,
-                interval=interval,
-                auto_adjust=True,
-                progress=False,
-                threads=False,
-                group_by="column"
-            )
-            if df is None or df.empty:
-                continue
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = [c[0] for c in df.columns]
-            required = ["Open", "High", "Low", "Close", "Volume"]
-            if not all(c in df.columns for c in required):
-                continue
-            df = df[required].dropna().copy()
-            if len(df) < 30:
-                continue
+    # Method 1: Ticker.history() -> most stable for NSE on Streamlit Cloud
+    try:
+        tk = yf.Ticker(symbol)
+        df = tk.history(period=period, interval=interval, auto_adjust=True)
+        df = _normalize_ohlcv(df)
+        if not df.empty:
             return df
-        except Exception:
-            continue
+    except Exception:
+        pass
+
+    # Method 2: yf.download() fallback
+    try:
+        df = yf.download(symbol, period=period, interval=interval, auto_adjust=True, progress=False, threads=False)
+        df = _normalize_ohlcv(df)
+        if not df.empty:
+            return df
+    except Exception:
+        pass
+
+    # Method 3: Shorter retry fallback
+    try:
+        tk = yf.Ticker(symbol)
+        df = tk.history(period="6mo", interval=interval, auto_adjust=True)
+        df = _normalize_ohlcv(df)
+        if not df.empty:
+            return df
+    except Exception:
+        pass
+
     return pd.DataFrame()
+
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_info(symbol):
     try:
         return yf.Ticker(symbol).info
-    except:
+    except Exception:
         return {}
+
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_financials(symbol):
     try:
         tk = yf.Ticker(symbol)
         return tk.balance_sheet, tk.financials, tk.cashflow
-    except:
+    except Exception:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 
@@ -340,36 +362,37 @@ def atr_trailing_stop(df, multiple=3.0):
 
 
 def advanced_factor_score(df, nifty_df):
-    if df.empty or len(df) < 252:
+    if df.empty or len(df) < 180:
         return np.nan
     r21 = safe_float(compute_returns(df, 21), 0)
     r63 = safe_float(compute_returns(df, 63), 0)
     r126 = safe_float(compute_returns(df, 126), 0)
-    r252 = safe_float(compute_returns(df, 252), 0)
-    rs55 = safe_float(relative_strength_vs_nifty(df, nifty_df, 55), 0)
+    r252 = safe_float(compute_returns(df, min(252, len(df)-2)), 0) if len(df) > 40 else 0
+    rs55 = safe_float(relative_strength_vs_nifty(df, nifty_df, min(55, max(20, len(df)//4))), 0)
     rsi = safe_float(df["RSI14"].iloc[-1], 50)
     adx = safe_float(df["ADX14"].iloc[-1], 15)
     vol_ratio = safe_float(df["Volume"].iloc[-1], 0) / max(safe_float(df["VolAvg20"].iloc[-1], 1), 1)
     st_bonus = 8 if safe_float(df["ST_Direction"].iloc[-1], 0) == 1 else 0
     template_bonus = 10 if minervini_template(df) else 0
     stage_bonus = 8 if stage_analysis(df).startswith("Stage 2") else 0
-    return round(r21*0.10 + r63*0.14 + r126*0.14 + r252*0.12 + rs55*0.18 + rsi*0.08 + adx*0.08 + vol_ratio*10*0.06 + st_bonus + template_bonus + stage_bonus, 2)
+    return round(r21*0.10 + r63*0.14 + r126*0.14 + r252*0.10 + rs55*0.18 + rsi*0.08 + adx*0.08 + vol_ratio*10*0.06 + st_bonus + template_bonus + stage_bonus, 2)
 
 
 def institutional_scorecard(df, nifty_df):
     checks = {}
-    if df.empty or len(df) < 252:
+    if df.empty or len(df) < 120:
         return checks
-    checks["Above 50 DMA"] = df["Close"].iloc[-1] > df["SMA50"].iloc[-1]
-    checks["Above 150 DMA"] = df["Close"].iloc[-1] > df["SMA150"].iloc[-1]
-    checks["Above 200 DMA"] = df["Close"].iloc[-1] > df["SMA200"].iloc[-1]
-    checks["50 > 150 > 200"] = df["SMA50"].iloc[-1] > df["SMA150"].iloc[-1] > df["SMA200"].iloc[-1]
-    checks["RS > 0 vs NIFTY"] = relative_strength_vs_nifty(df, nifty_df, 55) > 0
+    checks["Above 50 DMA"] = df["Close"].iloc[-1] > df["SMA50"].iloc[-1] if not pd.isna(df["SMA50"].iloc[-1]) else False
+    checks["Above 150 DMA"] = df["Close"].iloc[-1] > df["SMA150"].iloc[-1] if not pd.isna(df["SMA150"].iloc[-1]) else False
+    checks["Above 200 DMA"] = df["Close"].iloc[-1] > df["SMA200"].iloc[-1] if not pd.isna(df["SMA200"].iloc[-1]) else False
+    checks["50 > 150 > 200"] = all(not pd.isna(v) for v in [df["SMA50"].iloc[-1], df["SMA150"].iloc[-1], df["SMA200"].iloc[-1]]) and (df["SMA50"].iloc[-1] > df["SMA150"].iloc[-1] > df["SMA200"].iloc[-1])
+    checks["RS > 0 vs NIFTY"] = safe_float(relative_strength_vs_nifty(df, nifty_df, 55), 0) > 0
     checks["Supertrend Bullish"] = safe_float(df["ST_Direction"].iloc[-1], 0) == 1
     checks["ADX > 18"] = safe_float(df["ADX14"].iloc[-1], 0) > 18
     checks["Minervini Template"] = minervini_template(df)
     checks["Stage 2"] = stage_analysis(df).startswith("Stage 2")
-    checks["Near 52W High"] = df["Close"].iloc[-1] >= df["High"].tail(252).max() * 0.85
+    lookback = min(252, len(df))
+    checks["Near 52W High"] = df["Close"].iloc[-1] >= df["High"].tail(lookback).max() * 0.85
     checks["Institutional Score /10"] = sum(1 for v in list(checks.values()) if v is True)
     return checks
 
@@ -390,7 +413,7 @@ def load_watchlist():
                 data = json.load(f)
             if isinstance(data, list):
                 return data
-        except:
+        except Exception:
             pass
     return ["RELIANCE.NS", "HDFCBANK.NS", "TCS.NS"]
 
@@ -399,7 +422,7 @@ def save_watchlist(lst):
     try:
         with open(WATCHLIST_FILE, "w") as f:
             json.dump(sorted(list(set(lst))), f)
-    except:
+    except Exception:
         pass
 
 
@@ -410,7 +433,7 @@ def load_watchlist_meta():
                 data = json.load(f)
             if isinstance(data, dict):
                 return data
-        except:
+        except Exception:
             pass
     return {}
 
@@ -419,7 +442,7 @@ def save_watchlist_meta(meta):
     try:
         with open(WATCHLIST_META_FILE, "w") as f:
             json.dump(meta, f)
-    except:
+    except Exception:
         pass
 
 
@@ -427,6 +450,37 @@ def build_watchlist_export(df):
     output = io.BytesIO()
     df.to_csv(output, index=False)
     return output.getvalue()
+
+
+def build_demo_rank(nifty_df):
+    demo_syms = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "ICICIBANK.NS", "INFY.NS"]
+    rows = []
+    for i, sym in enumerate(demo_syms):
+        rows.append({
+            "Sector": infer_sector(sym),
+            "Symbol": sym,
+            "Close": round(1000 + i*250, 2),
+            "Factor_Score": round(25 + i*4.5, 2),
+            "RS_vs_NIFTY_%": round(2 + i*1.5, 2),
+            "1M_%": round(1.5 + i*0.8, 2),
+            "3M_%": round(4 + i*1.2, 2),
+            "6M_%": round(8 + i*2.1, 2),
+            "12M_%": round(12 + i*3.0, 2),
+            "RSI": round(52 + i*4, 2),
+            "ADX": round(18 + i*3, 2),
+            "Rel_Vol": round(1.0 + i*0.15, 2),
+            "Gap_%": round(0.2 + i*0.4, 2),
+            "Supertrend": "Bullish",
+            "Stage": "Stage 2 (Advancing)",
+            "Minervini": True if i >= 2 else False,
+            "Near_52W_High_%": round(-6 + i*1.2, 2),
+            "Institutional_Score": min(10, 5 + i),
+            "ATR_Trail": round(900 + i*220, 2),
+            "Signal": "BUY" if i >= 2 else "WATCH"
+        })
+    out = pd.DataFrame(rows)
+    out["RS_Percentile"] = rs_percentile(out["RS_vs_NIFTY_%"])
+    return out.sort_values(["Factor_Score", "RS_Percentile"], ascending=False)
 
 
 def get_universe(mode, selected_sector, custom_symbols):
@@ -440,7 +494,11 @@ def get_universe(mode, selected_sector, custom_symbols):
         return PSEUDO_NIFTY_500
     if mode == "SECTOR UNIVERSE":
         return DEFAULT_UNIVERSE if selected_sector == "ALL" else SECTOR_MAP[selected_sector]
-    return sorted(list(set([x.strip().upper() for x in custom_symbols.split(",") if x.strip()])))
+    # CUSTOM: never allow empty universe
+    parsed = sorted(list(set([x.strip().upper() for x in custom_symbols.split(",") if x.strip()])))
+    if not parsed:
+        parsed = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS"]
+    return parsed
 
 
 def build_master_rank(universe, nifty_df, max_scan=25):
@@ -452,15 +510,16 @@ def build_master_rank(universe, nifty_df, max_scan=25):
     progress = st.progress(0, text="Building ranking engine...")
     for i, sym in enumerate(symbols):
         df = add_indicators(get_hist(sym, period="1y"))
-        if df.empty or len(df) < 252:
+        if df.empty:
             failed += 1
-            progress.progress(min((i+1)/len(symbols),1.0), text=f"Skipping {sym}...")
+            progress.progress(min((i+1)/len(symbols), 1.0), text=f"Skipping {sym}...")
             continue
         last = df.iloc[-1]
-        high52 = df["High"].tail(252).max()
+        lookback = min(252, len(df))
+        high52 = df["High"].tail(lookback).max()
         prev = df.iloc[-2] if len(df) > 2 else last
         gap = ((last["Open"] / max(prev["Close"], 0.01)) - 1) * 100
-        rel_vol = safe_float(last["Volume"], 0) / max(safe_float(last["VolAvg20"].iloc[-1], 1), 1)
+        rel_vol = safe_float(last["Volume"], 0) / max(safe_float(df["VolAvg20"].iloc[-1], 1), 1)
         factor = advanced_factor_score(df, nifty_df)
         scorecard = institutional_scorecard(df, nifty_df)
         rows.append({
@@ -468,24 +527,24 @@ def build_master_rank(universe, nifty_df, max_scan=25):
             "Symbol": sym,
             "Close": round(last["Close"], 2),
             "Factor_Score": factor,
-            "RS_vs_NIFTY_%": round(relative_strength_vs_nifty(df, nifty_df, 55), 2),
-            "1M_%": round(compute_returns(df, 21), 2),
-            "3M_%": round(compute_returns(df, 63), 2),
-            "6M_%": round(compute_returns(df, 126), 2),
-            "12M_%": round(compute_returns(df, 252), 2),
-            "RSI": round(safe_float(last["RSI14"]), 2),
-            "ADX": round(safe_float(last["ADX14"]), 2),
+            "RS_vs_NIFTY_%": round(relative_strength_vs_nifty(df, nifty_df, min(55, max(20, len(df)//4))), 2),
+            "1M_%": round(compute_returns(df, min(21, max(5, len(df)//8))), 2),
+            "3M_%": round(compute_returns(df, min(63, max(20, len(df)//4))), 2),
+            "6M_%": round(compute_returns(df, min(126, max(40, len(df)//2))), 2),
+            "12M_%": round(compute_returns(df, min(252, len(df)-2)) if len(df) > 40 else np.nan, 2),
+            "RSI": round(safe_float(last.get("RSI14", np.nan)), 2),
+            "ADX": round(safe_float(last.get("ADX14", np.nan)), 2),
             "Rel_Vol": round(rel_vol, 2),
             "Gap_%": round(gap, 2),
-            "Supertrend": "Bullish" if safe_float(last["ST_Direction"], 0) == 1 else "Bearish",
+            "Supertrend": "Bullish" if safe_float(last.get("ST_Direction", 0), 0) == 1 else "Bearish",
             "Stage": stage_analysis(df),
             "Minervini": minervini_template(df),
             "Near_52W_High_%": round(((last["Close"] / max(high52, 0.01)) - 1) * 100, 2),
             "Institutional_Score": scorecard.get("Institutional Score /10", 0),
             "ATR_Trail": atr_trailing_stop(df),
-            "Signal": "BUY" if (factor > 35 and safe_float(last["ST_Direction"], 0) == 1 and safe_float(last["ADX14"], 0) > 18) else ("AVOID" if factor < 8 else "WATCH")
+            "Signal": "BUY" if (safe_float(factor, 0) > 35 and safe_float(last.get("ST_Direction", 0), 0) == 1 and safe_float(last.get("ADX14", 0), 0) > 18) else ("AVOID" if safe_float(factor, 0) < 8 else "WATCH")
         })
-        progress.progress(min((i+1)/len(symbols),1.0), text=f"Scanning {sym}...")
+        progress.progress(min((i+1)/len(symbols), 1.0), text=f"Scanning {sym}...")
     progress.empty()
     out = pd.DataFrame(rows)
     if out.empty:
@@ -500,13 +559,13 @@ def sector_rotation_dashboard(nifty_df):
         vals = []
         for sym in symbols:
             df = add_indicators(get_hist(sym, period="1y"))
-            if df.empty or len(df) < 252:
+            if df.empty:
                 continue
             vals.append({
                 "Factor": advanced_factor_score(df, nifty_df),
-                "RS": relative_strength_vs_nifty(df, nifty_df, 55),
-                "1M": compute_returns(df, 21),
-                "3M": compute_returns(df, 63),
+                "RS": relative_strength_vs_nifty(df, nifty_df, min(55, max(20, len(df)//4))),
+                "1M": compute_returns(df, min(21, max(5, len(df)//8))),
+                "3M": compute_returns(df, min(63, max(20, len(df)//4))),
                 "Leader": sym
             })
         if vals:
@@ -521,10 +580,23 @@ def sector_rotation_dashboard(nifty_df):
             })
     return pd.DataFrame(rows).sort_values(["Avg_Factor", "Avg_RS"], ascending=False) if rows else pd.DataFrame()
 
+
+def diagnostics_table():
+    test_symbols = ["RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "^NSEI"]
+    rows = []
+    for sym in test_symbols:
+        tdf = get_hist(sym, period="6mo") if sym != "^NSEI" else get_hist(sym, period="6mo")
+        rows.append({
+            "Symbol": sym,
+            "Rows_Fetched": 0 if tdf.empty else len(tdf),
+            "Status": "OK" if not tdf.empty else "FAILED"
+        })
+    return pd.DataFrame(rows)
+
 # ==================================================
 # SIDEBAR
 # ==================================================
-st.sidebar.title("⚙️ V12.1.1 HOTFIX Controls")
+st.sidebar.title("⚙️ V12.1.2 ULTRA STABLE")
 universe_mode = st.sidebar.selectbox("Universe", ["NIFTY 50", "NIFTY 100", "NIFTY 200", "PSEUDO NIFTY 500", "SECTOR UNIVERSE", "CUSTOM"], index=0)
 selected_sector = st.sidebar.selectbox("Focus Sector", ["ALL"] + list(SECTOR_MAP.keys()))
 capital = st.sidebar.number_input("Capital (₹)", min_value=10000, value=500000, step=10000)
@@ -532,7 +604,11 @@ risk_pct = st.sidebar.slider("Risk per Trade (%)", 0.5, 5.0, 1.0, 0.5)
 max_sector_weight = st.sidebar.slider("Max Sector Concentration (%)", 10, 50, 25, 5)
 scan_limit = st.sidebar.selectbox("Fast Scan Limit", [25, 40, 60, 80], index=0)
 run_heavy_scan = st.sidebar.checkbox("Run Heavy Scan (VCP / Darvas / ORB)", value=False)
-custom_symbols = st.sidebar.text_area("Custom symbols (comma separated)", value="RELIANCE.NS,TCS.NS,HDFCBANK.NS" if universe_mode == "CUSTOM" else "")
+enable_demo_mode = st.sidebar.checkbox("Enable Demo Mode if Yahoo Fails", value=True)
+
+if "custom_symbols_input" not in st.session_state:
+    st.session_state["custom_symbols_input"] = "RELIANCE.NS,TCS.NS,HDFCBANK.NS"
+custom_symbols = st.sidebar.text_area("Custom symbols (comma separated)", key="custom_symbols_input")
 
 universe = get_universe(universe_mode, selected_sector, custom_symbols)
 watchlist = load_watchlist()
@@ -540,7 +616,7 @@ watch_meta = load_watchlist_meta()
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("⭐ Persistent Watchlist")
-add_symbol = st.sidebar.selectbox("Add stock", ["Select"] + sorted(set(universe[:min(len(universe),100)] + DEFAULT_UNIVERSE)))
+add_symbol = st.sidebar.selectbox("Add stock", ["Select"] + sorted(set(universe[:min(len(universe), 100)] + DEFAULT_UNIVERSE)))
 if st.sidebar.button("Add to Watchlist") and add_symbol != "Select":
     if add_symbol not in watchlist:
         watchlist.append(add_symbol)
@@ -559,22 +635,34 @@ if st.sidebar.button("Remove from Watchlist") and remove_symbol != "Select":
 # ==================================================
 # HEADER
 # ==================================================
-st.title("🏦 FINAL V12.1.1 BLACKROCK PRIME HOTFIX CLOUD SAFE")
-st.caption("Auto Fallback • Safer Yahoo Fetch • Cloud Safe • No Blank Screen • Better Default Scan • Real Hotfix for Streamlit Cloud")
-
-nifty_df = add_indicators(get_hist(NIFTY_SYMBOL, period="1y"))
-if nifty_df.empty:
-    st.error("Unable to fetch NIFTY data right now. Please refresh later.")
-    st.stop()
+st.title("🏦 FINAL V12.1.2 ULTRA STABLE DEPLOY SAFE")
+st.caption("Ticker.history Primary • download Fallback • Custom Fix • Diagnostics Mode • Auto Fallback • Demo Mode • Streamlit Cloud Safe")
 
 # ==================================================
-# MASTER RANK BUILD WITH FALLBACK
+# NIFTY FETCH (STABLE)
+# ==================================================
+nifty_df = add_indicators(get_hist(NIFTY_SYMBOL, period="1y"))
+if nifty_df.empty:
+    st.warning("NIFTY live fetch failed. Trying demo-safe synthetic NIFTY baseline...")
+    idx = pd.date_range(end=pd.Timestamp.today(), periods=260, freq="B")
+    base = np.linspace(22000, 24000, len(idx)) + np.sin(np.linspace(0, 12, len(idx))) * 250
+    nifty_df = pd.DataFrame({
+        "Open": base * 0.998,
+        "High": base * 1.004,
+        "Low": base * 0.996,
+        "Close": base,
+        "Volume": np.linspace(1e8, 1.2e8, len(idx))
+    }, index=idx)
+    nifty_df = add_indicators(nifty_df)
+
+# ==================================================
+# MASTER RANK BUILD WITH FALLBACK + DIAGNOSTICS + DEMO MODE
 # ==================================================
 start = time.time()
 rank_df, success_count, fail_count = build_master_rank(universe, nifty_df, max_scan=min(scan_limit, len(universe)))
 fallback_used = False
+demo_mode_active = False
 
-# Auto fallback if selected universe fails
 if rank_df.empty:
     fallback_used = True
     st.warning("Selected universe returned no usable data. Auto-fallback activated: scanning NIFTY 50 (top 25) for stability...")
@@ -584,14 +672,23 @@ if rank_df.empty:
 scan_time = round(time.time() - start, 2)
 
 if rank_df.empty:
-    st.error("Yahoo Finance returned no usable data right now. Please refresh later or keep scan limit at 25.")
-    st.stop()
+    st.error("Live Yahoo Finance stock fetch failed in cloud environment. Switching to diagnostic mode.")
+    diag_df = diagnostics_table()
+    st.dataframe(diag_df, use_container_width=True)
+    if enable_demo_mode:
+        st.info("Demo mode enabled: showing synthetic sample data so the app remains usable even when Yahoo is blocked.")
+        rank_df = build_demo_rank(nifty_df)
+        success_count = len(rank_df)
+        fail_count = 0
+        demo_mode_active = True
+    else:
+        st.stop()
 
 # ==================================================
 # TOP METRICS
 # ==================================================
 m1, m2, m3, m4, m5, m6, m7 = st.columns(7)
-m1.metric("NIFTY", f"{nifty_df['Close'].iloc[-1]:,.2f}", f"{compute_returns(nifty_df, 21):.2f}% (1M)")
+m1.metric("NIFTY", f"{nifty_df['Close'].iloc[-1]:,.2f}", f"{compute_returns(nifty_df, min(21, max(5, len(nifty_df)//8))):.2f}% (1M)")
 m2.metric("Universe Size", len(universe))
 m3.metric("Success", success_count)
 m4.metric("Failed", fail_count)
@@ -600,7 +697,9 @@ m6.metric("Capital", f"₹{capital:,.0f}")
 m7.metric("Scan Time", f"{scan_time}s")
 
 if fallback_used:
-    st.info("Fallback mode is active right now for stability. Results shown are from NIFTY 50 fallback universe.")
+    st.info("Fallback mode is active for stability. Results may be from NIFTY 50 fallback universe.")
+if demo_mode_active:
+    st.info("Demo mode is active because live stock fetch failed in your cloud environment.")
 
 # ==================================================
 # MARKET BREADTH
@@ -609,7 +708,7 @@ st.markdown("## 📈 Market Breadth Dashboard")
 adv = int((rank_df["1M_%"] > 0).sum())
 dec = int((rank_df["1M_%"] <= 0).sum())
 new_highs = int((rank_df["Near_52W_High_%"] >= -2).sum())
-new_lows = int((rank_df["12M_%"] <= -20).sum())
+new_lows = int((rank_df["12M_%"] <= -20).fillna(False).sum())
 mb1, mb2, mb3, mb4, mb5, mb6 = st.columns(6)
 mb1.metric("Advances", adv)
 mb2.metric("Declines", dec)
@@ -622,15 +721,25 @@ mb6.metric("Avg Factor", round(rank_df["Factor_Score"].mean(), 2))
 # SECTOR ROTATION
 # ==================================================
 st.markdown("## 🔄 Sector Rotation Dashboard")
-sector_df = sector_rotation_dashboard(nifty_df)
+sector_df = pd.DataFrame()
+if not demo_mode_active:
+    sector_df = sector_rotation_dashboard(nifty_df)
+if sector_df.empty:
+    # lightweight fallback sector dashboard from current rank_df
+    tmp = rank_df.groupby("Sector").agg(
+        Avg_Factor=("Factor_Score", "mean"),
+        Avg_RS=("RS_vs_NIFTY_%", "mean"),
+        Avg_1M=("1M_%", "mean"),
+        Avg_3M=("3M_%", "mean")
+    ).reset_index()
+    leaders = rank_df.sort_values("Factor_Score", ascending=False).groupby("Sector").first().reset_index()[["Sector", "Symbol"]]
+    sector_df = tmp.merge(leaders, on="Sector", how="left").rename(columns={"Symbol": "Leader"})
 if not sector_df.empty:
-    st.dataframe(sector_df, use_container_width=True)
+    st.dataframe(sector_df.sort_values(["Avg_Factor", "Avg_RS"], ascending=False), use_container_width=True)
     heat = sector_df[["Sector", "Avg_Factor", "Avg_RS", "Avg_1M", "Avg_3M"]].set_index("Sector")
     fig_heat = px.imshow(heat.T, text_auto='.2f', aspect='auto', title='Sector Rotation Heatmap')
     fig_heat.update_layout(height=400)
     st.plotly_chart(fig_heat, use_container_width=True)
-else:
-    st.info("Sector rotation temporarily unavailable.")
 
 # ==================================================
 # LEADER / LAGGARD
@@ -658,7 +767,7 @@ st.dataframe(rank_df.head(show_n), use_container_width=True)
 # HEAVY SCANNERS (OPTIONAL)
 # ==================================================
 st.markdown("## 🚨 Heavy Scanners (Optional for Cloud Speed)")
-if run_heavy_scan:
+if run_heavy_scan and not demo_mode_active:
     orb_rows, breakout_rows, vcp_rows, darvas_rows = [], [], [], []
     scan_syms = list(rank_df["Symbol"].head(min(len(rank_df), 30)))
     hp = st.progress(0, text="Running heavy scanners...")
@@ -670,13 +779,13 @@ if run_heavy_scan:
         last = df.iloc[-1]
         prev = df.iloc[-2]
         prior5 = df["High"].iloc[-6:-1].max() if len(df) >= 6 else df["High"].iloc[-2]
-        rel_vol = safe_float(last["Volume"], 0) / max(safe_float(last["VolAvg20"].iloc[-1], 1), 1)
+        rel_vol = safe_float(last["Volume"], 0) / max(safe_float(df["VolAvg20"].iloc[-1], 1), 1)
         gap = ((last["Open"] / max(prev["Close"], 0.01)) - 1) * 100
         if last["Close"] > prior5 and gap > 0.5 and rel_vol > 1.2:
             orb_rows.append({"Symbol": sym, "Close": round(last['Close'],2), "Gap_%": round(gap,2), "Rel_Vol": round(rel_vol,2)})
         high20 = df["High"].rolling(20).max().iloc[-2] if len(df) > 21 else np.nan
         if not pd.isna(high20) and last["Close"] > high20 and last["Close"] > last["SMA50"] > last["SMA200"]:
-            breakout_rows.append({"Symbol": sym, "Close": round(last['Close'],2), "RS": round(relative_strength_vs_nifty(df, nifty_df, 55),2), "ADX": round(safe_float(last['ADX14']),2)})
+            breakout_rows.append({"Symbol": sym, "Close": round(last['Close'],2), "RS": round(relative_strength_vs_nifty(df, nifty_df, min(55, max(20, len(df)//4))),2), "ADX": round(safe_float(last['ADX14']),2)})
         vcp_ok, pivot = vcp_detect(df)
         darvas_ok, box_low, box_high = darvas_box(df)
         if vcp_ok:
@@ -696,7 +805,7 @@ if run_heavy_scan:
         st.dataframe(pd.DataFrame(vcp_rows), use_container_width=True) if vcp_rows else st.info("No VCP setups.")
         st.dataframe(pd.DataFrame(darvas_rows), use_container_width=True) if darvas_rows else st.info("No Darvas setups.")
 else:
-    st.info("Heavy scan is OFF for better Streamlit Cloud speed. Enable only when needed.")
+    st.info("Heavy scan is OFF for better Streamlit Cloud speed (or demo mode is active).")
 
 # ==================================================
 # WATCHLIST CANDIDATES
@@ -710,11 +819,12 @@ st.dataframe(watch_candidates[["Sector","Symbol","Factor_Score","RS_Percentile",
 # ==================================================
 st.markdown("## 📌 Persistent Watchlist Dashboard")
 watch_rows = []
+rank_index = rank_df.set_index("Symbol") if not rank_df.empty else pd.DataFrame()
 for sym in watchlist:
     if sym not in rank_df["Symbol"].values:
         continue
     meta = watch_meta.get(sym, {})
-    rr = rank_df.set_index("Symbol").loc[sym]
+    rr = rank_index.loc[sym]
     watch_rows.append({
         "Sector": rr["Sector"],
         "Symbol": sym,
@@ -729,7 +839,7 @@ for sym in watchlist:
 watch_df = pd.DataFrame(watch_rows)
 if not watch_df.empty:
     st.dataframe(watch_df.sort_values("Factor_Score", ascending=False), use_container_width=True)
-    st.download_button("⬇️ Export Watchlist CSV", data=build_watchlist_export(watch_df), file_name="watchlist_v12_1_1_hotfix.csv", mime="text/csv")
+    st.download_button("⬇️ Export Watchlist CSV", data=build_watchlist_export(watch_df), file_name="watchlist_v12_1_2_ultra_stable.csv", mime="text/csv")
 else:
     st.info("Watchlist empty or not present in current scanned results.")
 
@@ -759,7 +869,7 @@ for _, row in rank_df.iterrows():
     sector_name = row["Sector"]
     tentative_weight = 20
     if sector_alloc.get(sector_name, 0) + tentative_weight <= max_sector_weight:
-        conviction = max(1, min(10, round((row["Factor_Score"] / max(rank_df["Factor_Score"].max(), 1)) * 10)))
+        conviction = max(1, min(10, round((safe_float(row["Factor_Score"], 1) / max(safe_float(rank_df["Factor_Score"].max(), 1), 1)) * 10)))
         portfolio_rows.append({
             "Sector": sector_name,
             "Symbol": sym,
@@ -796,10 +906,16 @@ selected_compare = st.multiselect("Select up to 4 stocks", compare_choices, defa
 if selected_compare:
     comp_df = pd.DataFrame()
     for sym in selected_compare:
-        df = get_hist(sym, period="1y")
-        if df.empty:
-            continue
-        comp_df[sym] = (df["Close"] / df["Close"].iloc[0]) * 100
+        if demo_mode_active:
+            idx = pd.date_range(end=pd.Timestamp.today(), periods=120, freq="B")
+            base = np.linspace(100, 120 + len(sym), len(idx)) + np.sin(np.linspace(0, 10, len(idx))) * 2
+            series = pd.Series(base, index=idx)
+            comp_df[sym] = (series / series.iloc[0]) * 100
+        else:
+            df = get_hist(sym, period="1y")
+            if df.empty:
+                continue
+            comp_df[sym] = (df["Close"] / df["Close"].iloc[0]) * 100
     if not comp_df.empty:
         fig_comp = go.Figure()
         for col in comp_df.columns:
@@ -812,14 +928,29 @@ if selected_compare:
 # ==================================================
 st.markdown("## 🔎 Stock Deep Dive + Trend Following Dashboard")
 deep_symbol = st.selectbox("Select Stock for Full Analysis", compare_choices if compare_choices else list(rank_df["Symbol"].head(20)))
-stock_df = add_indicators(get_hist(deep_symbol, period="2y"))
-info = get_info(deep_symbol)
-bs, fin, cf = get_financials(deep_symbol)
+
+if demo_mode_active:
+    idx = pd.date_range(end=pd.Timestamp.today(), periods=260, freq="B")
+    base = np.linspace(1000, 1300, len(idx)) + np.sin(np.linspace(0, 16, len(idx))) * 25
+    stock_df = pd.DataFrame({
+        "Open": base * 0.998,
+        "High": base * 1.01,
+        "Low": base * 0.99,
+        "Close": base,
+        "Volume": np.linspace(1e6, 1.4e6, len(idx))
+    }, index=idx)
+    stock_df = add_indicators(stock_df)
+    info = {}
+    bs, fin, cf = pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+else:
+    stock_df = add_indicators(get_hist(deep_symbol, period="2y"))
+    info = get_info(deep_symbol)
+    bs, fin, cf = get_financials(deep_symbol)
 
 if not stock_df.empty:
     last = stock_df.iloc[-1]
     sup, res = support_resistance(stock_df)
-    rs = relative_strength_vs_nifty(stock_df, nifty_df, 55)
+    rs = relative_strength_vs_nifty(stock_df, nifty_df, min(55, max(20, len(stock_df)//4)))
     stage = stage_analysis(stock_df)
     minervini_ok = minervini_template(stock_df)
     scorecard = institutional_scorecard(stock_df, nifty_df)
@@ -827,11 +958,11 @@ if not stock_df.empty:
 
     d1, d2, d3, d4, d5, d6, d7 = st.columns(7)
     d1.metric("Price", f"₹{last['Close']:.2f}")
-    d2.metric("RS vs NIFTY", f"{rs:.2f}%")
-    d3.metric("RSI", f"{last['RSI14']:.2f}")
-    d4.metric("ADX", f"{safe_float(last['ADX14']):.2f}")
+    d2.metric("RS vs NIFTY", f"{safe_float(rs, 0):.2f}%")
+    d3.metric("RSI", f"{safe_float(last['RSI14'], 0):.2f}")
+    d4.metric("ADX", f"{safe_float(last['ADX14'], 0):.2f}")
     d5.metric("Stage", stage)
-    d6.metric("ATR Trail", f"₹{atr_trail:.2f}")
+    d6.metric("ATR Trail", f"₹{safe_float(atr_trail, 0):.2f}")
     d7.metric("Score /10", scorecard.get("Institutional Score /10", 0))
 
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.06, row_heights=[0.58, 0.20, 0.22])
@@ -840,11 +971,11 @@ if not stock_df.empty:
     fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['SMA50'], name='SMA50'), row=1, col=1)
     fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['SMA200'], name='SMA200'), row=1, col=1)
     fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['Supertrend'], name='Supertrend'), row=1, col=1)
-    fig.add_trace(go.Scatter(x=stock_df.index, y=[atr_trail]*len(stock_df), name='ATR Trail'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=stock_df.index, y=[safe_float(atr_trail, 0)]*len(stock_df), name='ATR Trail'), row=1, col=1)
     fig.add_trace(go.Bar(x=stock_df.index, y=stock_df['Volume'], name='Volume'), row=2, col=1)
     fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['RSI14'], name='RSI'), row=3, col=1)
     fig.add_trace(go.Scatter(x=stock_df.index, y=stock_df['ADX14'], name='ADX'), row=3, col=1)
-    fig.update_layout(height=900, xaxis_rangeslider_visible=False, title=f"{deep_symbol} HOTFIX Dashboard")
+    fig.update_layout(height=900, xaxis_rangeslider_visible=False, title=f"{deep_symbol} ULTRA STABLE Dashboard")
     st.plotly_chart(fig, use_container_width=True)
 
     st.markdown(f"<div class='card'><b>Support:</b> ₹{sup} &nbsp;&nbsp; <b>Resistance:</b> ₹{res} &nbsp;&nbsp; <b>Minervini:</b> {'YES' if minervini_ok else 'NO'} &nbsp;&nbsp; <b>Signal:</b> {'BUY' if scorecard.get('Institutional Score /10',0) >= 7 else 'WATCH'}</div>", unsafe_allow_html=True)
@@ -865,21 +996,21 @@ if not stock_df.empty:
 
     st.markdown("### Fundamental Snapshot")
     f1, f2, f3, f4, f5, f6 = st.columns(6)
-    f1.metric("Market Cap", f"₹{safe_float(info.get('marketCap',0))/1e7:,.0f} Cr" if info.get('marketCap') else "NA")
-    f2.metric("PE", f"{safe_float(info.get('trailingPE')):.2f}" if info.get('trailingPE') else "NA")
-    f3.metric("PB", f"{safe_float(info.get('priceToBook')):.2f}" if info.get('priceToBook') else "NA")
-    f4.metric("ROE", f"{safe_float(info.get('returnOnEquity'))*100:.2f}%" if info.get('returnOnEquity') else "NA")
-    f5.metric("Dividend Yield", f"{safe_float(info.get('dividendYield'))*100:.2f}%" if info.get('dividendYield') else "NA")
-    f6.metric("Beta", f"{safe_float(info.get('beta')):.2f}" if info.get('beta') else "NA")
+    f1.metric("Market Cap", f"₹{safe_float(info.get('marketCap',0))/1e7:,.0f} Cr" if info.get('marketCap') else ("Demo" if demo_mode_active else "NA"))
+    f2.metric("PE", f"{safe_float(info.get('trailingPE')):.2f}" if info.get('trailingPE') else ("Demo" if demo_mode_active else "NA"))
+    f3.metric("PB", f"{safe_float(info.get('priceToBook')):.2f}" if info.get('priceToBook') else ("Demo" if demo_mode_active else "NA"))
+    f4.metric("ROE", f"{safe_float(info.get('returnOnEquity'))*100:.2f}%" if info.get('returnOnEquity') else ("Demo" if demo_mode_active else "NA"))
+    f5.metric("Dividend Yield", f"{safe_float(info.get('dividendYield'))*100:.2f}%" if info.get('dividendYield') else ("Demo" if demo_mode_active else "NA"))
+    f6.metric("Beta", f"{safe_float(info.get('beta')):.2f}" if info.get('beta') else ("Demo" if demo_mode_active else "NA"))
 
     st.markdown("### Balance Sheet / Financials / Cash Flow")
     t1, t2, t3 = st.tabs(["Balance Sheet", "P&L", "Cash Flow"])
     with t1:
-        st.dataframe(bs, use_container_width=True) if not bs.empty else st.info("Balance sheet not available.")
+        st.dataframe(bs, use_container_width=True) if not bs.empty else st.info("Balance sheet not available in live/demo mode.")
     with t2:
-        st.dataframe(fin, use_container_width=True) if not fin.empty else st.info("Financials not available.")
+        st.dataframe(fin, use_container_width=True) if not fin.empty else st.info("Financials not available in live/demo mode.")
     with t3:
-        st.dataframe(cf, use_container_width=True) if not cf.empty else st.info("Cash flow not available.")
+        st.dataframe(cf, use_container_width=True) if not cf.empty else st.info("Cash flow not available in live/demo mode.")
 
     st.markdown("### Prime Trade Plan")
     entry = float(last['Close'])
@@ -901,4 +1032,4 @@ if not stock_df.empty:
 # FOOTER
 # ==================================================
 st.markdown("---")
-st.markdown("<div class='small-note'>Disclaimer: Educational tool only. Verify all data before investing. Yahoo Finance data may be delayed/inconsistent. For best Streamlit Cloud stability: default Universe = NIFTY 50, Fast Scan Limit = 25, Heavy Scan OFF unless needed.</div>", unsafe_allow_html=True)
+st.markdown("<div class='small-note'>Disclaimer: Educational tool only. Verify all data before investing. Yahoo Finance can be delayed/inconsistent or blocked on free cloud. This version includes diagnostics + demo mode so the app remains usable on Streamlit Cloud.</div>", unsafe_allow_html=True)
