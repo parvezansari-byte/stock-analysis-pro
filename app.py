@@ -1,1001 +1,717 @@
+# FINAL V10 FULL FUNDAMENTAL + FULL TECHNICAL ELITE CLOUD SAFE SINGLE FULL app.py
+# Streamlit Cloud Safe | Single File | Paste-Ready
+# --------------------------------------------------
+# Features:
+# - Indian stocks via yfinance (NSE/BSE supported using .NS / .BO suffix)
+# - FULL Fundamental Dashboard
+# - FULL Technical Dashboard
+# - Scorecards + Signal Engine + Watchlist
+# - Attractive UI (custom CSS, cards, gradients)
+# - Cloud-safe (no unsupported local dependencies)
+#
+# Recommended requirements.txt:
+# streamlit
+# yfinance
+# pandas
+# numpy
+# plotly
+#
+# Run:
+# streamlit run app.py
+
 import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-from datetime import datetime
-import math
-import time
+from plotly.subplots import make_subplots
+from datetime import datetime, timedelta
 
-# =========================================================
+# -------------------------------
 # PAGE CONFIG
-# =========================================================
+# -------------------------------
 st.set_page_config(
-    page_title="NSE Stock Intelligence Pro MAX V9.1 LIGHT",
+    page_title="FINAL V10 ELITE STOCK ANALYZER",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# =========================================================
-# PREMIUM ATTRACTIVE UI
-# =========================================================
+# -------------------------------
+# CUSTOM CSS (ELITE LOOK)
+# -------------------------------
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
-
-html, body, [class*="css"]  {
-    font-family: 'Poppins', sans-serif;
+:root {
+    --bg1: #0b1220;
+    --bg2: #111827;
+    --card: rgba(255,255,255,0.06);
+    --card2: rgba(255,255,255,0.09);
+    --border: rgba(255,255,255,0.08);
+    --text: #f9fafb;
+    --muted: #cbd5e1;
+    --green: #10b981;
+    --red: #ef4444;
+    --blue: #60a5fa;
+    --gold: #f59e0b;
 }
-
-/* Main app background */
 .stApp {
-    background: linear-gradient(135deg, #0b1020 0%, #111827 35%, #0f172a 70%, #0b1120 100%);
-    color: #ffffff;
+    background: radial-gradient(circle at top right, #1e3a8a 0%, #0f172a 35%, #020617 100%);
+    color: var(--text);
 }
-
-/* Remove top white spacing */
 .block-container {
     padding-top: 1.2rem;
-    padding-bottom: 1rem;
+    padding-bottom: 2rem;
 }
-
-/* Sidebar */
-[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
-    border-right: 1px solid rgba(255,255,255,0.08);
-}
-
-/* Hero */
-.hero {
-    padding: 1.3rem 1.5rem;
-    border-radius: 24px;
-    background: linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,41,59,0.92), rgba(2,132,199,0.18));
-    border: 1px solid rgba(56,189,248,0.20);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.28);
-    margin-bottom: 1rem;
-}
-.hero-title {
+.main-title {
     font-size: 2.2rem;
     font-weight: 800;
-    color: #ffffff;
-    letter-spacing: -0.5px;
+    background: linear-gradient(90deg, #93c5fd, #c4b5fd, #f9a8d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.2rem;
 }
-.hero-sub {
-    color: #cbd5e1;
-    font-size: 0.95rem;
-    margin-top: 0.2rem;
+.sub-title {
+    color: #d1d5db;
+    font-size: 1rem;
+    margin-bottom: 1rem;
 }
-
-/* Pills */
-.pill {
-    display: inline-block;
-    padding: 0.35rem 0.8rem;
-    margin-right: 0.35rem;
-    margin-top: 0.5rem;
-    border-radius: 999px;
-    background: rgba(59,130,246,0.10);
-    border: 1px solid rgba(59,130,246,0.25);
-    color: #bfdbfe;
-    font-size: 0.8rem;
-    font-weight: 600;
+.card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
 }
-
-/* Card */
-.soft-card {
-    padding: 1rem;
+.metric-card {
+    background: linear-gradient(135deg, rgba(59,130,246,0.18), rgba(168,85,247,0.12));
+    border: 1px solid rgba(255,255,255,0.08);
     border-radius: 18px;
-    background: rgba(17,24,39,0.72);
-    border: 1px solid rgba(255,255,255,0.06);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
-    margin-bottom: 0.8rem;
+    padding: 14px;
+    text-align: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
 }
-
-/* Beautiful buttons */
-.stButton>button {
-    width: 100%;
-    border-radius: 14px;
-    border: 1px solid rgba(56,189,248,0.25);
-    background: linear-gradient(135deg, #0284c7, #2563eb);
+.metric-label {
+    font-size: 0.9rem;
+    color: #cbd5e1;
+}
+.metric-value {
+    font-size: 1.35rem;
+    font-weight: 800;
     color: white;
-    font-weight: 700;
-    padding: 0.55rem 1rem;
-    box-shadow: 0 6px 18px rgba(37,99,235,0.25);
 }
-.stButton>button:hover {
-    border: 1px solid rgba(125,211,252,0.45);
-    background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0.5rem 0 0.8rem 0;
+    color: #e2e8f0;
 }
-
-/* Inputs */
-div[data-baseweb="select"] > div,
-div[data-baseweb="input"] > div,
-.stTextInput > div > div,
-.stNumberInput > div > div,
-.stTextArea textarea {
-    background: rgba(15,23,42,0.75) !important;
-    border-radius: 12px !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-    color: white !important;
+.score-box {
+    padding: 16px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(16,185,129,0.16), rgba(59,130,246,0.12));
+    border: 1px solid rgba(255,255,255,0.08);
+    text-align: center;
 }
-
-/* Metric cards */
-[data-testid="metric-container"] {
-    background: rgba(17,24,39,0.72);
-    border: 1px solid rgba(255,255,255,0.06);
-    padding: 0.8rem;
-    border-radius: 16px;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.14);
+.small-note {
+    color: #cbd5e1;
+    font-size: 0.82rem;
 }
-
-/* Dataframe */
-[data-testid="stDataFrame"] {
-    border-radius: 14px;
-    overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.06);
-}
-
-/* Tabs */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-}
-.stTabs [data-baseweb="tab"] {
-    background: rgba(17,24,39,0.6);
-    border-radius: 12px;
-    padding: 10px 16px;
-}
-
-/* Status boxes */
-.good-box {
-    padding: 0.9rem 1rem;
-    border-radius: 14px;
-    background: rgba(34,197,94,0.14);
-    border: 1px solid rgba(34,197,94,0.28);
-    color: #86efac;
-    font-weight: 700;
-    margin-bottom: 0.6rem;
-}
-.warn-box {
-    padding: 0.9rem 1rem;
-    border-radius: 14px;
-    background: rgba(245,158,11,0.14);
-    border: 1px solid rgba(245,158,11,0.28);
-    color: #fcd34d;
-    font-weight: 700;
-    margin-bottom: 0.6rem;
-}
-.bad-box {
-    padding: 0.9rem 1rem;
-    border-radius: 14px;
-    background: rgba(239,68,68,0.14);
-    border: 1px solid rgba(239,68,68,0.28);
-    color: #fca5a5;
-    font-weight: 700;
-    margin-bottom: 0.6rem;
-}
-.info-box {
-    padding: 0.9rem 1rem;
-    border-radius: 14px;
-    background: rgba(59,130,246,0.12);
-    border: 1px solid rgba(59,130,246,0.26);
-    color: #bfdbfe;
-    font-weight: 600;
-    margin-bottom: 0.6rem;
+hr {
+    border-color: rgba(255,255,255,0.08) !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# =========================================================
-# NIFTY LISTS
-# =========================================================
-NIFTY_50 = sorted([
-    "ADANIENT", "ADANIPORTS", "APOLLOHOSP", "ASIANPAINT", "AXISBANK",
-    "BAJAJ-AUTO", "BAJFINANCE", "BAJAJFINSV", "BEL", "BHARTIARTL",
-    "BPCL", "BRITANNIA", "CIPLA", "COALINDIA", "DRREDDY",
-    "EICHERMOT", "ETERNAL", "GRASIM", "HCLTECH", "HDFCBANK",
-    "HDFCLIFE", "HEROMOTOCO", "HINDALCO", "HINDUNILVR", "ICICIBANK",
-    "INDUSINDBK", "INFY", "ITC", "JIOFIN", "JSWSTEEL",
-    "KOTAKBANK", "LT", "M&M", "MARUTI", "NESTLEIND",
-    "NTPC", "ONGC", "POWERGRID", "RELIANCE", "SBILIFE",
-    "SBIN", "SHRIRAMFIN", "SUNPHARMA", "TATACONSUM", "TATAMOTORS",
-    "TATASTEEL", "TCS", "TECHM", "TITAN", "TRENT"
-])
-
-NIFTY_NEXT_50 = sorted([
-    "ABB", "ADANIENSOL", "ADANIGREEN", "ADANIPOWER", "AMBUJACEM",
-    "BAJAJHLDNG", "BANKBARODA", "BOSCHLTD", "CANBK", "CGPOWER",
-    "CHOLAFIN", "DABUR", "DIVISLAB", "DLF", "DMART",
-    "GAIL", "GODREJCP", "HAL", "HAVELLS", "ICICIGI",
-    "ICICIPRULI", "INDIGO", "INDUSTOWER", "IOC", "IRCTC",
-    "JINDALSTEL", "LODHA", "MOTHERSON", "NAUKRI", "NMDC",
-    "PIDILITIND", "PNB", "RECLTD", "SAIL", "SHREECEM",
-    "SIEMENS", "TORNTPHARM", "TVSMOTOR", "UNITDSPR", "VBL",
-    "VEDL", "ZYDUSLIFE", "PFC", "HINDPETRO", "BHEL",
-    "BERGEPAINT", "CONCOR", "MARICO", "TATAPOWER", "UPL"
-])
-
-NIFTY_100 = sorted(list(set(NIFTY_50 + NIFTY_NEXT_50)))
-
-# =========================================================
-# SESSION STATE
-# =========================================================
-if "elite_watchlist" not in st.session_state:
-    st.session_state.elite_watchlist = []
-
-if "portfolio_db" not in st.session_state:
-    st.session_state.portfolio_db = []
-
-# =========================================================
+# -------------------------------
 # HELPERS
-# =========================================================
-def safe_num(x, default=np.nan):
+# -------------------------------
+def fmt_num(x, digits=2):
     try:
-        if x is None:
-            return default
-        v = float(x)
-        if math.isinf(v):
-            return default
-        return v
+        if x is None or (isinstance(x, float) and np.isnan(x)):
+            return "N/A"
+        return f"{x:,.{digits}f}"
     except:
-        return default
+        return "N/A"
 
-def fmt(x, decimals=2):
-    return f"{x:,.{decimals}f}" if pd.notna(x) else "N/A"
 
-def get_nse_symbol(symbol):
-    return f"{str(symbol).strip().upper().replace('.NS','')}.NS"
-
-def clamp(v, lo=0, hi=100):
+def fmt_cr(x):
     try:
-        return max(lo, min(hi, float(v)))
+        if x is None or pd.isna(x):
+            return "N/A"
+        return f"₹ {x/1e7:,.2f} Cr"
     except:
-        return lo
+        return "N/A"
 
-def normalize_linear(x, low, high, invert=False):
-    if pd.isna(x):
-        return np.nan
-    if high == low:
-        return 50
-    score = ((x - low) / (high - low)) * 100
-    if invert:
-        score = 100 - score
-    return clamp(score)
 
-def get_verdict(score):
-    if score >= 80:
-        return "🔥 STRONG BUY", "good"
-    elif score >= 68:
-        return "✅ BUY / ACCUMULATE", "good"
-    elif score >= 55:
-        return "🟡 HOLD / WATCH", "warn"
-    elif score >= 42:
-        return "⚠️ WAIT", "warn"
-    else:
-        return "❌ AVOID", "bad"
+def safe_get(d, keys, default=np.nan):
+    for k in keys:
+        if k in d and d[k] is not None:
+            return d[k]
+    return default
 
-# =========================================================
-# CACHE DATA
-# =========================================================
-@st.cache_data(ttl=900, show_spinner=False)
-def fetch_stock_data(symbol: str, period: str = "1y"):
-    try:
-        ticker = yf.Ticker(get_nse_symbol(symbol))
-        hist = ticker.history(period=period, auto_adjust=False)
 
-        if hist is None or hist.empty:
-            hist = ticker.history(period="6mo", auto_adjust=False)
+def add_nse_suffix(symbol: str):
+    symbol = symbol.strip().upper()
+    if symbol.endswith('.NS') or symbol.endswith('.BO'):
+        return symbol
+    return symbol + '.NS'
 
-        if hist is None or hist.empty:
-            return None, None, "No data found"
 
-        hist = hist.dropna(subset=["Open", "High", "Low", "Close"])
-        if hist.empty:
-            return None, None, "No valid OHLC data"
+@st.cache_data(ttl=900)
+def get_stock_data(symbol, period='2y', interval='1d'):
+    ticker = yf.Ticker(symbol)
+    hist = ticker.history(period=period, interval=interval, auto_adjust=False)
+    info = ticker.info
+    financials = ticker.financials if hasattr(ticker, 'financials') else pd.DataFrame()
+    balance_sheet = ticker.balance_sheet if hasattr(ticker, 'balance_sheet') else pd.DataFrame()
+    cashflow = ticker.cashflow if hasattr(ticker, 'cashflow') else pd.DataFrame()
+    quarterly_financials = ticker.quarterly_financials if hasattr(ticker, 'quarterly_financials') else pd.DataFrame()
+    return hist, info, financials, balance_sheet, cashflow, quarterly_financials
 
-        try:
-            info = ticker.info
-            if not isinstance(info, dict):
-                info = {}
-        except:
-            info = {}
 
-        return hist, info, None
-    except Exception as e:
-        return None, None, str(e)
+# -------------------------------
+# TECHNICAL INDICATORS
+# -------------------------------
+def sma(series, n):
+    return series.rolling(n).mean()
 
-# =========================================================
-# INDICATORS
-# =========================================================
+
+def ema(series, n):
+    return series.ewm(span=n, adjust=False).mean()
+
+
+def rsi(series, period=14):
+    delta = series.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.rolling(period).mean()
+    avg_loss = loss.rolling(period).mean()
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    return 100 - (100 / (1 + rs))
+
+
+def macd(series):
+    ema12 = ema(series, 12)
+    ema26 = ema(series, 26)
+    macd_line = ema12 - ema26
+    signal = ema(macd_line, 9)
+    hist = macd_line - signal
+    return macd_line, signal, hist
+
+
+def bollinger(series, period=20, std=2):
+    mid = sma(series, period)
+    sd = series.rolling(period).std()
+    upper = mid + std * sd
+    lower = mid - std * sd
+    return upper, mid, lower
+
+
+def atr(df, period=14):
+    high = df['High']
+    low = df['Low']
+    close = df['Close']
+    prev_close = close.shift(1)
+    tr = pd.concat([
+        high - low,
+        (high - prev_close).abs(),
+        (low - prev_close).abs()
+    ], axis=1).max(axis=1)
+    return tr.rolling(period).mean()
+
+
+def stochastic(df, period=14, smooth_k=3, smooth_d=3):
+    low_min = df['Low'].rolling(period).min()
+    high_max = df['High'].rolling(period).max()
+    k = 100 * ((df['Close'] - low_min) / (high_max - low_min).replace(0, np.nan))
+    k = k.rolling(smooth_k).mean()
+    d = k.rolling(smooth_d).mean()
+    return k, d
+
+
+def adx(df, period=14):
+    high = df['High']
+    low = df['Low']
+    close = df['Close']
+
+    plus_dm = high.diff()
+    minus_dm = -low.diff()
+    plus_dm = np.where((plus_dm > minus_dm) & (plus_dm > 0), plus_dm, 0.0)
+    minus_dm = np.where((minus_dm > plus_dm) & (minus_dm > 0), minus_dm, 0.0)
+
+    tr = pd.concat([
+        high - low,
+        (high - close.shift(1)).abs(),
+        (low - close.shift(1)).abs()
+    ], axis=1).max(axis=1)
+
+    atr_val = tr.rolling(period).mean()
+    plus_di = 100 * (pd.Series(plus_dm, index=df.index).rolling(period).mean() / atr_val.replace(0, np.nan))
+    minus_di = 100 * (pd.Series(minus_dm, index=df.index).rolling(period).mean() / atr_val.replace(0, np.nan))
+    dx = (abs(plus_di - minus_di) / (plus_di + minus_di).replace(0, np.nan)) * 100
+    adx_val = dx.rolling(period).mean()
+    return adx_val, plus_di, minus_di
+
+
+def obv(df):
+    direction = np.sign(df['Close'].diff()).fillna(0)
+    return (direction * df['Volume']).fillna(0).cumsum()
+
+
+def mfi(df, period=14):
+    tp = (df['High'] + df['Low'] + df['Close']) / 3
+    mf = tp * df['Volume']
+    positive = np.where(tp > tp.shift(1), mf, 0)
+    negative = np.where(tp < tp.shift(1), mf, 0)
+    pos_mf = pd.Series(positive, index=df.index).rolling(period).sum()
+    neg_mf = pd.Series(negative, index=df.index).rolling(period).sum()
+    ratio = pos_mf / neg_mf.replace(0, np.nan)
+    return 100 - (100 / (1 + ratio))
+
+
+def cci(df, period=20):
+    tp = (df['High'] + df['Low'] + df['Close']) / 3
+    sma_tp = tp.rolling(period).mean()
+    mad = tp.rolling(period).apply(lambda x: np.mean(np.abs(x - np.mean(x))), raw=True)
+    return (tp - sma_tp) / (0.015 * mad.replace(0, np.nan))
+
+
+def williams_r(df, period=14):
+    hh = df['High'].rolling(period).max()
+    ll = df['Low'].rolling(period).min()
+    return -100 * ((hh - df['Close']) / (hh - ll).replace(0, np.nan))
+
+
 def add_indicators(df):
     df = df.copy()
-    df["SMA20"] = df["Close"].rolling(20).mean()
-    df["SMA50"] = df["Close"].rolling(50).mean()
-    df["SMA200"] = df["Close"].rolling(200).mean()
-
-    delta = df["Close"].diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-    rs = gain / loss.replace(0, np.nan)
-    df["RSI14"] = 100 - (100 / (1 + rs))
-
-    ema12 = df["Close"].ewm(span=12, adjust=False).mean()
-    ema26 = df["Close"].ewm(span=26, adjust=False).mean()
-    df["MACD"] = ema12 - ema26
-    df["MACD_SIGNAL"] = df["MACD"].ewm(span=9, adjust=False).mean()
-
-    mid = df["Close"].rolling(20).mean()
-    std = df["Close"].rolling(20).std()
-    df["BB_UPPER"] = mid + 2 * std
-    df["BB_LOWER"] = mid - 2 * std
-
-    prev_close = df["Close"].shift(1)
-    tr1 = df["High"] - df["Low"]
-    tr2 = (df["High"] - prev_close).abs()
-    tr3 = (df["Low"] - prev_close).abs()
-    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-    df["ATR14"] = tr.rolling(14).mean()
-
-    df["VOL20"] = df["Volume"].rolling(20).mean()
+    df['SMA20'] = sma(df['Close'], 20)
+    df['SMA50'] = sma(df['Close'], 50)
+    df['SMA200'] = sma(df['Close'], 200)
+    df['EMA20'] = ema(df['Close'], 20)
+    df['EMA50'] = ema(df['Close'], 50)
+    df['RSI14'] = rsi(df['Close'], 14)
+    df['MACD'], df['MACD_SIGNAL'], df['MACD_HIST'] = macd(df['Close'])
+    df['BB_UPPER'], df['BB_MID'], df['BB_LOWER'] = bollinger(df['Close'])
+    df['ATR14'] = atr(df, 14)
+    df['STOCH_K'], df['STOCH_D'] = stochastic(df)
+    df['ADX14'], df['PLUS_DI'], df['MINUS_DI'] = adx(df)
+    df['OBV'] = obv(df)
+    df['MFI14'] = mfi(df)
+    df['CCI20'] = cci(df)
+    df['WILLR14'] = williams_r(df)
     return df
 
-# =========================================================
-# FUNDAMENTAL LIGHT SCORING
-# =========================================================
-def score_fundamentals_light(info):
-    pe = safe_num(info.get("trailingPE"))
-    pb = safe_num(info.get("priceToBook"))
-    roe = safe_num(info.get("returnOnEquity"))
-    debt = safe_num(info.get("debtToEquity"))
-    margin = safe_num(info.get("profitMargins"))
-    growth = safe_num(info.get("revenueGrowth"))
-    div = safe_num(info.get("dividendYield"))
 
-    if pd.notna(roe) and roe < 5:
-        roe *= 100
-    if pd.notna(margin) and margin < 5:
-        margin *= 100
-    if pd.notna(growth) and growth < 5:
-        growth *= 100
-    if pd.notna(div) and div < 5:
-        div *= 100
+# -------------------------------
+# FUNDAMENTAL SCORING
+# -------------------------------
+def calculate_fundamental_score(info):
+    score = 0
+    max_score = 10
 
-    metrics = {
-        "PE": normalize_linear(pe, 5, 40, invert=True) if pd.notna(pe) and pe > 0 else np.nan,
-        "PB": normalize_linear(pb, 0.5, 8, invert=True) if pd.notna(pb) and pb > 0 else np.nan,
-        "ROE": normalize_linear(roe, 5, 25),
-        "Debt": normalize_linear(debt, 0, 2.5, invert=True),
-        "Margin": normalize_linear(margin, 2, 25),
-        "Growth": normalize_linear(growth, -5, 20),
-        "Dividend": normalize_linear(div, 0, 5)
-    }
+    roe = safe_get(info, ['returnOnEquity'])
+    de = safe_get(info, ['debtToEquity'])
+    pe = safe_get(info, ['trailingPE', 'forwardPE'])
+    pb = safe_get(info, ['priceToBook'])
+    pm = safe_get(info, ['profitMargins'])
+    rg = safe_get(info, ['revenueGrowth'])
+    eg = safe_get(info, ['earningsGrowth'])
+    cr = safe_get(info, ['currentRatio'])
+    dy = safe_get(info, ['dividendYield'])
 
-    vals = [v for v in metrics.values() if pd.notna(v)]
-    if not vals:
-        return 50.0, metrics
+    if pd.notna(roe) and roe > 0.15: score += 1
+    if pd.notna(de) and de < 100: score += 1
+    if pd.notna(pe) and pe < 30: score += 1
+    if pd.notna(pb) and pb < 6: score += 1
+    if pd.notna(pm) and pm > 0.10: score += 1
+    if pd.notna(rg) and rg > 0.10: score += 1
+    if pd.notna(eg) and eg > 0.10: score += 1
+    if pd.notna(cr) and cr > 1: score += 1
+    if pd.notna(dy) and dy > 0: score += 1
+    if safe_get(info, ['marketCap']) and safe_get(info, ['marketCap']) > 1e10: score += 1
 
-    score = round(np.nanmean(vals), 1)
-    return score, metrics
+    pct = round((score / max_score) * 100, 1)
+    return score, max_score, pct
 
-# =========================================================
+
+# -------------------------------
 # TECHNICAL SCORING
-# =========================================================
-def score_technical(df):
-    if df is None or df.empty or len(df) < 50:
-        return 45.0, "Neutral", {}
+# -------------------------------
+def calculate_technical_score(df):
+    latest = df.iloc[-1]
+    score = 0
+    max_score = 10
 
-    last = df.iloc[-1]
-    close = safe_num(last["Close"])
-    sma20 = safe_num(last["SMA20"])
-    sma50 = safe_num(last["SMA50"])
-    sma200 = safe_num(last["SMA200"])
-    rsi = safe_num(last["RSI14"])
-    macd = safe_num(last["MACD"])
-    macd_signal = safe_num(last["MACD_SIGNAL"])
+    if latest['Close'] > latest['SMA20']: score += 1
+    if latest['Close'] > latest['SMA50']: score += 1
+    if latest['Close'] > latest['SMA200']: score += 1
+    if pd.notna(latest['RSI14']) and 45 <= latest['RSI14'] <= 70: score += 1
+    if latest['MACD'] > latest['MACD_SIGNAL']: score += 1
+    if latest['STOCH_K'] > latest['STOCH_D']: score += 1
+    if pd.notna(latest['ADX14']) and latest['ADX14'] > 20: score += 1
+    if latest['PLUS_DI'] > latest['MINUS_DI']: score += 1
+    if latest['Close'] > latest['BB_MID']: score += 1
+    if pd.notna(latest['MFI14']) and 40 <= latest['MFI14'] <= 80: score += 1
 
-    metrics = {
-        "Above20DMA": 100 if pd.notna(close) and pd.notna(sma20) and close > sma20 else 30,
-        "Above50DMA": 100 if pd.notna(close) and pd.notna(sma50) and close > sma50 else 30,
-        "Above200DMA": 100 if pd.notna(close) and pd.notna(sma200) and close > sma200 else 20,
-        "RSI": 90 if pd.notna(rsi) and 45 <= rsi <= 65 else 55 if pd.notna(rsi) and rsi < 35 else 40 if pd.notna(rsi) else np.nan,
-        "MACD": 85 if pd.notna(macd) and pd.notna(macd_signal) and macd > macd_signal else 35
-    }
+    pct = round((score / max_score) * 100, 1)
+    return score, max_score, pct
 
-    vals = [v for v in metrics.values() if pd.notna(v)]
-    score = round(np.nanmean(vals), 1) if vals else 45.0
 
-    trend = "Neutral"
-    if pd.notna(close) and pd.notna(sma50) and pd.notna(sma200):
-        if close > sma50 > sma200:
-            trend = "Strong Uptrend"
-        elif close > sma50:
-            trend = "Uptrend"
-        elif close < sma50 < sma200:
-            trend = "Downtrend"
-        else:
-            trend = "Sideways"
+def get_signal(df, f_score_pct):
+    latest = df.iloc[-1]
+    tech_score = calculate_technical_score(df)[2]
+    total = (tech_score * 0.6) + (f_score_pct * 0.4)
 
-    return score, trend, metrics
+    if total >= 80:
+        signal = "STRONG BUY"
+    elif total >= 65:
+        signal = "BUY"
+    elif total >= 50:
+        signal = "HOLD"
+    elif total >= 35:
+        signal = "WEAK"
+    else:
+        signal = "AVOID"
 
-# =========================================================
-# ANALYSIS ENGINE
-# =========================================================
-def analyze_stock(symbol, period="1y"):
-    hist, info, err = fetch_stock_data(symbol, period)
-    if err:
-        return {"error": err}
+    stop_loss = latest['Close'] - (1.5 * latest['ATR14']) if pd.notna(latest['ATR14']) else np.nan
+    target1 = latest['Close'] + (2 * latest['ATR14']) if pd.notna(latest['ATR14']) else np.nan
+    target2 = latest['Close'] + (4 * latest['ATR14']) if pd.notna(latest['ATR14']) else np.nan
 
-    df = add_indicators(hist)
-    last = df.iloc[-1]
+    return signal, total, stop_loss, target1, target2
 
-    last_close = safe_num(last["Close"])
-    prev_close = safe_num(df["Close"].iloc[-2]) if len(df) > 1 else np.nan
-    change = last_close - prev_close if pd.notna(last_close) and pd.notna(prev_close) else np.nan
-    change_pct = (change / prev_close * 100) if pd.notna(change) and pd.notna(prev_close) and prev_close != 0 else np.nan
 
-    fund_score, fund_metrics = score_fundamentals_light(info)
-    tech_score, trend, tech_metrics = score_technical(df)
-
-    balanced = round((fund_score * 0.45) + (tech_score * 0.55), 1)
-    swing = round((fund_score * 0.30) + (tech_score * 0.70), 1)
-    long_term = round((fund_score * 0.65) + (tech_score * 0.35), 1)
-
-    support = df["Low"].tail(30).min() if len(df) >= 30 else np.nan
-    resistance = df["High"].tail(30).max() if len(df) >= 30 else np.nan
-    atr = safe_num(last["ATR14"])
-
-    stop_loss = round(last_close - 1.2 * atr, 2) if pd.notna(last_close) and pd.notna(atr) else np.nan
-    target1 = round(last_close + 1.5 * atr, 2) if pd.notna(last_close) and pd.notna(atr) else np.nan
-    target2 = round(last_close + 3.0 * atr, 2) if pd.notna(last_close) and pd.notna(atr) else np.nan
-
-    breakout = False
-    reversal = False
-    try:
-        recent_high = df["High"].tail(20).max()
-        recent_low = df["Low"].tail(20).min()
-        vol20 = safe_num(last["VOL20"])
-        volume = safe_num(last["Volume"])
-        rsi = safe_num(last["RSI14"])
-
-        breakout = (last_close >= recent_high * 0.995) and (volume >= 1.2 * vol20) if pd.notna(vol20) else False
-        reversal = (last_close <= recent_low * 1.08) and (rsi < 40) if pd.notna(rsi) else False
-    except:
-        pass
-
-    company_name = info.get("longName") or info.get("shortName") or symbol
-    sector = info.get("sector", "N/A")
-    industry = info.get("industry", "N/A")
-    market_cap = safe_num(info.get("marketCap"))
-    pe = safe_num(info.get("trailingPE"))
-    pb = safe_num(info.get("priceToBook"))
-    roe = safe_num(info.get("returnOnEquity"))
-    if pd.notna(roe) and roe < 5:
-        roe *= 100
-
-    return {
-        "df": df,
-        "symbol": symbol,
-        "company_name": company_name,
-        "sector": sector,
-        "industry": industry,
-        "last_close": last_close,
-        "change": change,
-        "change_pct": change_pct,
-        "market_cap": market_cap,
-        "pe": pe,
-        "pb": pb,
-        "roe": roe,
-        "fund_score": fund_score,
-        "tech_score": tech_score,
-        "balanced": balanced,
-        "swing": swing,
-        "long_term": long_term,
-        "trend": trend,
-        "support": support,
-        "resistance": resistance,
-        "stop_loss": stop_loss,
-        "target1": target1,
-        "target2": target2,
-        "breakout": breakout,
-        "reversal": reversal,
-        "fund_metrics": fund_metrics,
-        "tech_metrics": tech_metrics
-    }
-
-# =========================================================
-# CHART
-# =========================================================
-def build_chart(df, symbol):
-    fig = go.Figure()
+# -------------------------------
+# CHARTS
+# -------------------------------
+def candlestick_chart(df, symbol):
+    fig = make_subplots(rows=3, cols=1, shared_xaxes=True,
+                        vertical_spacing=0.03,
+                        row_heights=[0.6, 0.2, 0.2])
 
     fig.add_trace(go.Candlestick(
-        x=df.index,
-        open=df["Open"],
-        high=df["High"],
-        low=df["Low"],
-        close=df["Close"],
-        name="Price"
-    ))
+        x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'], name='Price'
+    ), row=1, col=1)
 
-    for col, name in [("SMA20", "20 DMA"), ("SMA50", "50 DMA"), ("SMA200", "200 DMA")]:
-        if col in df.columns:
-            fig.add_trace(go.Scatter(x=df.index, y=df[col], mode="lines", name=name))
+    fig.add_trace(go.Scatter(x=df.index, y=df['SMA20'], name='SMA20'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['SMA50'], name='SMA50'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['SMA200'], name='SMA200'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['BB_UPPER'], name='BB Upper', line=dict(dash='dot')), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['BB_LOWER'], name='BB Lower', line=dict(dash='dot')), row=1, col=1)
+
+    fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name='Volume'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['RSI14'], name='RSI'), row=3, col=1)
 
     fig.update_layout(
-        title=f"{symbol} Price Chart",
-        template="plotly_dark",
-        height=580,
+        title=f"{symbol} Price + Volume + RSI",
+        template='plotly_dark',
+        height=850,
         xaxis_rangeslider_visible=False,
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(17,24,39,0.5)"
+        margin=dict(l=20, r=20, t=50, b=20)
     )
     return fig
 
-# =========================================================
-# BULK SCAN
-# =========================================================
-def run_bulk_analysis(symbols, max_stocks=5):
-    rows = []
-    symbols = symbols[:max_stocks]
 
-    progress = st.progress(0, text="Starting scan...")
-    total = len(symbols)
+def indicator_chart(df):
+    fig = make_subplots(rows=4, cols=1, shared_xaxes=True,
+                        vertical_spacing=0.03,
+                        row_heights=[0.25, 0.25, 0.25, 0.25])
 
-    for idx, sym in enumerate(symbols, start=1):
-        try:
-            progress.progress(idx / total, text=f"Analyzing {sym} ({idx}/{total})")
-            res = analyze_stock(sym, "1y")
-            if "error" not in res:
-                rows.append({
-                    "Symbol": sym,
-                    "Price": round(res["last_close"], 2) if pd.notna(res["last_close"]) else np.nan,
-                    "Fund Score": res["fund_score"],
-                    "Tech Score": res["tech_score"],
-                    "Balanced Score": res["balanced"],
-                    "Swing Score": res["swing"],
-                    "Long Score": res["long_term"],
-                    "Trend": res["trend"],
-                    "Breakout": "YES" if res["breakout"] else "NO",
-                    "Reversal": "YES" if res["reversal"] else "NO"
-                })
-        except:
-            continue
+    fig.add_trace(go.Scatter(x=df.index, y=df['MACD'], name='MACD'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['MACD_SIGNAL'], name='Signal'), row=1, col=1)
+    fig.add_trace(go.Bar(x=df.index, y=df['MACD_HIST'], name='Hist'), row=1, col=1)
 
-    progress.empty()
+    fig.add_trace(go.Scatter(x=df.index, y=df['STOCH_K'], name='%K'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['STOCH_D'], name='%D'), row=2, col=1)
 
-    if rows:
-        return pd.DataFrame(rows).sort_values("Balanced Score", ascending=False).reset_index(drop=True)
-    return pd.DataFrame()
+    fig.add_trace(go.Scatter(x=df.index, y=df['ADX14'], name='ADX'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['PLUS_DI'], name='+DI'), row=3, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['MINUS_DI'], name='-DI'), row=3, col=1)
 
-# =========================================================
-# HEADER
-# =========================================================
-st.markdown("""
-<div class="hero">
-    <div class="hero-title">📈 NSE Stock Intelligence Pro MAX V9.1 LIGHT</div>
-    <div class="hero-sub">Attractive • Simple • Premium UI • Streamlit Cloud Safe • Nifty 100 Master</div>
-    <span class="pill">Nifty 50</span>
-    <span class="pill">Nifty Next 50</span>
-    <span class="pill">Nifty 100</span>
-    <span class="pill">Watchlist</span>
-    <span class="pill">Portfolio</span>
-    <span class="pill">Cloud Safe</span>
-</div>
-""", unsafe_allow_html=True)
+    fig.add_trace(go.Scatter(x=df.index, y=df['MFI14'], name='MFI'), row=4, col=1)
+    fig.add_trace(go.Scatter(x=df.index, y=df['CCI20'], name='CCI'), row=4, col=1)
 
-# =========================================================
+    fig.update_layout(template='plotly_dark', height=900, title='Advanced Technical Indicators')
+    return fig
+
+
+# -------------------------------
 # SIDEBAR
-# =========================================================
-st.sidebar.markdown("## 🚀 Pro Navigation")
+# -------------------------------
+st.sidebar.markdown("## ⚙️ Control Panel")
+default_watchlist = "RELIANCE, TCS, HDFCBANK, INFY, ICICIBANK, SBIN, LT, ITC, AXISBANK, BHARTIARTL"
 
-module = st.sidebar.radio(
-    "Choose Module",
-    [
-        "Single Stock Analysis",
-        "Nifty 50 Explorer",
-        "Nifty Next 50 Explorer",
-        "Nifty 100 Explorer",
-        "Elite Watchlist",
-        "Mini Screener",
-        "Multi-Stock Compare",
-        "Portfolio DB",
-        "Trade Planner",
-        "Wealth Planner",
-        "About"
+symbol_input = st.sidebar.text_input("Enter NSE/BSE Symbol", value="RELIANCE")
+symbol = add_nse_suffix(symbol_input)
+period = st.sidebar.selectbox("History Period", ['6mo', '1y', '2y', '5y'], index=2)
+watchlist_text = st.sidebar.text_area("Watchlist (comma separated, without suffix)", value=default_watchlist, height=120)
+show_raw = st.sidebar.checkbox("Show Raw Data", value=False)
+
+# -------------------------------
+# HEADER
+# -------------------------------
+st.markdown('<div class="main-title">FINAL V10 FULL FUNDAMENTAL + FULL TECHNICAL ELITE</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Cloud-safe single file stock analysis system for Indian markets (NSE/BSE) • Fundamental + Technical + Scoring + Signal Engine</div>', unsafe_allow_html=True)
+
+# -------------------------------
+# MAIN STOCK ANALYSIS
+# -------------------------------
+try:
+    hist, info, financials, balance_sheet, cashflow, quarterly_financials = get_stock_data(symbol, period=period)
+
+    if hist.empty:
+        st.error("No price data found. Try correct symbol like RELIANCE, TCS, INFY, HDFCBANK or use suffix .NS/.BO")
+        st.stop()
+
+    df = add_indicators(hist)
+    latest = df.iloc[-1]
+    prev = df.iloc[-2] if len(df) > 1 else latest
+
+    f_score, f_max, f_pct = calculate_fundamental_score(info)
+    t_score, t_max, t_pct = calculate_technical_score(df)
+    signal, total_score, stop_loss, target1, target2 = get_signal(df, f_pct)
+
+    company_name = safe_get(info, ['longName', 'shortName'], symbol)
+    sector = safe_get(info, ['sector'], 'N/A')
+    industry = safe_get(info, ['industry'], 'N/A')
+    cmp = latest['Close']
+    change = cmp - prev['Close']
+    change_pct = (change / prev['Close'] * 100) if prev['Close'] else 0
+
+    # Top Summary Cards
+    c1, c2, c3, c4, c5 = st.columns(5)
+    cards = [
+        (c1, 'Company', company_name),
+        (c2, 'CMP', f"₹ {fmt_num(cmp)}"),
+        (c3, 'Change %', f"{fmt_num(change_pct)}%"),
+        (c4, 'Fundamental', f"{f_pct}%"),
+        (c5, 'Technical', f"{t_pct}%"),
     ]
-)
+    for col, label, value in cards:
+        with col:
+            st.markdown(f'''<div class="metric-card"><div class="metric-label">{label}</div><div class="metric-value">{value}</div></div>''', unsafe_allow_html=True)
 
-default_symbol = st.sidebar.selectbox("Quick Select", NIFTY_100, index=min(10, len(NIFTY_100)-1))
-custom_symbol = st.sidebar.text_input("Or Enter NSE Symbol", value=default_symbol)
+    st.markdown("<br>", unsafe_allow_html=True)
 
-period_map = {"6 Months": "6mo", "1 Year": "1y", "2 Years": "2y", "5 Years": "5y"}
-period_label = st.sidebar.selectbox("Price History", list(period_map.keys()), index=1)
-period = period_map[period_label]
+    # Signal Box
+    st.markdown(f'''
+    <div class="score-box">
+        <div class="metric-label">Overall Signal</div>
+        <div class="metric-value">{signal}</div>
+        <div class="small-note">Composite Score: {fmt_num(total_score)}% | Stop Loss: ₹ {fmt_num(stop_loss)} | Target 1: ₹ {fmt_num(target1)} | Target 2: ₹ {fmt_num(target2)}</div>
+    </div>
+    ''', unsafe_allow_html=True)
 
-# =========================================================
-# MODULES
-# =========================================================
-if module == "Single Stock Analysis":
-    st.subheader("📊 Single Stock Analysis")
-
-    symbol = custom_symbol.strip().upper().replace(".NS", "")
-
-    if st.button("Analyze Stock"):
-        with st.spinner(f"Analyzing {symbol}.NS ..."):
-            result = analyze_stock(symbol, period)
-
-        if "error" in result:
-            st.error(result["error"])
-        else:
-            c1, c2, c3, c4, c5, c6 = st.columns(6)
-            with c1:
-                delta_txt = f"{fmt(result['change'])} ({fmt(result['change_pct'])}%)" if pd.notna(result["change"]) else "N/A"
-                st.metric("Price", f"₹ {fmt(result['last_close'])}", delta_txt)
-            with c2:
-                st.metric("Fund Score", f"{result['fund_score']}/100")
-            with c3:
-                st.metric("Tech Score", f"{result['tech_score']}/100")
-            with c4:
-                st.metric("Balanced", f"{result['balanced']}/100")
-            with c5:
-                st.metric("Swing", f"{result['swing']}/100")
-            with c6:
-                st.metric("Long Term", f"{result['long_term']}/100")
-
-            verdict, vtype = get_verdict(result["balanced"])
-            if vtype == "good":
-                st.markdown(f'<div class="good-box">{verdict}</div>', unsafe_allow_html=True)
-            elif vtype == "warn":
-                st.markdown(f'<div class="warn-box">{verdict}</div>', unsafe_allow_html=True)
-            else:
-                st.markdown(f'<div class="bad-box">{verdict}</div>', unsafe_allow_html=True)
-
-            st.markdown(
-                f'<div class="info-box">Company: {result["company_name"]} | Sector: {result["sector"]} | Trend: {result["trend"]} | Breakout: {"YES" if result["breakout"] else "NO"} | Reversal: {"YES" if result["reversal"] else "NO"}</div>',
-                unsafe_allow_html=True
-            )
-
-            tabs = st.tabs(["📈 Chart", "🏢 Fundamentals", "🧠 Score Breakdown", "⭐ Watchlist", "📂 Portfolio", "⬇️ Export"])
-
-            with tabs[0]:
-                st.plotly_chart(build_chart(result["df"], symbol), use_container_width=True)
-
-                a, b, c, d, e = st.columns(5)
-                with a: st.metric("Support", f"₹ {fmt(result['support'])}")
-                with b: st.metric("Resistance", f"₹ {fmt(result['resistance'])}")
-                with c: st.metric("Stop Loss", f"₹ {fmt(result['stop_loss'])}")
-                with d: st.metric("Target 1", f"₹ {fmt(result['target1'])}")
-                with e: st.metric("Target 2", f"₹ {fmt(result['target2'])}")
-
-            with tabs[1]:
-                fund_rows = [
-                    ["Company", result["company_name"]],
-                    ["Sector", result["sector"]],
-                    ["Industry", result["industry"]],
-                    ["Market Cap", f"₹ {result['market_cap']/1e7:,.2f} Cr" if pd.notna(result["market_cap"]) else "N/A"],
-                    ["P/E", fmt(result["pe"])],
-                    ["P/B", fmt(result["pb"])],
-                    ["ROE %", fmt(result["roe"])]
-                ]
-                st.dataframe(pd.DataFrame(fund_rows, columns=["Metric", "Value"]), use_container_width=True, hide_index=True)
-
-            with tabs[2]:
-                st.markdown("### Fundamental Metrics Score")
-                fdf = pd.DataFrame([[k, round(v, 1) if pd.notna(v) else "N/A"] for k, v in result["fund_metrics"].items()], columns=["Metric", "Score"])
-                st.dataframe(fdf, use_container_width=True, hide_index=True)
-
-                st.markdown("### Technical Metrics Score")
-                tdf = pd.DataFrame([[k, round(v, 1) if pd.notna(v) else "N/A"] for k, v in result["tech_metrics"].items()], columns=["Metric", "Score"])
-                st.dataframe(tdf, use_container_width=True, hide_index=True)
-
-            with tabs[3]:
-                note = st.text_input("Watchlist Note", value="High conviction / monitor")
-                if st.button("Add to Elite Watchlist", key="add_watch_single"):
-                    st.session_state.elite_watchlist.append({
-                        "Symbol": symbol,
-                        "Added At": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
-                        "Balanced Score": result["balanced"],
-                        "Note": note
-                    })
-                    st.success(f"{symbol} added to watchlist.")
-
-            with tabs[4]:
-                qty = st.number_input("Qty", min_value=1, value=10, step=1, key="port_qty_single")
-                avg = st.number_input("Avg Buy", min_value=0.0, value=float(result["last_close"]) if pd.notna(result["last_close"]) else 0.0, step=0.1, key="port_avg_single")
-                if st.button("Add to Portfolio DB", key="add_port_single"):
-                    st.session_state.portfolio_db.append({
-                        "Symbol": symbol,
-                        "Qty": qty,
-                        "Avg Buy": avg,
-                        "Added At": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-                    })
-                    st.success(f"{symbol} added to portfolio.")
-
-            with tabs[5]:
-                csv = result["df"].reset_index().to_csv(index=False).encode("utf-8")
-                st.download_button("Download CSV", csv, f"{symbol}_analysis.csv", "text/csv")
-
-elif module == "Nifty 50 Explorer":
-    st.subheader("🇮🇳 Nifty 50 Explorer")
-    selected = st.multiselect("Select Nifty 50 Stocks", NIFTY_50, default=["RELIANCE", "HDFCBANK", "ICICIBANK", "SBIN", "TCS"])
-    max_stocks = st.slider("Max Scan", 3, 8, 5)
-
-    if st.button("Run Nifty 50 Analysis"):
-        with st.spinner("Running Nifty 50 analysis..."):
-            out = run_bulk_analysis(selected if selected else NIFTY_50, max_stocks=max_stocks)
-        if out.empty:
-            st.warning("No data returned.")
-        else:
-            st.dataframe(out, use_container_width=True, hide_index=True)
-
-elif module == "Nifty Next 50 Explorer":
-    st.subheader("🚀 Nifty Next 50 Explorer")
-    selected = st.multiselect("Select Nifty Next 50 Stocks", NIFTY_NEXT_50, default=["HAL", "DIVISLAB", "DMART", "SIEMENS", "VBL"])
-    max_stocks = st.slider("Max Scan", 3, 8, 5, key="next50")
-
-    if st.button("Run Nifty Next 50 Analysis"):
-        with st.spinner("Running Nifty Next 50 analysis..."):
-            out = run_bulk_analysis(selected if selected else NIFTY_NEXT_50, max_stocks=max_stocks)
-        if out.empty:
-            st.warning("No data returned.")
-        else:
-            st.dataframe(out, use_container_width=True, hide_index=True)
-
-elif module == "Nifty 100 Explorer":
-    st.subheader("🏛️ Nifty 100 Explorer")
-    selected = st.multiselect("Select Nifty 100 Stocks", NIFTY_100, default=["RELIANCE", "HDFCBANK", "TCS", "HAL", "DIVISLAB"])
-    max_stocks = st.slider("Max Scan", 3, 10, 6, key="n100")
-
-    if st.button("Run Nifty 100 Analysis"):
-        with st.spinner("Running Nifty 100 analysis..."):
-            out = run_bulk_analysis(selected if selected else NIFTY_100, max_stocks=max_stocks)
-        if out.empty:
-            st.warning("No data returned.")
-        else:
-            st.dataframe(out, use_container_width=True, hide_index=True)
-
-elif module == "Elite Watchlist":
-    st.subheader("⭐ Elite Watchlist")
-
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        wl_symbol = st.selectbox("Select Symbol", NIFTY_100)
-    with c2:
-        st.write("")
-        st.write("")
-        if st.button("Add Manually"):
-            st.session_state.elite_watchlist.append({
-                "Symbol": wl_symbol,
-                "Added At": datetime.now().strftime("%d-%m-%Y %H:%M:%S"),
-                "Balanced Score": np.nan,
-                "Note": "Manual add"
-            })
-            st.success(f"{wl_symbol} added.")
-
-    if st.session_state.elite_watchlist:
-        wl_df = pd.DataFrame(st.session_state.elite_watchlist)
-        st.dataframe(wl_df, use_container_width=True, hide_index=True)
-
-        if st.button("Analyze Watchlist + Auto Score"):
-            rows = []
-            symbols = list(dict.fromkeys([x["Symbol"] for x in st.session_state.elite_watchlist]))[:8]
-
-            with st.spinner("Analyzing watchlist..."):
-                for sym in symbols:
-                    try:
-                        res = analyze_stock(sym, "1y")
-                        if "error" not in res:
-                            rows.append({
-                                "Symbol": sym,
-                                "Price": round(res["last_close"], 2) if pd.notna(res["last_close"]) else np.nan,
-                                "Fund Score": res["fund_score"],
-                                "Tech Score": res["tech_score"],
-                                "Balanced Score": res["balanced"],
-                                "Swing Score": res["swing"],
-                                "Long Score": res["long_term"],
-                                "Trend": res["trend"],
-                                "Breakout": "YES" if res["breakout"] else "NO",
-                                "Reversal": "YES" if res["reversal"] else "NO"
-                            })
-                    except:
-                        continue
-
-            if rows:
-                out = pd.DataFrame(rows).sort_values("Balanced Score", ascending=False).reset_index(drop=True)
-                st.dataframe(out, use_container_width=True, hide_index=True)
-
-                csv = out.to_csv(index=False).encode("utf-8")
-                st.download_button("Download Watchlist CSV", csv, "watchlist_analysis.csv", "text/csv")
-            else:
-                st.warning("No valid watchlist data.")
-
-        if st.button("Clear Watchlist"):
-            st.session_state.elite_watchlist = []
-            st.success("Watchlist cleared.")
-    else:
-        st.info("No watchlist stocks yet.")
-
-elif module == "Mini Screener":
-    st.subheader("🔎 Mini Screener")
-    universe = st.selectbox("Choose Universe", ["Nifty 50", "Nifty Next 50", "Nifty 100"])
-    max_stocks = st.slider("Max Stocks", 3, 10, 5, key="mini")
-
-    if st.button("Run Screener"):
-        symbols = NIFTY_50 if universe == "Nifty 50" else NIFTY_NEXT_50 if universe == "Nifty Next 50" else NIFTY_100
-        with st.spinner("Running screener..."):
-            out = run_bulk_analysis(symbols, max_stocks=max_stocks)
-
-        if out.empty:
-            st.warning("No data.")
-        else:
-            st.dataframe(out, use_container_width=True, hide_index=True)
-
-elif module == "Multi-Stock Compare":
-    st.subheader("📊 Multi-Stock Compare")
-    compare_input = st.text_area("Enter comma-separated NSE symbols", value="RELIANCE,HDFCBANK,ICICIBANK,SBIN,TCS")
-    max_stocks = st.slider("Max Compare Stocks", 2, 8, 5)
-
-    if st.button("Run Compare"):
-        symbols = [x.strip().upper().replace(".NS", "") for x in compare_input.split(",") if x.strip()]
-        symbols = list(dict.fromkeys(symbols))[:max_stocks]
-
-        with st.spinner("Running compare..."):
-            out = run_bulk_analysis(symbols, max_stocks=max_stocks)
-
-        if out.empty:
-            st.warning("No data.")
-        else:
-            st.dataframe(out, use_container_width=True, hide_index=True)
-
-elif module == "Portfolio DB":
-    st.subheader("📂 Portfolio DB")
-
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        p_symbol = st.selectbox("Symbol", NIFTY_100, key="pdb_symbol")
-    with c2:
-        p_qty = st.number_input("Qty", min_value=1, value=10, step=1, key="pdb_qty")
-    with c3:
-        p_avg = st.number_input("Avg Buy", min_value=0.0, value=100.0, step=0.1, key="pdb_avg")
-
-    if st.button("Add to Portfolio"):
-        st.session_state.portfolio_db.append({
-            "Symbol": p_symbol,
-            "Qty": p_qty,
-            "Avg Buy": p_avg,
-            "Added At": datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-        })
-        st.success(f"{p_symbol} added.")
-
-    if st.session_state.portfolio_db:
-        db_df = pd.DataFrame(st.session_state.portfolio_db)
-        st.dataframe(db_df, use_container_width=True, hide_index=True)
-
-        if st.button("Analyze Portfolio"):
-            rows = []
-            with st.spinner("Analyzing portfolio..."):
-                for row in st.session_state.portfolio_db[:8]:
-                    sym = row["Symbol"]
-                    qty = row["Qty"]
-                    avg_buy = row["Avg Buy"]
-
-                    try:
-                        res = analyze_stock(sym, "1y")
-                        if "error" not in res:
-                            ltp = res["last_close"]
-                            invested = qty * avg_buy
-                            current_value = qty * ltp if pd.notna(ltp) else np.nan
-                            pnl = current_value - invested if pd.notna(current_value) else np.nan
-                            pnl_pct = (pnl / invested * 100) if pd.notna(pnl) and invested != 0 else np.nan
-
-                            rows.append({
-                                "Symbol": sym,
-                                "Qty": qty,
-                                "Avg Buy": avg_buy,
-                                "LTP": round(ltp, 2) if pd.notna(ltp) else np.nan,
-                                "Invested": round(invested, 2),
-                                "Current Value": round(current_value, 2) if pd.notna(current_value) else np.nan,
-                                "P&L": round(pnl, 2) if pd.notna(pnl) else np.nan,
-                                "P&L %": round(pnl_pct, 2) if pd.notna(pnl_pct) else np.nan,
-                                "Balanced Score": res["balanced"]
-                            })
-                    except:
-                        continue
-
-            if rows:
-                out = pd.DataFrame(rows).sort_values("Balanced Score", ascending=False).reset_index(drop=True)
-                st.dataframe(out, use_container_width=True, hide_index=True)
-
-        if st.button("Clear Portfolio"):
-            st.session_state.portfolio_db = []
-            st.success("Portfolio cleared.")
-    else:
-        st.info("No stocks added yet.")
-
-elif module == "Trade Planner":
-    st.subheader("🎯 Trade Planner")
-
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        entry = st.number_input("Entry", min_value=0.0, value=100.0, step=0.1)
-    with c2:
-        stop = st.number_input("Stop Loss", min_value=0.0, value=95.0, step=0.1)
-    with c3:
-        target = st.number_input("Target", min_value=0.0, value=110.0, step=0.1)
-    with c4:
-        capital = st.number_input("Capital", min_value=1000.0, value=100000.0, step=1000.0)
-
-    risk = entry - stop
-    reward = target - entry
-    rr = reward / risk if risk > 0 else np.nan
-    qty = math.floor(capital / entry) if entry > 0 else 0
-
-    t1, t2, t3, t4 = st.columns(4)
-    with t1: st.metric("Risk/Share", fmt(risk))
-    with t2: st.metric("Reward/Share", fmt(reward))
-    with t3: st.metric("R:R", fmt(rr))
-    with t4: st.metric("Max Qty", f"{qty}")
-
-elif module == "Wealth Planner":
-    st.subheader("💰 Wealth Planner")
-
-    tab1, tab2 = st.tabs(["📅 SIP Planner", "💵 Lumpsum Planner"])
+    # Tabs
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        '📊 Price Chart', '📈 Technical', '🏦 Fundamental', '🧠 Decision Engine', '📋 Watchlist Scanner'
+    ])
 
     with tab1:
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            monthly = st.number_input("Monthly SIP (₹)", min_value=500, value=10000, step=500)
-        with c2:
-            ret = st.number_input("Expected Return (%)", min_value=0.0, value=12.0, step=0.5)
-        with c3:
-            years = st.number_input("Years", min_value=1, value=10, step=1)
-
-        r = ret / 12 / 100
-        n = years * 12
-        fv = monthly * (((1 + r) ** n - 1) / r) * (1 + r) if r != 0 else monthly * n
-        invested = monthly * 12 * years
-
-        s1, s2, s3 = st.columns(3)
-        with s1: st.metric("Invested", f"₹ {fmt(invested)}")
-        with s2: st.metric("Future Value", f"₹ {fmt(fv)}")
-        with s3: st.metric("Gain", f"₹ {fmt(fv - invested)}")
+        st.markdown('<div class="section-title">Candlestick + Moving Averages + Bollinger + Volume + RSI</div>', unsafe_allow_html=True)
+        st.plotly_chart(candlestick_chart(df, symbol), use_container_width=True)
 
     with tab2:
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            amount = st.number_input("Lumpsum (₹)", min_value=1000, value=100000, step=1000)
-        with c2:
-            ret2 = st.number_input("Expected Return (%)", min_value=0.0, value=12.0, step=0.5, key="lump_ret")
-        with c3:
-            years2 = st.number_input("Years", min_value=1, value=10, step=1, key="lump_yrs")
+        st.markdown('<div class="section-title">Advanced Technical Indicators</div>', unsafe_allow_html=True)
+        t1, t2, t3, t4, t5 = st.columns(5)
+        tech_metrics = [
+            ('RSI 14', latest['RSI14']),
+            ('MACD', latest['MACD']),
+            ('ADX 14', latest['ADX14']),
+            ('MFI 14', latest['MFI14']),
+            ('ATR 14', latest['ATR14'])
+        ]
+        for col, (lab, val) in zip([t1,t2,t3,t4,t5], tech_metrics):
+            with col:
+                st.markdown(f'''<div class="metric-card"><div class="metric-label">{lab}</div><div class="metric-value">{fmt_num(val)}</div></div>''', unsafe_allow_html=True)
 
-        fv2 = amount * ((1 + ret2 / 100) ** years2)
+        st.plotly_chart(indicator_chart(df), use_container_width=True)
 
-        l1, l2, l3 = st.columns(3)
-        with l1: st.metric("Invested", f"₹ {fmt(amount)}")
-        with l2: st.metric("Future Value", f"₹ {fmt(fv2)}")
-        with l3: st.metric("Gain", f"₹ {fmt(fv2 - amount)}")
+        tech_df = pd.DataFrame({
+            'Indicator': ['Close vs SMA20', 'Close vs SMA50', 'Close vs SMA200', 'RSI', 'MACD', 'Stochastic', 'ADX', 'DI Trend', 'BB Mid', 'MFI'],
+            'Status': [
+                'Bullish' if latest['Close'] > latest['SMA20'] else 'Bearish',
+                'Bullish' if latest['Close'] > latest['SMA50'] else 'Bearish',
+                'Bullish' if latest['Close'] > latest['SMA200'] else 'Bearish',
+                'Healthy' if 45 <= latest['RSI14'] <= 70 else ('Overbought' if latest['RSI14'] > 70 else 'Weak'),
+                'Bullish' if latest['MACD'] > latest['MACD_SIGNAL'] else 'Bearish',
+                'Bullish' if latest['STOCH_K'] > latest['STOCH_D'] else 'Bearish',
+                'Strong Trend' if latest['ADX14'] > 20 else 'Weak Trend',
+                'Bullish' if latest['PLUS_DI'] > latest['MINUS_DI'] else 'Bearish',
+                'Bullish' if latest['Close'] > latest['BB_MID'] else 'Bearish',
+                'Healthy' if 40 <= latest['MFI14'] <= 80 else 'Extreme'
+            ]
+        })
+        st.dataframe(tech_df, use_container_width=True)
 
-else:
-    st.subheader("ℹ️ About This Version")
-    st.markdown("""
-<div class="soft-card">
-<h4 style="margin-top:0;">FINAL V9.1 LIGHT CLOUD SAFE</h4>
-<ul>
-<li>Lightweight and more stable for Streamlit Cloud</li>
-<li>Premium modern UI</li>
-<li>Better font and attractive dark background</li>
-<li>Simple and clean layout</li>
-<li>Nifty 50 + Nifty Next 50 + Nifty 100</li>
-<li>Watchlist + Portfolio + Screener + Compare</li>
-</ul>
-<p><b>Best for:</b> Fast deployment, stable running, clean premium appearance.</p>
-</div>
-""", unsafe_allow_html=True)
+    with tab3:
+        st.markdown('<div class="section-title">Full Fundamental Analysis</div>', unsafe_allow_html=True)
 
-# =========================================================
-# FOOTER
-# =========================================================
-st.markdown("---")
-st.caption(
-    f"NSE Stock Intelligence Pro MAX V9.1 LIGHT • Attractive UI • Streamlit Cloud Safe • {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
-)
+        f1, f2, f3, f4 = st.columns(4)
+        fundamental_cards = [
+            ('Market Cap', fmt_cr(safe_get(info, ['marketCap']))),
+            ('PE Ratio', fmt_num(safe_get(info, ['trailingPE', 'forwardPE']))),
+            ('PB Ratio', fmt_num(safe_get(info, ['priceToBook']))),
+            ('ROE', f"{fmt_num(safe_get(info, ['returnOnEquity'])*100 if pd.notna(safe_get(info, ['returnOnEquity'])) else np.nan)}%"),
+        ]
+        for col, (lab, val) in zip([f1,f2,f3,f4], fundamental_cards):
+            with col:
+                st.markdown(f'''<div class="metric-card"><div class="metric-label">{lab}</div><div class="metric-value">{val}</div></div>''', unsafe_allow_html=True)
+
+        f5, f6, f7, f8 = st.columns(4)
+        fundamental_cards2 = [
+            ('Debt/Equity', fmt_num(safe_get(info, ['debtToEquity']))),
+            ('Profit Margin', f"{fmt_num(safe_get(info, ['profitMargins'])*100 if pd.notna(safe_get(info, ['profitMargins'])) else np.nan)}%"),
+            ('Revenue Growth', f"{fmt_num(safe_get(info, ['revenueGrowth'])*100 if pd.notna(safe_get(info, ['revenueGrowth'])) else np.nan)}%"),
+            ('Dividend Yield', f"{fmt_num(safe_get(info, ['dividendYield'])*100 if pd.notna(safe_get(info, ['dividendYield'])) else np.nan)}%"),
+        ]
+        for col, (lab, val) in zip([f5,f6,f7,f8], fundamental_cards2):
+            with col:
+                st.markdown(f'''<div class="metric-card"><div class="metric-label">{lab}</div><div class="metric-value">{val}</div></div>''', unsafe_allow_html=True)
+
+        base_info = pd.DataFrame({
+            'Field': ['Company', 'Sector', 'Industry', '52W High', '52W Low', 'Current Ratio', 'Quick Ratio', 'Book Value', 'EPS', 'Beta'],
+            'Value': [
+                company_name,
+                sector,
+                industry,
+                fmt_num(safe_get(info, ['fiftyTwoWeekHigh'])),
+                fmt_num(safe_get(info, ['fiftyTwoWeekLow'])),
+                fmt_num(safe_get(info, ['currentRatio'])),
+                fmt_num(safe_get(info, ['quickRatio'])),
+                fmt_num(safe_get(info, ['bookValue'])),
+                fmt_num(safe_get(info, ['trailingEps', 'forwardEps'])),
+                fmt_num(safe_get(info, ['beta']))
+            ]
+        })
+        st.dataframe(base_info, use_container_width=True)
+
+        if not financials.empty:
+            st.markdown('#### Annual Financials')
+            st.dataframe(financials, use_container_width=True)
+        if not balance_sheet.empty:
+            st.markdown('#### Balance Sheet')
+            st.dataframe(balance_sheet, use_container_width=True)
+        if not cashflow.empty:
+            st.markdown('#### Cash Flow')
+            st.dataframe(cashflow, use_container_width=True)
+        if not quarterly_financials.empty:
+            st.markdown('#### Quarterly Financials')
+            st.dataframe(quarterly_financials, use_container_width=True)
+
+    with tab4:
+        st.markdown('<div class="section-title">AI-Style Decision Engine (Rules Based)</div>', unsafe_allow_html=True)
+
+        d1, d2, d3 = st.columns(3)
+        with d1:
+            st.markdown(f'''<div class="score-box"><div class="metric-label">Fundamental Score</div><div class="metric-value">{f_score}/{f_max}</div><div class="small-note">{f_pct}%</div></div>''', unsafe_allow_html=True)
+        with d2:
+            st.markdown(f'''<div class="score-box"><div class="metric-label">Technical Score</div><div class="metric-value">{t_score}/{t_max}</div><div class="small-note">{t_pct}%</div></div>''', unsafe_allow_html=True)
+        with d3:
+            st.markdown(f'''<div class="score-box"><div class="metric-label">Final Decision</div><div class="metric-value">{signal}</div><div class="small-note">Composite {fmt_num(total_score)}%</div></div>''', unsafe_allow_html=True)
+
+        reasons = []
+        risks = []
+
+        if latest['Close'] > latest['SMA50']:
+            reasons.append('Price is above 50 DMA (medium-term bullish structure).')
+        else:
+            risks.append('Price is below 50 DMA (medium-term weakness).')
+
+        if latest['Close'] > latest['SMA200']:
+            reasons.append('Price is above 200 DMA (long-term trend positive).')
+        else:
+            risks.append('Price is below 200 DMA (long-term caution).')
+
+        if latest['MACD'] > latest['MACD_SIGNAL']:
+            reasons.append('MACD bullish crossover / positive momentum.')
+        else:
+            risks.append('MACD below signal (momentum weak).')
+
+        if pd.notna(latest['RSI14']) and latest['RSI14'] < 70:
+            reasons.append('RSI not overheated.')
+        elif pd.notna(latest['RSI14']):
+            risks.append('RSI is overbought.')
+
+        if f_pct >= 70:
+            reasons.append('Fundamentals are strong based on profitability/growth/valuation mix.')
+        elif f_pct < 40:
+            risks.append('Fundamental quality is weak / incomplete.')
+
+        st.markdown('#### Why it looks good')
+        for r in reasons:
+            st.success(r)
+
+        st.markdown('#### Key risks')
+        if risks:
+            for r in risks:
+                st.warning(r)
+        else:
+            st.info('No major rule-based risk flagged currently.')
+
+        st.markdown('#### Trade Plan')
+        plan_df = pd.DataFrame({
+            'Metric': ['CMP', 'Signal', 'Stop Loss', 'Target 1', 'Target 2', 'ATR'],
+            'Value': [
+                f'₹ {fmt_num(cmp)}',
+                signal,
+                f'₹ {fmt_num(stop_loss)}',
+                f'₹ {fmt_num(target1)}',
+                f'₹ {fmt_num(target2)}',
+                fmt_num(latest['ATR14'])
+            ]
+        })
+        st.dataframe(plan_df, use_container_width=True)
+
+    with tab5:
+        st.markdown('<div class="section-title">Watchlist Scanner</div>', unsafe_allow_html=True)
+        watchlist = [add_nse_suffix(x.strip()) for x in watchlist_text.split(',') if x.strip()]
+        results = []
+
+        progress = st.progress(0)
+        for i, sym in enumerate(watchlist):
+            try:
+                h, inf, *_ = get_stock_data(sym, period='1y')
+                if not h.empty and len(h) > 50:
+                    h = add_indicators(h)
+                    fs, fm, fp = calculate_fundamental_score(inf)
+                    ts, tm, tp = calculate_technical_score(h)
+                    sig, tot, sl, tg1, tg2 = get_signal(h, fp)
+                    last = h.iloc[-1]
+                    results.append({
+                        'Symbol': sym,
+                        'CMP': round(last['Close'], 2),
+                        'Fundamental %': fp,
+                        'Technical %': tp,
+                        'Composite %': round(tot, 2),
+                        'Signal': sig,
+                        'RSI': round(last['RSI14'], 2) if pd.notna(last['RSI14']) else np.nan,
+                        'ADX': round(last['ADX14'], 2) if pd.notna(last['ADX14']) else np.nan,
+                        'Stop Loss': round(sl, 2) if pd.notna(sl) else np.nan,
+                        'Target 1': round(tg1, 2) if pd.notna(tg1) else np.nan,
+                        'Target 2': round(tg2, 2) if pd.notna(tg2) else np.nan,
+                    })
+            except:
+                pass
+            progress.progress((i + 1) / max(len(watchlist), 1))
+
+        if results:
+            res_df = pd.DataFrame(results).sort_values(by='Composite %', ascending=False)
+            st.dataframe(res_df, use_container_width=True)
+            st.download_button(
+                '⬇️ Download Watchlist CSV',
+                data=res_df.to_csv(index=False).encode('utf-8'),
+                file_name='watchlist_scan.csv',
+                mime='text/csv'
+            )
+        else:
+            st.warning('No watchlist data could be loaded.')
+
+    if show_raw:
+        st.markdown('---')
+        st.markdown('### Raw Price Data')
+        st.dataframe(df.tail(300), use_container_width=True)
+
+except Exception as e:
+    st.error(f"Error loading data: {e}")
+    st.info("Tips: Use valid NSE symbols like RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, SBIN")
