@@ -1,7 +1,13 @@
-# FINAL NILE V12.3 MASTERPIECE
+# FINAL NILE V12.3.1 ABSOLUTE MASTERPIECE
 # Single-file Streamlit app.py
-# Visible app name: Nile
-# Upgraded: NIFTY 50 + NIFTY NEXT 50 + Fundamental Ratio button + Technical Ratio button
+# Visible App Name: Nile
+# Subtitle: Stock Analysis
+# Upgraded from V12.3 with:
+# - Sector Heatmap
+# - AI Buy / Hold / Sell Badge
+# - Much more premium glass UI
+# - More attractive buttons + cards
+# - Keeps previous features intact
 
 import time
 import numpy as np
@@ -10,7 +16,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
 
-# Optional safe import
+# Safe optional import
 try:
     import yfinance as yf
 except Exception:
@@ -27,118 +33,126 @@ st.set_page_config(
 )
 
 # -------------------------------------------------
-# PREMIUM MASTERPIECE CSS
+# ABSOLUTE MASTERPIECE PREMIUM GLASS UI
 # -------------------------------------------------
 st.markdown(
     """
     <style>
     :root {
-        --bg1: #050914;
+        --bg1: #030712;
         --bg2: #0b1220;
-        --card: rgba(15, 23, 42, 0.85);
-        --stroke: rgba(148, 163, 184, 0.16);
+        --card1: rgba(15, 23, 42, 0.80);
+        --card2: rgba(17, 24, 39, 0.88);
+        --stroke: rgba(148, 163, 184, 0.14);
         --text: #e5e7eb;
         --muted: #94a3b8;
         --green: #22c55e;
         --red: #ef4444;
+        --yellow: #f59e0b;
         --blue: #3b82f6;
         --violet: #8b5cf6;
-        --gold: #f59e0b;
         --cyan: #06b6d4;
     }
 
     .stApp {
         background:
-            radial-gradient(circle at 15% 20%, rgba(59,130,246,0.12), transparent 24%),
-            radial-gradient(circle at 85% 8%, rgba(139,92,246,0.10), transparent 28%),
-            radial-gradient(circle at 50% 85%, rgba(6,182,212,0.07), transparent 25%),
+            radial-gradient(circle at 12% 18%, rgba(59,130,246,0.16), transparent 24%),
+            radial-gradient(circle at 86% 8%, rgba(139,92,246,0.14), transparent 28%),
+            radial-gradient(circle at 48% 86%, rgba(6,182,212,0.08), transparent 26%),
             linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
         color: var(--text);
     }
 
     .block-container {
-        padding-top: 1rem;
+        padding-top: 0.8rem;
         padding-bottom: 2rem;
-        max-width: 1650px;
+        max-width: 1680px;
     }
 
     .nile-title {
-        font-size: 2.65rem;
+        font-size: 2.85rem;
         font-weight: 900;
-        letter-spacing: 0.3px;
+        letter-spacing: 0.5px;
         color: #ffffff;
-        margin-bottom: 0.15rem;
+        margin-bottom: 0.08rem;
+        text-shadow: 0 0 24px rgba(59,130,246,0.18);
     }
 
     .nile-sub {
-        color: #a5b4fc;
-        font-size: 1rem;
+        color: #c4b5fd;
+        font-size: 1.02rem;
         margin-bottom: 1rem;
-        font-weight: 600;
+        font-weight: 700;
     }
 
-    .card {
-        background: linear-gradient(180deg, rgba(17,24,39,0.88), rgba(15,23,42,0.84));
-        border: 1px solid var(--stroke);
-        border-radius: 22px;
-        padding: 16px;
-        box-shadow: 0 12px 34px rgba(0,0,0,0.28);
-        backdrop-filter: blur(10px);
+    .glass-card {
+        background: linear-gradient(180deg, rgba(17,24,39,0.86), rgba(15,23,42,0.80));
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 24px;
+        padding: 18px;
+        box-shadow: 0 14px 40px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.03);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         margin-bottom: 14px;
     }
 
     .metric-card {
         background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(17,24,39,0.88));
-        border: 1px solid rgba(148,163,184,0.14);
-        border-radius: 18px;
+        border: 1px solid rgba(148,163,184,0.12);
+        border-radius: 20px;
         padding: 16px;
-        min-height: 118px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+        min-height: 124px;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.22);
     }
 
     .metric-label { font-size: 0.82rem; color: #94a3b8; margin-bottom: 6px; }
-    .metric-value { font-size: 1.75rem; font-weight: 800; color: #ffffff; margin-bottom: 4px; }
-    .metric-delta-up { color: #22c55e; font-weight: 700; }
-    .metric-delta-down { color: #ef4444; font-weight: 700; }
-    .metric-delta-flat { color: #94a3b8; font-weight: 700; }
-    .section-title { font-size: 1.08rem; font-weight: 800; color: #f8fafc; margin-bottom: 8px; }
+    .metric-value { font-size: 1.75rem; font-weight: 900; color: #ffffff; margin-bottom: 4px; }
+    .metric-delta-up { color: #22c55e; font-weight: 800; }
+    .metric-delta-down { color: #ef4444; font-weight: 800; }
+    .metric-delta-flat { color: #94a3b8; font-weight: 800; }
+    .section-title { font-size: 1.08rem; font-weight: 900; color: #f8fafc; margin-bottom: 8px; }
+
+    .ai-badge-buy {
+        background: linear-gradient(90deg, rgba(34,197,94,0.22), rgba(34,197,94,0.08));
+        color: #86efac; border: 1px solid rgba(34,197,94,0.28);
+        padding: 10px 14px; border-radius: 14px; font-weight: 900; text-align:center;
+    }
+    .ai-badge-hold {
+        background: linear-gradient(90deg, rgba(245,158,11,0.22), rgba(245,158,11,0.08));
+        color: #fcd34d; border: 1px solid rgba(245,158,11,0.28);
+        padding: 10px 14px; border-radius: 14px; font-weight: 900; text-align:center;
+    }
+    .ai-badge-sell {
+        background: linear-gradient(90deg, rgba(239,68,68,0.22), rgba(239,68,68,0.08));
+        color: #fca5a5; border: 1px solid rgba(239,68,68,0.28);
+        padding: 10px 14px; border-radius: 14px; font-weight: 900; text-align:center;
+    }
 
     div[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, rgba(7,12,24,0.98), rgba(11,18,32,0.98));
+        background: linear-gradient(180deg, rgba(7,12,24,0.99), rgba(11,18,32,0.99));
         border-right: 1px solid rgba(148,163,184,0.08);
     }
 
     .stButton > button {
         width: 100%;
-        border-radius: 14px;
-        border: 1px solid rgba(148,163,184,0.18);
-        background: linear-gradient(90deg, #2563eb, #7c3aed);
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.08);
+        background: linear-gradient(90deg, #2563eb, #7c3aed, #06b6d4);
         color: white;
-        font-weight: 800;
-        padding: 0.68rem 0.9rem;
+        font-weight: 900;
+        padding: 0.72rem 1rem;
+        box-shadow: 0 8px 22px rgba(37,99,235,0.22);
     }
 
     .stDownloadButton > button {
         width: 100%;
-        border-radius: 14px;
-        border: 1px solid rgba(148,163,184,0.18);
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,0.08);
         background: linear-gradient(90deg, #0f766e, #2563eb);
         color: white;
-        font-weight: 800;
-        padding: 0.68rem 0.9rem;
-    }
-
-    .pill {
-        display: inline-block;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        margin-right: 6px;
-        margin-bottom: 6px;
-        border: 1px solid rgba(148,163,184,0.14);
-        background: rgba(30,41,59,0.65);
-        color: #e2e8f0;
+        font-weight: 900;
+        padding: 0.72rem 1rem;
+        box-shadow: 0 8px 22px rgba(15,118,110,0.20);
     }
     </style>
     """,
@@ -146,7 +160,7 @@ st.markdown(
 )
 
 # -------------------------------------------------
-# NIFTY 50 + NIFTY NEXT 50 (approx tradable Yahoo symbols)
+# STOCK UNIVERSE
 # -------------------------------------------------
 NIFTY_50 = [
     "RELIANCE.NS","TCS.NS","HDFCBANK.NS","BHARTIARTL.NS","ICICIBANK.NS","SBIN.NS","INFY.NS","HINDUNILVR.NS","ITC.NS","LT.NS",
@@ -155,7 +169,6 @@ NIFTY_50 = [
     "ADANIPORTS.NS","INDUSINDBK.NS","TECHM.NS","GRASIM.NS","CIPLA.NS","DRREDDY.NS","HINDALCO.NS","HEROMOTOCO.NS","EICHERMOT.NS","BPCL.NS",
     "BRITANNIA.NS","APOLLOHOSP.NS","DIVISLAB.NS","ADANIENT.NS","TATACONSUM.NS","PIDILITIND.NS","SBILIFE.NS","BAJAJ-AUTO.NS","SHRIRAMFIN.NS","TRENT.NS"
 ]
-
 NIFTY_NEXT_50 = [
     "ABB.NS","ADANIGREEN.NS","ADANIPOWER.NS","AMBUJACEM.NS","BANKBARODA.NS","BOSCHLTD.NS","CANBK.NS","CGPOWER.NS","CHOLAFIN.NS","DABUR.NS",
     "DLF.NS","GAIL.NS","GODREJCP.NS","HAL.NS","HAVELLS.NS","ICICIGI.NS","ICICIPRULI.NS","INDIGO.NS","IOC.NS","IRCTC.NS",
@@ -163,11 +176,10 @@ NIFTY_NEXT_50 = [
     "PIDILITIND.NS","PNB.NS","POLYCAB.NS","RECLTD.NS","SAIL.NS","SIEMENS.NS","TVSMOTOR.NS","UNITDSPR.NS","VEDL.NS","VOLTAS.NS",
     "ZYDUSLIFE.NS","INDUSTOWER.NS","TORNTPHARM.NS","HDFCLIFE.NS","COLPAL.NS","MARICO.NS","UBL.NS","BERGEPAINT.NS","CONCOR.NS","OFSS.NS"
 ]
-
 UNIVERSE = sorted(list(dict.fromkeys(NIFTY_50 + NIFTY_NEXT_50)))
 
 # -------------------------------------------------
-# DATA HELPERS
+# HELPERS
 # -------------------------------------------------
 @st.cache_data(ttl=900)
 def get_history(symbol: str, period: str = "1y", interval: str = "1d"):
@@ -246,11 +258,9 @@ def compute_indicators(df: pd.DataFrame):
 def score_stock(df: pd.DataFrame):
     if df.empty or len(df) < 60:
         return 0, "Insufficient Data", {}
-
     last = df.iloc[-1]
     score = 0
     reasons = {}
-
     if last["Close"] > last["SMA20"]:
         score += 10; reasons["Above SMA20"] = True
     if last["Close"] > last["SMA50"]:
@@ -261,17 +271,23 @@ def score_stock(df: pd.DataFrame):
         score += 15; reasons["Healthy RSI"] = True
     if last["MACD"] > last["MACD_SIGNAL"]:
         score += 15; reasons["MACD Bullish"] = True
-
     recent_high = df["High"].tail(20).max()
     if last["Close"] >= recent_high * 0.985:
         score += 20; reasons["Near Breakout"] = True
-
     vol20 = df["Volume"].tail(20).mean() if "Volume" in df.columns else np.nan
     if "Volume" in df.columns and pd.notna(vol20) and last["Volume"] > vol20 * 1.2:
         score += 10; reasons["Volume Expansion"] = True
-
     verdict = "Strong Bullish" if score >= 75 else "Bullish" if score >= 55 else "Neutral" if score >= 35 else "Weak"
     return score, verdict, reasons
+
+
+def ai_badge(score, rsi, trend_signal, macd_signal):
+    if score >= 75 and trend_signal == "Bullish" and macd_signal == "Bullish" and rsi < 75:
+        return "BUY", "ai-badge-buy", "High conviction setup"
+    elif score >= 45:
+        return "HOLD", "ai-badge-hold", "Wait for better confirmation"
+    else:
+        return "SELL", "ai-badge-sell", "Weak setup / avoid now"
 
 
 def rupee(v):
@@ -289,30 +305,20 @@ def metric_box(label, value, delta_text="", positive=None):
     else:
         delta_cls = "metric-delta-flat"
     st.markdown(f"""
-        <div class='metric-card'>
-            <div class='metric-label'>{label}</div>
-            <div class='metric-value'>{value}</div>
-            <div class='{delta_cls}'>{delta_text}</div>
-        </div>
+    <div class='metric-card'>
+        <div class='metric-label'>{label}</div>
+        <div class='metric-value'>{value}</div>
+        <div class='{delta_cls}'>{delta_text}</div>
+    </div>
     """, unsafe_allow_html=True)
 
 
 def make_candlestick(df: pd.DataFrame, symbol: str):
     fig = go.Figure()
-    fig.add_trace(go.Candlestick(
-        x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="Price"
-    ))
+    fig.add_trace(go.Candlestick(x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="Price"))
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA20"], name="SMA20", line=dict(width=1.8)))
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], name="SMA50", line=dict(width=1.8)))
-    fig.update_layout(
-        title=f"{symbol} Price Structure",
-        template="plotly_dark",
-        height=520,
-        xaxis_rangeslider_visible=False,
-        margin=dict(l=10, r=10, t=40, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-    )
+    fig.update_layout(title=f"{symbol} Price Structure", template="plotly_dark", height=520, xaxis_rangeslider_visible=False, margin=dict(l=10,r=10,t=40,b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     return fig
 
 
@@ -321,7 +327,7 @@ def make_rsi_chart(df: pd.DataFrame):
     fig.add_trace(go.Scatter(x=df.index, y=df["RSI14"], name="RSI 14"))
     fig.add_hline(y=70, line_dash="dot")
     fig.add_hline(y=30, line_dash="dot")
-    fig.update_layout(template="plotly_dark", height=260, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(template="plotly_dark", height=260, margin=dict(l=10,r=10,t=30,b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     return fig
 
 # -------------------------------------------------
@@ -377,6 +383,18 @@ rsi = safe_last(df["RSI14"])
 atr = safe_last(df["ATR14"])
 score, verdict, reasons = score_stock(df)
 
+trend_signal = "Bullish" if df.iloc[-1]["SMA20"] > df.iloc[-1]["SMA50"] else "Bearish"
+macd_signal = "Bullish" if df.iloc[-1]["MACD"] > df.iloc[-1]["MACD_SIGNAL"] else "Bearish"
+breakout_level = df["High"].tail(20).max()
+support_level = df["Low"].tail(20).min()
+
+# -------------------------------------------------
+# AI BUY/HOLD/SELL BADGE (NEW)
+# -------------------------------------------------
+ai_action, ai_class, ai_reason = ai_badge(score, rsi, trend_signal, macd_signal)
+st.markdown("<div class='glass-card'><div class='section-title'>AI Signal Badge</div></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='{ai_class}'>AI {ai_action} • {ai_reason}</div>", unsafe_allow_html=True)
+
 # -------------------------------------------------
 # TOP METRICS
 # -------------------------------------------------
@@ -395,9 +413,9 @@ with c5:
     metric_box("Market Cap", f"₹{market_cap/1e7:,.0f} Cr" if pd.notna(market_cap) else "N/A", info.get("sector", "Unknown"), positive=None)
 
 # -------------------------------------------------
-# RATIO BUTTONS (NEW)
+# RATIO BUTTONS
 # -------------------------------------------------
-st.markdown("<div class='card'><div class='section-title'>Ratio Controls</div></div>", unsafe_allow_html=True)
+st.markdown("<div class='glass-card'><div class='section-title'>Ratio Controls</div></div>", unsafe_allow_html=True)
 rb1, rb2 = st.columns(2)
 with rb1:
     show_fundamental_ratio = st.button("Fundamental Ratio")
@@ -409,22 +427,17 @@ with rb2:
 # -------------------------------------------------
 left, right = st.columns([2, 1])
 with left:
-    st.markdown("<div class='card'><div class='section-title'>Price Action & Trend Structure</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'><div class='section-title'>Price Action & Trend Structure</div></div>", unsafe_allow_html=True)
     st.plotly_chart(make_candlestick(df.tail(180), symbol), use_container_width=True)
 with right:
-    st.markdown("<div class='card'><div class='section-title'>Momentum (RSI)</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'><div class='section-title'>Momentum (RSI)</div></div>", unsafe_allow_html=True)
     st.plotly_chart(make_rsi_chart(df.tail(180)), use_container_width=True)
 
 # -------------------------------------------------
 # SIGNAL ENGINE
 # -------------------------------------------------
-st.markdown("<div class='card'><div class='section-title'>Institutional Signal Engine</div></div>", unsafe_allow_html=True)
+st.markdown("<div class='glass-card'><div class='section-title'>Institutional Signal Engine</div></div>", unsafe_allow_html=True)
 col_a, col_b, col_c = st.columns(3)
-trend_signal = "Bullish" if df.iloc[-1]["SMA20"] > df.iloc[-1]["SMA50"] else "Bearish"
-macd_signal = "Bullish" if df.iloc[-1]["MACD"] > df.iloc[-1]["MACD_SIGNAL"] else "Bearish"
-breakout_level = df["High"].tail(20).max()
-support_level = df["Low"].tail(20).min()
-
 with col_a:
     st.info(f"**Trend:** {trend_signal}\n\n**SMA20:** {df.iloc[-1]['SMA20']:.2f}\n\n**SMA50:** {df.iloc[-1]['SMA50']:.2f}")
 with col_b:
@@ -435,7 +448,7 @@ with col_c:
 # -------------------------------------------------
 # TRADE PLAN
 # -------------------------------------------------
-st.markdown("<div class='card'><div class='section-title'>Professional Trade Plan</div></div>", unsafe_allow_html=True)
+st.markdown("<div class='glass-card'><div class='section-title'>Professional Trade Plan</div></div>", unsafe_allow_html=True)
 entry = breakout_level * 1.002
 stop_loss = max(entry - atr * 1.5, support_level)
 risk_per_share = max(entry - stop_loss, 0.01)
@@ -459,7 +472,7 @@ with p5:
 # -------------------------------------------------
 # FUNDAMENTAL SNAPSHOT
 # -------------------------------------------------
-st.markdown("<div class='card'><div class='section-title'>Fundamental Snapshot</div></div>", unsafe_allow_html=True)
+st.markdown("<div class='glass-card'><div class='section-title'>Fundamental Snapshot</div></div>", unsafe_allow_html=True)
 fc1, fc2, fc3, fc4 = st.columns(4)
 with fc1:
     st.metric("Sector", info.get("sector", "N/A"))
@@ -481,10 +494,47 @@ with fc8:
     st.metric("Dividend Yield", f"{round((info.get('dividendYield', 0) or 0)*100, 2)}%" if info.get('dividendYield') is not None else "N/A")
 
 # -------------------------------------------------
-# FUNDAMENTAL RATIO BUTTON SECTION (NEW)
+# SECTOR HEATMAP (NEW)
+# -------------------------------------------------
+st.markdown("<div class='glass-card'><div class='section-title'>Sector Heatmap</div></div>", unsafe_allow_html=True)
+sector_map = {
+    "RELIANCE.NS":"Energy","ONGC.NS":"Energy","BPCL.NS":"Energy","IOC.NS":"Energy","GAIL.NS":"Energy",
+    "HDFCBANK.NS":"Financials","ICICIBANK.NS":"Financials","SBIN.NS":"Financials","KOTAKBANK.NS":"Financials","AXISBANK.NS":"Financials","BAJFINANCE.NS":"Financials","BAJAJFINSV.NS":"Financials","SBILIFE.NS":"Financials","PFC.NS":"Financials","RECLTD.NS":"Financials","CHOLAFIN.NS":"Financials","ICICIPRULI.NS":"Financials","LICI.NS":"Financials","BANKBARODA.NS":"Financials","PNB.NS":"Financials","SHRIRAMFIN.NS":"Financials",
+    "TCS.NS":"IT","INFY.NS":"IT","HCLTECH.NS":"IT","WIPRO.NS":"IT","TECHM.NS":"IT","OFSS.NS":"IT",
+    "SUNPHARMA.NS":"Pharma","CIPLA.NS":"Pharma","DRREDDY.NS":"Pharma","DIVISLAB.NS":"Pharma","LUPIN.NS":"Pharma","TORNTPHARM.NS":"Pharma","ZYDUSLIFE.NS":"Pharma",
+    "HINDUNILVR.NS":"FMCG","ITC.NS":"FMCG","NESTLEIND.NS":"FMCG","BRITANNIA.NS":"FMCG","DABUR.NS":"FMCG","MARICO.NS":"FMCG","GODREJCP.NS":"FMCG","COLPAL.NS":"FMCG","UBL.NS":"FMCG","MCDOWELL-N.NS":"FMCG",
+    "TATASTEEL.NS":"Metals","JSWSTEEL.NS":"Metals","HINDALCO.NS":"Metals","JINDALSTEL.NS":"Metals","NMDC.NS":"Metals","SAIL.NS":"Metals","VEDL.NS":"Metals",
+    "LT.NS":"Industrials","ABB.NS":"Industrials","SIEMENS.NS":"Industrials","CGPOWER.NS":"Industrials","HAL.NS":"Industrials","CONCOR.NS":"Industrials","IRCTC.NS":"Industrials",
+    "BHARTIARTL.NS":"Telecom","INDUSTOWER.NS":"Telecom",
+    "TATAMOTORS.NS":"Auto","M&M.NS":"Auto","MARUTI.NS":"Auto","HEROMOTOCO.NS":"Auto","EICHERMOT.NS":"Auto","BAJAJ-AUTO.NS":"Auto","TVSMOTOR.NS":"Auto","MOTHERSON.NS":"Auto",
+    "ULTRACEMCO.NS":"Cement","GRASIM.NS":"Cement","AMBUJACEM.NS":"Cement",
+    "ADANIPORTS.NS":"Infrastructure","ADANIENT.NS":"Infrastructure","ADANIGREEN.NS":"Infrastructure","ADANIPOWER.NS":"Infrastructure","POWERGRID.NS":"Infrastructure","NTPC.NS":"Infrastructure","JSWENERGY.NS":"Infrastructure"
+}
+
+heat_rows = []
+heat_symbols = stock_list[:min(20, len(stock_list))]
+for s in heat_symbols:
+    try:
+        data = get_history(s, period="3mo")
+        if not data.empty and len(data) > 22:
+            ret = ((float(data["Close"].iloc[-1]) / float(data["Close"].iloc[-22])) - 1) * 100
+            heat_rows.append({"Symbol": s.replace('.NS',''), "Sector": sector_map.get(s, "Others"), "Return": round(ret, 2)})
+    except Exception:
+        pass
+
+if heat_rows:
+    heat_df = pd.DataFrame(heat_rows)
+    fig_heat = px.treemap(heat_df, path=["Sector", "Symbol"], values="Return", color="Return", color_continuous_scale="RdYlGn")
+    fig_heat.update_layout(height=500, margin=dict(l=10,r=10,t=20,b=10), paper_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig_heat, use_container_width=True)
+else:
+    st.info("Sector heatmap data unavailable for current selection.")
+
+# -------------------------------------------------
+# FUNDAMENTAL RATIO BUTTON
 # -------------------------------------------------
 if show_fundamental_ratio:
-    st.markdown("<div class='card'><div class='section-title'>Fundamental Ratio Analysis</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'><div class='section-title'>Fundamental Ratio Analysis</div></div>", unsafe_allow_html=True)
     fund_df = pd.DataFrame([
         {"Ratio": "P/E", "Value": info.get("trailingPE", "N/A")},
         {"Ratio": "Forward P/E", "Value": info.get("forwardPE", "N/A")},
@@ -502,10 +552,10 @@ if show_fundamental_ratio:
     st.dataframe(fund_df, use_container_width=True)
 
 # -------------------------------------------------
-# TECHNICAL RATIO BUTTON SECTION (NEW)
+# TECHNICAL RATIO BUTTON
 # -------------------------------------------------
 if show_technical_ratio:
-    st.markdown("<div class='card'><div class='section-title'>Technical Ratio Analysis</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'><div class='section-title'>Technical Ratio Analysis</div></div>", unsafe_allow_html=True)
     last = df.iloc[-1]
     tech_df = pd.DataFrame([
         {"Metric": "Price vs SMA20 (%)", "Value": round(((last['Close'] / last['SMA20']) - 1) * 100, 2)},
@@ -526,7 +576,7 @@ if show_technical_ratio:
 # -------------------------------------------------
 # BALANCE SHEET / FINANCIALS
 # -------------------------------------------------
-st.markdown("<div class='card'><div class='section-title'>Balance Sheet / P&L / Cash Flow (Latest Available)</div></div>", unsafe_allow_html=True)
+st.markdown("<div class='glass-card'><div class='section-title'>Balance Sheet / P&L / Cash Flow (Latest Available)</div></div>", unsafe_allow_html=True)
 tab1, tab2, tab3 = st.tabs(["Balance Sheet", "Financials", "Cash Flow"])
 with tab1:
     if isinstance(bs, pd.DataFrame) and not bs.empty:
@@ -545,11 +595,12 @@ with tab3:
         st.info("Cash flow not available for this symbol.")
 
 # -------------------------------------------------
-# WATCHLIST TABLE
+# WATCHLIST
 # -------------------------------------------------
-st.markdown("<div class='card'><div class='section-title'>Watchlist Decision Matrix</div></div>", unsafe_allow_html=True)
+st.markdown("<div class='glass-card'><div class='section-title'>Watchlist Decision Matrix</div></div>", unsafe_allow_html=True)
 watch_df = pd.DataFrame([{
     "Symbol": symbol,
+    "AI": ai_action,
     "Last Price": round(last_close, 2),
     "Score": score,
     "Verdict": verdict,
@@ -567,7 +618,7 @@ st.download_button("Download Trade Plan CSV", data=csv, file_name=f"{symbol.repl
 # SCANNER
 # -------------------------------------------------
 if run_scan:
-    st.markdown("<div class='card'><div class='section-title'>Institutional Breakout Scanner</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'><div class='section-title'>Institutional Breakout Scanner</div></div>", unsafe_allow_html=True)
     universe = stock_list[:scan_count]
     rows = []
     progress = st.progress(0)
@@ -582,8 +633,12 @@ if run_scan:
             lc = safe_last(data["Close"])
             r = safe_last(data["RSI14"])
             bh = data["High"].tail(20).max()
+            tr_sig = "Bullish" if data.iloc[-1]["SMA20"] > data.iloc[-1]["SMA50"] else "Bearish"
+            mc_sig = "Bullish" if data.iloc[-1]["MACD"] > data.iloc[-1]["MACD_SIGNAL"] else "Bearish"
+            ai_sig, _, _ = ai_badge(sc, r, tr_sig, mc_sig)
             rows.append({
                 "Symbol": s,
+                "AI": ai_sig,
                 "Price": round(lc, 2),
                 "Score": sc,
                 "Verdict": vd,
@@ -599,7 +654,7 @@ if run_scan:
 
     if not scan_df.empty:
         top = scan_df.head(10)
-        fig = px.bar(top, x="Symbol", y="Score", hover_data=["Price", "RSI", "Verdict"], template="plotly_dark", title="Top Institutional Setups")
+        fig = px.bar(top, x="Symbol", y="Score", hover_data=["Price", "RSI", "Verdict", "AI"], template="plotly_dark", title="Top Institutional Setups")
         fig.update_layout(height=420, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, use_container_width=True)
 
