@@ -5,12 +5,13 @@ import yfinance as yf
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from datetime import datetime
+import io
 
 # =========================================================
 # PAGE CONFIG
 # =========================================================
 st.set_page_config(
-    page_title="BLACKROCK PRIME MASTER | V12.1.3 ULTRA PRO",
+    page_title="BLACKROCK INSTITUTIONAL GOD MODE | V12.1.4",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -28,18 +29,6 @@ def safe_float(val, default=0.0):
         if pd.isna(val):
             return default
         return float(val)
-    except:
-        return default
-
-def safe_int(val, default=0):
-    try:
-        if val is None:
-            return default
-        if isinstance(val, str) and val.strip() == "":
-            return default
-        if pd.isna(val):
-            return default
-        return int(val)
     except:
         return default
 
@@ -85,13 +74,28 @@ def safe_df(df):
         return pd.DataFrame()
     return df.copy()
 
+def to_csv_download(df):
+    if df is None or df.empty:
+        return None
+    return df.to_csv(index=False).encode("utf-8")
+
 # =========================================================
-# CSS / PREMIUM UI
+# PREMIUM BLACKROCK UI / ATTRACTIVE BACKGROUND / BETTER FONT
 # =========================================================
 st.markdown("""
 <style>
-    .main {
-        background: linear-gradient(180deg, #0b1020 0%, #111827 100%);
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@500;600;700;800&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+
+    .stApp {
+        background:
+            radial-gradient(circle at 15% 20%, rgba(59,130,246,0.14) 0%, transparent 28%),
+            radial-gradient(circle at 85% 15%, rgba(16,185,129,0.10) 0%, transparent 24%),
+            radial-gradient(circle at 50% 80%, rgba(139,92,246,0.10) 0%, transparent 30%),
+            linear-gradient(180deg, #060b17 0%, #0b1220 30%, #0f172a 65%, #111827 100%);
         color: #f8fafc;
     }
 
@@ -101,59 +105,115 @@ st.markdown("""
         max-width: 1550px;
     }
 
+    h1, h2, h3, h4, h5 {
+        font-family: 'Poppins', sans-serif !important;
+        letter-spacing: 0.2px;
+    }
+
     .hero-box {
-        background: linear-gradient(135deg, rgba(15,23,42,0.98), rgba(30,41,59,0.98));
+        background:
+            linear-gradient(135deg, rgba(15,23,42,0.97), rgba(30,41,59,0.96)),
+            radial-gradient(circle at top right, rgba(59,130,246,0.12), transparent 30%);
         border: 1px solid rgba(148,163,184,0.12);
-        border-radius: 22px;
-        padding: 22px 26px;
+        border-radius: 24px;
+        padding: 24px 28px;
         margin-bottom: 18px;
-        box-shadow: 0 14px 40px rgba(0,0,0,0.25);
+        box-shadow:
+            0 18px 45px rgba(0,0,0,0.28),
+            inset 0 1px 0 rgba(255,255,255,0.03);
+        backdrop-filter: blur(10px);
+    }
+
+    .glass-card {
+        background: linear-gradient(135deg, rgba(15,23,42,0.72), rgba(30,41,59,0.62));
+        border: 1px solid rgba(148,163,184,0.10);
+        border-radius: 18px;
+        padding: 14px 16px;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+        backdrop-filter: blur(8px);
     }
 
     .section-title {
-        font-size: 1.15rem;
+        font-size: 1.18rem;
         font-weight: 800;
         color: #e2e8f0;
         margin-top: 8px;
         margin-bottom: 8px;
+        font-family: 'Poppins', sans-serif !important;
     }
 
     .subtle {
         color: #94a3b8;
-        font-size: 0.9rem;
+        font-size: 0.92rem;
     }
 
     div[data-testid="metric-container"] {
-        background: rgba(15,23,42,0.72);
-        border: 1px solid rgba(148,163,184,0.08);
-        padding: 10px 12px;
-        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(15,23,42,0.80), rgba(30,41,59,0.68));
+        border: 1px solid rgba(148,163,184,0.10);
+        padding: 12px 14px;
+        border-radius: 18px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.18);
+    }
+
+    div[data-testid="metric-container"] label {
+        color: #93c5fd !important;
+        font-weight: 700 !important;
+    }
+
+    div[data-testid="metric-container"] [data-testid="stMetricValue"] {
+        font-weight: 800 !important;
+        font-size: 1.25rem !important;
     }
 
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+        gap: 10px;
     }
 
     .stTabs [data-baseweb="tab"] {
-        border-radius: 12px;
-        padding: 8px 14px;
+        border-radius: 14px;
+        padding: 10px 16px;
         background: rgba(30,41,59,0.75);
+        border: 1px solid rgba(148,163,184,0.08);
+        font-weight: 600;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, rgba(30,64,175,0.55), rgba(14,165,233,0.25)) !important;
+        border: 1px solid rgba(96,165,250,0.22) !important;
     }
 
     .stButton>button {
-        border-radius: 12px;
+        border-radius: 14px;
         border: 1px solid rgba(148,163,184,0.12);
+        background: linear-gradient(135deg, rgba(30,41,59,0.90), rgba(15,23,42,0.92));
+        color: #f8fafc;
+        font-weight: 700;
+    }
+
+    .stDownloadButton>button {
+        border-radius: 14px;
+        font-weight: 700;
     }
 
     .stDataFrame, .stTable {
-        border-radius: 14px;
+        border-radius: 16px;
         overflow: hidden;
+    }
+
+    section[data-testid="stSidebar"] {
+        background:
+            linear-gradient(180deg, rgba(7,12,24,0.98), rgba(15,23,42,0.98));
+        border-right: 1px solid rgba(148,163,184,0.08);
+    }
+
+    hr {
+        border-color: rgba(148,163,184,0.12);
     }
 </style>
 """, unsafe_allow_html=True)
 
 # =========================================================
-# NSE DEFAULT UNIVERSE (NIFTY-STYLE CORE)
+# DEFAULT NSE UNIVERSE (EXTENDED)
 # =========================================================
 DEFAULT_STOCKS = {
     "RELIANCE": ("RELIANCE.NS", "Energy"),
@@ -185,7 +245,17 @@ DEFAULT_STOCKS = {
     "HCLTECH": ("HCLTECH.NS", "IT"),
     "TECHM": ("TECHM.NS", "IT"),
     "BAJAJFINSV": ("BAJAJFINSV.NS", "Financials"),
-    "JSWSTEEL": ("JSWSTEEL.NS", "Metals")
+    "JSWSTEEL": ("JSWSTEEL.NS", "Metals"),
+    "TATASTEEL": ("TATASTEEL.NS", "Metals"),
+    "ONGC": ("ONGC.NS", "Energy"),
+    "COALINDIA": ("COALINDIA.NS", "Mining"),
+    "HINDALCO": ("HINDALCO.NS", "Metals"),
+    "GRASIM": ("GRASIM.NS", "Cement"),
+    "BPCL": ("BPCL.NS", "Energy"),
+    "CIPLA": ("CIPLA.NS", "Pharma"),
+    "DRREDDY": ("DRREDDY.NS", "Pharma"),
+    "EICHERMOT": ("EICHERMOT.NS", "Auto"),
+    "HEROMOTOCO": ("HEROMOTOCO.NS", "Auto")
 }
 
 # =========================================================
@@ -269,21 +339,25 @@ def add_indicators(df):
     tr = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
     d["ATR"] = tr.rolling(14).mean()
 
-    # Bollinger
+    # Bollinger Bands
     d["BB_MID"] = d["Close"].rolling(20).mean()
     bb_std = d["Close"].rolling(20).std()
     d["BB_UPPER"] = d["BB_MID"] + 2 * bb_std
     d["BB_LOWER"] = d["BB_MID"] - 2 * bb_std
 
-    # Returns
-    d["Daily_Return"] = d["Close"].pct_change() * 100
-
-    # Volume avg
+    # Volume averages
     d["VOL20"] = d["Volume"].rolling(20).mean()
 
-    # Breakout
+    # Breakout levels
     d["Prev20High"] = d["High"].rolling(20).max().shift(1)
     d["Prev20Low"] = d["Low"].rolling(20).min().shift(1)
+
+    # Relative strength proxy
+    d["ROC20"] = d["Close"].pct_change(20) * 100
+    d["ROC50"] = d["Close"].pct_change(50) * 100
+
+    # Daily returns
+    d["Daily_Return"] = d["Close"].pct_change() * 100
 
     return d
 
@@ -312,19 +386,15 @@ def detect_candlestick_patterns(df):
     upper_wick = h - max(o, c)
     lower_wick = min(o, c) - l
 
-    # Doji
     if body / candle_range < 0.1:
         patterns.append("Doji")
 
-    # Hammer
-    if lower_wick > body * 2 and upper_wick < body * 1.2 and c > o:
+    if lower_wick > body * 2 and upper_wick < max(body * 1.2, 0.01):
         patterns.append("Hammer")
 
-    # Bullish Engulfing
     if pc < po and c > o and c > po and o < pc:
         patterns.append("Bullish Engulfing")
 
-    # Bearish Engulfing
     if pc > po and c < o and o > pc and c < po:
         patterns.append("Bearish Engulfing")
 
@@ -343,7 +413,35 @@ def calculate_support_resistance(df, window=20):
     return support, resistance
 
 # =========================================================
-# BREAKOUT / SWING SIGNAL ENGINE
+# FUNDAMENTAL SNAPSHOT
+# =========================================================
+def get_fundamental_snapshot(info):
+    if not info:
+        return {}
+
+    return {
+        "Company": info.get("longName", info.get("shortName", "N/A")),
+        "Sector": info.get("sector", "N/A"),
+        "Industry": info.get("industry", "N/A"),
+        "Market Cap": info.get("marketCap"),
+        "PE Ratio": info.get("trailingPE"),
+        "Forward PE": info.get("forwardPE"),
+        "PB Ratio": info.get("priceToBook"),
+        "ROE": safe_float(info.get("returnOnEquity")) * 100 if info.get("returnOnEquity") is not None else None,
+        "ROA": safe_float(info.get("returnOnAssets")) * 100 if info.get("returnOnAssets") is not None else None,
+        "Dividend Yield": safe_float(info.get("dividendYield")) * 100 if info.get("dividendYield") is not None else None,
+        "52W High": info.get("fiftyTwoWeekHigh"),
+        "52W Low": info.get("fiftyTwoWeekLow"),
+        "Current Price": info.get("currentPrice"),
+        "Book Value": info.get("bookValue"),
+        "EPS": info.get("trailingEps"),
+        "Debt to Equity": info.get("debtToEquity"),
+        "Revenue Growth": safe_float(info.get("revenueGrowth")) * 100 if info.get("revenueGrowth") is not None else None,
+        "Profit Margins": safe_float(info.get("profitMargins")) * 100 if info.get("profitMargins") is not None else None
+    }
+
+# =========================================================
+# INSTITUTIONAL SIGNAL ENGINE
 # =========================================================
 def generate_signal(df):
     if df.empty or len(df) < 60:
@@ -366,21 +464,26 @@ def generate_signal(df):
     avg_volume = safe_float(latest.get("VOL20"))
     prev20high = safe_float(latest.get("Prev20High"))
     prev_close = safe_float(prev.get("Close"))
+    roc20 = safe_float(latest.get("ROC20"))
+    roc50 = safe_float(latest.get("ROC50"))
 
     # Trend
     if close > sma20 > sma50:
-        score += 20
+        score += 18
         reasons.append("Price > SMA20 > SMA50")
     if sma50 > 0 and close > sma50 > sma200:
-        score += 15
-        reasons.append("Medium-term trend bullish")
+        score += 14
+        reasons.append("Bullish medium-term trend")
+    if sma200 > 0 and close > sma200:
+        score += 8
+        reasons.append("Above SMA200")
 
-    # RSI
+    # Momentum
     if 52 <= rsi <= 68:
         score += 12
         reasons.append("Healthy RSI zone")
     elif rsi > 70:
-        score -= 5
+        score -= 4
         reasons.append("RSI overbought")
     elif 35 <= rsi <= 45:
         score += 4
@@ -388,38 +491,46 @@ def generate_signal(df):
 
     # MACD
     if macd > signal:
-        score += 15
-        reasons.append("MACD bullish")
+        score += 14
+        reasons.append("MACD bullish crossover")
 
     # Volume
     vol_ratio = (volume / avg_volume) if avg_volume > 0 else 0
-    if vol_ratio >= 1.5:
+    if vol_ratio >= 1.8:
         score += 18
-        reasons.append("Volume expansion")
-    elif vol_ratio >= 1.2:
-        score += 8
-        reasons.append("Volume improving")
-
-    # Price momentum
-    if prev_close > 0:
-        day_change = ((close - prev_close) / prev_close) * 100
-        if day_change > 2:
-            score += 10
-            reasons.append("Strong daily momentum")
-        elif day_change < -2:
-            score -= 8
-            reasons.append("Weak daily action")
+        reasons.append("Strong volume expansion")
+    elif vol_ratio >= 1.3:
+        score += 10
+        reasons.append("Volume confirmation")
 
     # Breakout
     if prev20high > 0 and close > prev20high:
-        score += 20
+        score += 18
         reasons.append("20-day breakout")
 
-    if score >= 70:
+    # Relative strength proxy
+    if roc20 > 5:
+        score += 8
+        reasons.append("Strong 20D relative momentum")
+    if roc50 > 10:
+        score += 8
+        reasons.append("Strong 50D relative momentum")
+
+    # Day momentum
+    if prev_close > 0:
+        day_change = ((close - prev_close) / prev_close) * 100
+        if day_change > 2:
+            score += 8
+            reasons.append("Strong daily price action")
+        elif day_change < -2:
+            score -= 6
+            reasons.append("Weak daily action")
+
+    if score >= 78:
         signal_text = "STRONG BUY"
-    elif score >= 50:
+    elif score >= 55:
         signal_text = "BUY"
-    elif score >= 30:
+    elif score >= 35:
         signal_text = "WATCHLIST"
     else:
         signal_text = "AVOID"
@@ -476,7 +587,7 @@ def calculate_trade_levels(df, capital=100000, risk_pct=1.0):
     }
 
 # =========================================================
-# CHART
+# CLEAR + ATTRACTIVE GRAPH
 # =========================================================
 def plot_candlestick(df, symbol):
     if df.empty:
@@ -486,87 +597,138 @@ def plot_candlestick(df, symbol):
     if not required_cols.issubset(set(df.columns)):
         return None
 
+    chart_df = df.copy()
+
+    # Volume colors
+    vol_colors = np.where(chart_df["Close"] >= chart_df["Open"], "#22c55e", "#ef4444")
+
     fig = make_subplots(
         rows=3, cols=1,
         shared_xaxes=True,
-        vertical_spacing=0.04,
-        row_heights=[0.62, 0.18, 0.20]
+        vertical_spacing=0.035,
+        row_heights=[0.64, 0.16, 0.20]
     )
 
+    # Candles
     fig.add_trace(
         go.Candlestick(
-            x=df["Date"],
-            open=df["Open"],
-            high=df["High"],
-            low=df["Low"],
-            close=df["Close"],
-            name="Price"
+            x=chart_df["Date"],
+            open=chart_df["Open"],
+            high=chart_df["High"],
+            low=chart_df["Low"],
+            close=chart_df["Close"],
+            name="Price",
+            increasing_line_color="#22c55e",
+            decreasing_line_color="#ef4444",
+            increasing_fillcolor="#22c55e",
+            decreasing_fillcolor="#ef4444"
         ),
         row=1, col=1
     )
 
-    for col, name in [("SMA20", "SMA20"), ("SMA50", "SMA50"), ("SMA200", "SMA200")]:
-        if col in df.columns:
+    # Moving averages
+    ma_styles = [
+        ("SMA20", "SMA20", "#38bdf8"),
+        ("SMA50", "SMA50", "#f59e0b"),
+        ("SMA200", "SMA200", "#a78bfa")
+    ]
+
+    for col, name, color in ma_styles:
+        if col in chart_df.columns:
             fig.add_trace(
-                go.Scatter(x=df["Date"], y=df[col], mode="lines", name=name),
+                go.Scatter(
+                    x=chart_df["Date"],
+                    y=chart_df[col],
+                    mode="lines",
+                    name=name,
+                    line=dict(width=2.2, color=color)
+                ),
                 row=1, col=1
             )
 
-    if "BB_UPPER" in df.columns:
-        fig.add_trace(go.Scatter(x=df["Date"], y=df["BB_UPPER"], mode="lines", name="BB Upper", opacity=0.35), row=1, col=1)
-    if "BB_LOWER" in df.columns:
-        fig.add_trace(go.Scatter(x=df["Date"], y=df["BB_LOWER"], mode="lines", name="BB Lower", opacity=0.35), row=1, col=1)
+    # Bollinger
+    if "BB_UPPER" in chart_df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=chart_df["Date"],
+                y=chart_df["BB_UPPER"],
+                mode="lines",
+                name="BB Upper",
+                line=dict(width=1.2, color="rgba(148,163,184,0.55)")
+            ),
+            row=1, col=1
+        )
+    if "BB_LOWER" in chart_df.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=chart_df["Date"],
+                y=chart_df["BB_LOWER"],
+                mode="lines",
+                name="BB Lower",
+                line=dict(width=1.2, color="rgba(148,163,184,0.55)")
+            ),
+            row=1, col=1
+        )
 
+    # Volume
     fig.add_trace(
-        go.Bar(x=df["Date"], y=df["Volume"], name="Volume"),
+        go.Bar(
+            x=chart_df["Date"],
+            y=chart_df["Volume"],
+            name="Volume",
+            marker_color=vol_colors,
+            opacity=0.9
+        ),
         row=2, col=1
     )
 
-    if "RSI" in df.columns:
+    # RSI
+    if "RSI" in chart_df.columns:
         fig.add_trace(
-            go.Scatter(x=df["Date"], y=df["RSI"], mode="lines", name="RSI"),
+            go.Scatter(
+                x=chart_df["Date"],
+                y=chart_df["RSI"],
+                mode="lines",
+                name="RSI",
+                line=dict(width=2.2, color="#22d3ee")
+            ),
             row=3, col=1
         )
-        fig.add_hline(y=70, line_dash="dot", row=3, col=1)
-        fig.add_hline(y=30, line_dash="dot", row=3, col=1)
+        fig.add_hline(y=70, line_dash="dot", line_color="rgba(239,68,68,0.7)", row=3, col=1)
+        fig.add_hline(y=30, line_dash="dot", line_color="rgba(34,197,94,0.7)", row=3, col=1)
+        fig.add_hline(y=50, line_dash="dot", line_color="rgba(148,163,184,0.35)", row=3, col=1)
 
     fig.update_layout(
-        title=f"{symbol} | ULTRA PRO MASTER CHART",
+        title=f"{symbol} | BLACKROCK INSTITUTIONAL GOD MODE CHART",
         xaxis_rangeslider_visible=False,
         template="plotly_dark",
-        height=850,
-        margin=dict(l=20, r=20, t=50, b=20)
+        height=900,
+        margin=dict(l=18, r=18, t=58, b=18),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.01,
+            xanchor="left",
+            x=0
+        ),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(2,6,23,0.55)",
+        font=dict(color="#e5e7eb", size=13)
+    )
+
+    # Better axes styling
+    fig.update_xaxes(
+        showgrid=True,
+        gridcolor="rgba(148,163,184,0.08)",
+        zeroline=False
+    )
+    fig.update_yaxes(
+        showgrid=True,
+        gridcolor="rgba(148,163,184,0.08)",
+        zeroline=False
     )
 
     return fig
-
-# =========================================================
-# FUNDAMENTAL SNAPSHOT
-# =========================================================
-def get_fundamental_snapshot(info):
-    if not info:
-        return {}
-
-    return {
-        "Company": info.get("longName", info.get("shortName", "N/A")),
-        "Sector": info.get("sector", "N/A"),
-        "Industry": info.get("industry", "N/A"),
-        "Market Cap": info.get("marketCap"),
-        "PE Ratio": info.get("trailingPE"),
-        "Forward PE": info.get("forwardPE"),
-        "PB Ratio": info.get("priceToBook"),
-        "ROE": safe_float(info.get("returnOnEquity")) * 100 if info.get("returnOnEquity") is not None else None,
-        "ROA": safe_float(info.get("returnOnAssets")) * 100 if info.get("returnOnAssets") is not None else None,
-        "Dividend Yield": safe_float(info.get("dividendYield")) * 100 if info.get("dividendYield") is not None else None,
-        "52W High": info.get("fiftyTwoWeekHigh"),
-        "52W Low": info.get("fiftyTwoWeekLow"),
-        "Current Price": info.get("currentPrice"),
-        "Book Value": info.get("bookValue"),
-        "EPS": info.get("trailingEps"),
-        "Debt to Equity": info.get("debtToEquity"),
-        "Revenue Growth": safe_float(info.get("revenueGrowth")) * 100 if info.get("revenueGrowth") is not None else None,
-        "Profit Margins": safe_float(info.get("profitMargins")) * 100 if info.get("profitMargins") is not None else None
-    }
 
 # =========================================================
 # SCANNER
@@ -582,6 +744,7 @@ def run_scanner(stock_map, period="6mo"):
 
             df = add_indicators(df)
             signal, score, reasons = generate_signal(df)
+
             latest = df.iloc[-1]
             prev = df.iloc[-2] if len(df) > 1 else latest
 
@@ -606,13 +769,15 @@ def run_scanner(stock_map, period="6mo"):
                 "Change %": round(change_pct, 2),
                 "RSI": round(rsi, 2),
                 "Vol Ratio": round(vol_ratio, 2),
+                "ROC20": round(safe_float(latest.get("ROC20")), 2),
+                "ROC50": round(safe_float(latest.get("ROC50")), 2),
                 "Breakout": breakout_flag,
                 "Support": round(safe_float(support), 2),
                 "Resistance": round(safe_float(resistance), 2),
                 "Pattern": ", ".join(patterns) if patterns else "-",
                 "Signal": signal,
                 "Score": score,
-                "Reason": " | ".join(reasons[:3]) if reasons else "No clear setup"
+                "Reason": " | ".join(reasons[:4]) if reasons else "No clear setup"
             })
         except:
             continue
@@ -623,7 +788,11 @@ def run_scanner(stock_map, period="6mo"):
     out = pd.DataFrame(results)
     signal_order = {"STRONG BUY": 4, "BUY": 3, "WATCHLIST": 2, "AVOID": 1}
     out["SignalRank"] = out["Signal"].map(signal_order).fillna(0)
-    out = out.sort_values(by=["SignalRank", "Score", "Vol Ratio"], ascending=[False, False, False]).drop(columns=["SignalRank"])
+    out = out.sort_values(
+        by=["SignalRank", "Score", "Vol Ratio", "ROC20"],
+        ascending=[False, False, False, False]
+    ).drop(columns=["SignalRank"])
+
     return out
 
 # =========================================================
@@ -640,22 +809,24 @@ def build_sector_summary(scan_df):
         Stocks=("Stock", "count"),
         AvgScore=("Score", "mean"),
         AvgChange=("Change %", "mean"),
+        AvgROC20=("ROC20", "mean"),
         BullishCount=("Bullish", "sum")
     ).reset_index()
 
     summary["Bullish %"] = np.where(summary["Stocks"] > 0, (summary["BullishCount"] / summary["Stocks"]) * 100, 0)
     summary["AvgScore"] = summary["AvgScore"].round(2)
     summary["AvgChange"] = summary["AvgChange"].round(2)
+    summary["AvgROC20"] = summary["AvgROC20"].round(2)
     summary["Bullish %"] = summary["Bullish %"].round(2)
 
-    return summary.sort_values(by=["Bullish %", "AvgScore"], ascending=[False, False])
+    return summary.sort_values(by=["Bullish %", "AvgScore", "AvgROC20"], ascending=[False, False, False])
 
 # =========================================================
 # PORTFOLIO TRACKER
 # =========================================================
 def build_portfolio_tracker(symbols, total_capital):
     rows = []
-    valid_symbols = [s for s in symbols if s]
+    valid_symbols = [s.strip().upper() for s in symbols if s and s.strip()]
 
     if not valid_symbols:
         return pd.DataFrame()
@@ -696,8 +867,7 @@ def build_portfolio_tracker(symbols, total_capital):
     if not rows:
         return pd.DataFrame()
 
-    pf = pd.DataFrame(rows)
-    return pf
+    return pd.DataFrame(rows)
 
 # =========================================================
 # SESSION STATE
@@ -709,8 +879,8 @@ if "watchlist" not in st.session_state:
 # SIDEBAR
 # =========================================================
 with st.sidebar:
-    st.markdown("## ⚙️ BLACKROCK PRIME MASTER")
-    st.caption("FINAL V12.1.3 ULTRA PRO MASTER")
+    st.markdown("## ⚙️ BLACKROCK INSTITUTIONAL")
+    st.caption("FINAL V12.1.4 GOD MODE")
 
     mode = st.radio(
         "Select Module",
@@ -723,14 +893,14 @@ with st.sidebar:
             "Watchlist",
             "Sector Dashboard"
         ],
-        key="main_mode_v1213"
+        key="main_mode_v1214"
     )
 
     stock_name = st.selectbox(
         "Select Stock",
         list(DEFAULT_STOCKS.keys()),
         index=0,
-        key="stock_select_v1213"
+        key="stock_select_v1214"
     )
 
     default_symbol = DEFAULT_STOCKS[stock_name][0]
@@ -738,7 +908,7 @@ with st.sidebar:
     custom_symbol = st.text_input(
         "Or Enter Custom NSE Symbol (e.g. IRFC.NS)",
         value="",
-        key="custom_symbol_v1213"
+        key="custom_symbol_v1214"
     ).strip().upper()
 
     final_symbol = custom_symbol if custom_symbol else default_symbol
@@ -747,7 +917,7 @@ with st.sidebar:
         "Chart Period",
         ["3mo", "6mo", "1y", "2y", "5y"],
         index=2,
-        key="period_v1213"
+        key="period_v1214"
     )
 
     capital = st.number_input(
@@ -756,7 +926,7 @@ with st.sidebar:
         max_value=100000000,
         value=100000,
         step=10000,
-        key="capital_v1213"
+        key="capital_v1214"
     )
 
     risk_pct = st.slider(
@@ -765,17 +935,17 @@ with st.sidebar:
         max_value=5.0,
         value=1.0,
         step=0.5,
-        key="risk_v1213"
+        key="risk_v1214"
     )
 
 # =========================================================
 # HEADER
 # =========================================================
-st.markdown(f"""
+st.markdown("""
 <div class="hero-box">
-    <h1 style="margin:0; color:#f8fafc;">📈 BLACKROCK PRIME MASTER</h1>
-    <p style="margin:6px 0 0 0; color:#94a3b8;">
-        FINAL V12.1.3 ULTRA PRO MASTER | Breakout Scanner + Swing Trade + Portfolio + Sector Intelligence
+    <h1 style="margin:0; color:#f8fafc;">📈 BLACKROCK INSTITUTIONAL GOD MODE</h1>
+    <p style="margin:6px 0 0 0; color:#93c5fd; font-weight:600;">
+        FINAL V12.1.4 | Premium UI • Attractive Background • Better Fonts • Clear Institutional Charts
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -806,29 +976,29 @@ if mode == "Single Stock Analysis":
 
     ltp = safe_float(latest.get("Close"))
     prev_close = safe_float(prev.get("Close"))
-    change = ltp - prev_close if prev_close > 0 else 0
-    change_pct = (change / prev_close * 100) if prev_close > 0 else 0
+    change_pct = ((ltp - prev_close) / prev_close * 100) if prev_close > 0 else 0
 
-    c1, c2, c3, c4, c5 = st.columns(5)
+    c1, c2, c3, c4, c5, c6 = st.columns(6)
     c1.metric("LTP", fmt_currency(ltp), f"{change_pct:.2f}%")
     c2.metric("Signal", signal, f"Score: {score}")
     c3.metric("RSI", f"{safe_float(latest.get('RSI')):.2f}")
     c4.metric("MACD", f"{safe_float(latest.get('MACD')):.2f}")
-    c5.metric("Volume", fmt_num(latest.get("Volume")))
+    c5.metric("Vol Ratio", f"{(safe_float(latest.get('Volume')) / max(safe_float(latest.get('VOL20')), 1)):.2f}")
+    c6.metric("ROC20", fmt_pct(safe_float(latest.get("ROC20"))))
 
     tabs = st.tabs([
-        "📊 Chart",
+        "📊 Premium Chart",
         "🎯 Trade Setup",
         "🏢 Fundamentals",
         "📑 Financials",
-        "🕯️ Patterns & S/R",
+        "🕯️ Pattern & Levels",
         "🧠 AI Summary"
     ])
 
     with tabs[0]:
-        fig = plot_candlestick(df.tail(220), final_symbol)
+        fig = plot_candlestick(df.tail(260), final_symbol)
         if fig is not None:
-            st.plotly_chart(fig, use_container_width=True, key=unique_key("chart", final_symbol))
+            st.plotly_chart(fig, use_container_width=True, key=unique_key("chart_v1214", final_symbol))
         else:
             st.warning("Chart unavailable.")
 
@@ -928,18 +1098,20 @@ if mode == "Single Stock Analysis":
             summary.append("Setup is not strong enough for aggressive entry.")
 
         if patterns:
-            summary.append(f"Latest candlestick context: {', '.join(patterns)}.")
+            summary.append(f"Candlestick context: {', '.join(patterns)}.")
 
         if support is not None and resistance is not None:
             summary.append(f"Immediate zone: support near {support:.2f}, resistance near {resistance:.2f}.")
 
         if trade:
-            summary.append(f"Suggested trade plan: Entry {trade['entry']:.2f}, SL {trade['sl']:.2f}, T1 {trade['target1']:.2f}, T2 {trade['target2']:.2f}.")
+            summary.append(
+                f"Trade plan: Entry {trade['entry']:.2f}, SL {trade['sl']:.2f}, T1 {trade['target1']:.2f}, T2 {trade['target2']:.2f}."
+            )
 
         for s in summary:
             st.write(f"- {s}")
 
-        if st.button("➕ Add to Watchlist", key=unique_key("add_watch", final_symbol)):
+        if st.button("➕ Add to Watchlist", key=unique_key("add_watch_v1214", final_symbol)):
             if final_symbol not in st.session_state.watchlist:
                 st.session_state.watchlist.append(final_symbol)
                 st.success(f"{final_symbol} added to watchlist.")
@@ -951,9 +1123,9 @@ if mode == "Single Stock Analysis":
 # =========================================================
 elif mode == "Breakout Scanner":
     st.markdown('<div class="section-title">🚀 Breakout Scanner</div>', unsafe_allow_html=True)
-    st.caption("Scans NIFTY-style universe for momentum + trend + breakout + volume expansion.")
+    st.caption("Scans NIFTY-style universe for breakout + trend + volume + relative strength.")
 
-    if st.button("🔍 Run Breakout Scanner", key="run_breakout_scanner_v1213"):
+    if st.button("🔍 Run Breakout Scanner", key="run_breakout_scanner_v1214"):
         with st.spinner("Running institutional breakout scan..."):
             scan_df = run_scanner(DEFAULT_STOCKS, period="6mo")
 
@@ -963,7 +1135,17 @@ elif mode == "Breakout Scanner":
             st.success(f"Scan completed. {len(scan_df)} stocks evaluated.")
             st.dataframe(scan_df, use_container_width=True, hide_index=True)
 
-            top = scan_df[scan_df["Signal"].isin(["STRONG BUY", "BUY"])].head(7)
+            csv_data = to_csv_download(scan_df)
+            if csv_data:
+                st.download_button(
+                    "⬇️ Download Scanner CSV",
+                    data=csv_data,
+                    file_name="blackrock_breakout_scanner_v1214.csv",
+                    mime="text/csv",
+                    key="download_scanner_csv_v1214"
+                )
+
+            top = scan_df[scan_df["Signal"].isin(["STRONG BUY", "BUY"])].head(8)
             if not top.empty:
                 st.write("### 🏆 Top Breakout Picks")
                 for _, row in top.iterrows():
@@ -976,9 +1158,9 @@ elif mode == "Breakout Scanner":
 # =========================================================
 elif mode == "Swing Trade Finder":
     st.markdown('<div class="section-title">🎯 Swing Trade Finder</div>', unsafe_allow_html=True)
-    st.caption("Filters only high-quality swing setups with BUY / STRONG BUY + healthy structure.")
+    st.caption("Filters high-quality swing setups with healthy RSI + momentum + relative strength.")
 
-    if st.button("⚡ Find Swing Trades", key="find_swing_trades_v1213"):
+    if st.button("⚡ Find Swing Trades", key="find_swing_trades_v1214"):
         with st.spinner("Finding swing trade candidates..."):
             scan_df = run_scanner(DEFAULT_STOCKS, period="6mo")
 
@@ -988,7 +1170,8 @@ elif mode == "Swing Trade Finder":
             swing_df = scan_df[
                 (scan_df["Signal"].isin(["STRONG BUY", "BUY"])) &
                 (scan_df["RSI"].between(50, 70)) &
-                (scan_df["Vol Ratio"] >= 1.0)
+                (scan_df["Vol Ratio"] >= 1.0) &
+                (scan_df["ROC20"] > 0)
             ].copy()
 
             if swing_df.empty:
@@ -996,6 +1179,16 @@ elif mode == "Swing Trade Finder":
             else:
                 st.success(f"Found {len(swing_df)} swing trade candidates.")
                 st.dataframe(swing_df, use_container_width=True, hide_index=True)
+
+                csv_data = to_csv_download(swing_df)
+                if csv_data:
+                    st.download_button(
+                        "⬇️ Download Swing Trades CSV",
+                        data=csv_data,
+                        file_name="blackrock_swing_trades_v1214.csv",
+                        mime="text/csv",
+                        key="download_swing_csv_v1214"
+                    )
 
 # =========================================================
 # MODULE 4: PORTFOLIO BUILDER
@@ -1009,7 +1202,7 @@ elif mode == "Portfolio Builder":
         max_value=100000000,
         value=500000,
         step=50000,
-        key="portfolio_capital_v1213"
+        key="portfolio_capital_v1214"
     )
 
     top_n = st.slider(
@@ -1017,10 +1210,10 @@ elif mode == "Portfolio Builder":
         min_value=3,
         max_value=10,
         value=5,
-        key="portfolio_top_n_v1213"
+        key="portfolio_top_n_v1214"
     )
 
-    if st.button("🧠 Build Institutional Portfolio", key="build_portfolio_v1213"):
+    if st.button("🧠 Build Institutional Portfolio", key="build_portfolio_v1214"):
         with st.spinner("Building model portfolio..."):
             scan_df = run_scanner(DEFAULT_STOCKS, period="6mo")
 
@@ -1039,12 +1232,23 @@ elif mode == "Portfolio Builder":
                 filtered["Allocation ₹"] = round(allocation, 2)
                 filtered["Qty Approx"] = (filtered["Allocation ₹"] / filtered["Price"]).fillna(0).astype(int)
 
+                out_df = filtered[[
+                    "Stock", "Symbol", "Sector", "Signal", "Score", "Price",
+                    "Weight %", "Allocation ₹", "Qty Approx"
+                ]]
+
                 st.success("Portfolio created successfully.")
-                st.dataframe(
-                    filtered[["Stock", "Symbol", "Sector", "Signal", "Score", "Price", "Weight %", "Allocation ₹", "Qty Approx"]],
-                    use_container_width=True,
-                    hide_index=True
-                )
+                st.dataframe(out_df, use_container_width=True, hide_index=True)
+
+                csv_data = to_csv_download(out_df)
+                if csv_data:
+                    st.download_button(
+                        "⬇️ Download Portfolio CSV",
+                        data=csv_data,
+                        file_name="blackrock_portfolio_v1214.csv",
+                        mime="text/csv",
+                        key="download_portfolio_csv_v1214"
+                    )
 
 # =========================================================
 # MODULE 5: PORTFOLIO TRACKER
@@ -1054,16 +1258,16 @@ elif mode == "Portfolio Tracker":
     st.caption("Enter up to 8 symbols to track an equal-weight model portfolio.")
 
     col_a, col_b, col_c, col_d = st.columns(4)
-    s1 = col_a.text_input("Symbol 1", value="RELIANCE.NS", key="pf_s1")
-    s2 = col_b.text_input("Symbol 2", value="TCS.NS", key="pf_s2")
-    s3 = col_c.text_input("Symbol 3", value="HDFCBANK.NS", key="pf_s3")
-    s4 = col_d.text_input("Symbol 4", value="INFY.NS", key="pf_s4")
+    s1 = col_a.text_input("Symbol 1", value="RELIANCE.NS", key="pf_s1_v1214")
+    s2 = col_b.text_input("Symbol 2", value="TCS.NS", key="pf_s2_v1214")
+    s3 = col_c.text_input("Symbol 3", value="HDFCBANK.NS", key="pf_s3_v1214")
+    s4 = col_d.text_input("Symbol 4", value="INFY.NS", key="pf_s4_v1214")
 
     col_e, col_f, col_g, col_h = st.columns(4)
-    s5 = col_e.text_input("Symbol 5", value="", key="pf_s5")
-    s6 = col_f.text_input("Symbol 6", value="", key="pf_s6")
-    s7 = col_g.text_input("Symbol 7", value="", key="pf_s7")
-    s8 = col_h.text_input("Symbol 8", value="", key="pf_s8")
+    s5 = col_e.text_input("Symbol 5", value="", key="pf_s5_v1214")
+    s6 = col_f.text_input("Symbol 6", value="", key="pf_s6_v1214")
+    s7 = col_g.text_input("Symbol 7", value="", key="pf_s7_v1214")
+    s8 = col_h.text_input("Symbol 8", value="", key="pf_s8_v1214")
 
     total_capital = st.number_input(
         "Tracker Capital (₹)",
@@ -1071,10 +1275,10 @@ elif mode == "Portfolio Tracker":
         max_value=100000000,
         value=500000,
         step=50000,
-        key="tracker_capital_v1213"
+        key="tracker_capital_v1214"
     )
 
-    if st.button("📊 Track Portfolio", key="track_portfolio_v1213"):
+    if st.button("📊 Track Portfolio", key="track_portfolio_v1214"):
         symbols = [s1, s2, s3, s4, s5, s6, s7, s8]
         with st.spinner("Tracking portfolio..."):
             pf = build_portfolio_tracker(symbols, total_capital)
@@ -1125,6 +1329,7 @@ elif mode == "Watchlist":
                     "Price": round(close, 2),
                     "Change %": round(chg_pct, 2),
                     "RSI": round(safe_float(latest.get("RSI")), 2),
+                    "ROC20": round(safe_float(latest.get("ROC20")), 2),
                     "Signal": signal,
                     "Score": score
                 })
@@ -1135,7 +1340,7 @@ elif mode == "Watchlist":
             watch_df = pd.DataFrame(watch_results)
             st.dataframe(watch_df, use_container_width=True, hide_index=True)
 
-            if st.button("🗑️ Clear Watchlist", key="clear_watchlist_v1213"):
+            if st.button("🗑️ Clear Watchlist", key="clear_watchlist_v1214"):
                 st.session_state.watchlist = []
                 st.success("Watchlist cleared.")
         else:
@@ -1146,9 +1351,9 @@ elif mode == "Watchlist":
 # =========================================================
 elif mode == "Sector Dashboard":
     st.markdown('<div class="section-title">🏭 Sector Dashboard</div>', unsafe_allow_html=True)
-    st.caption("Sector rotation style dashboard from the current scanner universe.")
+    st.caption("Sector rotation style dashboard from current scanner universe.")
 
-    if st.button("📈 Build Sector Dashboard", key="sector_dashboard_v1213"):
+    if st.button("📈 Build Sector Dashboard", key="sector_dashboard_v1214"):
         with st.spinner("Analyzing sector strength..."):
             scan_df = run_scanner(DEFAULT_STOCKS, period="6mo")
             sector_df = build_sector_summary(scan_df)
@@ -1158,11 +1363,21 @@ elif mode == "Sector Dashboard":
         else:
             st.dataframe(sector_df, use_container_width=True, hide_index=True)
 
+            csv_data = to_csv_download(sector_df)
+            if csv_data:
+                st.download_button(
+                    "⬇️ Download Sector CSV",
+                    data=csv_data,
+                    file_name="blackrock_sector_dashboard_v1214.csv",
+                    mime="text/csv",
+                    key="download_sector_csv_v1214"
+                )
+
             st.write("### 🏆 Strongest Sectors")
             top_sectors = sector_df.head(5)
             for _, row in top_sectors.iterrows():
                 st.write(
-                    f"- **{row['Sector']}** | Bullish %: **{row['Bullish %']}%** | Avg Score: **{row['AvgScore']}** | Avg Change: **{row['AvgChange']}%**"
+                    f"- **{row['Sector']}** | Bullish %: **{row['Bullish %']}%** | Avg Score: **{row['AvgScore']}** | Avg ROC20: **{row['AvgROC20']}%**"
                 )
 
 # =========================================================
@@ -1170,10 +1385,10 @@ elif mode == "Sector Dashboard":
 # =========================================================
 st.markdown("---")
 st.caption(
-    f"BLACKROCK PRIME MASTER | FINAL V12.1.3 ULTRA PRO MASTER | "
+    f"BLACKROCK INSTITUTIONAL GOD MODE | FINAL V12.1.4 | "
     f"Last Loaded: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
 )
 st.caption(
-    "Deploy-safe notes: unique keys fixed • empty-data protected • cloud-safe financial tabs • "
-    "breakout scanner • swing finder • support/resistance • candlestick patterns • portfolio tracker • sector dashboard"
+    "Deploy-safe notes: premium background • better fonts • clearer graph • larger candles • colored volume • "
+    "scanner CSV export • swing finder • portfolio builder • sector dashboard • stable Streamlit Cloud structure"
 )
