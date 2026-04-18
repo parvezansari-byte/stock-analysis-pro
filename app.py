@@ -1,10 +1,14 @@
-# FINAL NILE V12.3.1 ABSOLUTE MASTERPIECE
+# FINAL NILE V12.3.2 ULTRA PRODUCTION MASTER
 # Single-file Streamlit app.py
 # Visible App Name: Nile
 # Subtitle: Stock Analysis
 # Upgraded from V12.3 with:
 # - Sector Heatmap
 # - AI Buy / Hold / Sell Badge
+# - Better Conviction Score Meter
+# - Multi Stock Compare
+# - Sector Performance Leaderboard
+# - Balance Sheet / Financials / Cash Flow shown in ₹ Cr
 # - Much more premium glass UI
 # - More attractive buttons + cards
 # - Keeps previous features intact
@@ -290,6 +294,21 @@ def ai_badge(score, rsi, trend_signal, macd_signal):
         return "SELL", "ai-badge-sell", "Weak setup / avoid now"
 
 
+def conviction_meter(score, rsi, trend_signal, macd_signal):
+    conviction = score
+    if trend_signal == "Bullish":
+        conviction += 5
+    if macd_signal == "Bullish":
+        conviction += 5
+    if 50 <= rsi <= 70:
+        conviction += 5
+    elif rsi > 80 or rsi < 25:
+        conviction -= 5
+    conviction = max(0, min(100, conviction))
+    label = "Very Strong" if conviction >= 85 else "Strong" if conviction >= 70 else "Moderate" if conviction >= 50 else "Weak"
+    return conviction, label
+
+
 def rupee(v):
     try:
         return f"₹{v:,.2f}"
@@ -389,11 +408,19 @@ breakout_level = df["High"].tail(20).max()
 support_level = df["Low"].tail(20).min()
 
 # -------------------------------------------------
-# AI BUY/HOLD/SELL BADGE (NEW)
+# AI BUY/HOLD/SELL BADGE + BETTER CONVICTION SCORE METER
 # -------------------------------------------------
 ai_action, ai_class, ai_reason = ai_badge(score, rsi, trend_signal, macd_signal)
-st.markdown("<div class='glass-card'><div class='section-title'>AI Signal Badge</div></div>", unsafe_allow_html=True)
-st.markdown(f"<div class='{ai_class}'>AI {ai_action} • {ai_reason}</div>", unsafe_allow_html=True)
+conviction_score, conviction_label = conviction_meter(score, rsi, trend_signal, macd_signal)
+
+ab1, ab2 = st.columns([1, 2])
+with ab1:
+    st.markdown("<div class='glass-card'><div class='section-title'>AI Signal Badge</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='{ai_class}'>AI {ai_action} • {ai_reason}</div>", unsafe_allow_html=True)
+with ab2:
+    st.markdown("<div class='glass-card'><div class='section-title'>Conviction Score Meter</div></div>", unsafe_allow_html=True)
+    st.progress(conviction_score / 100)
+    st.metric("Conviction Score", f"{conviction_score}/100", conviction_label)
 
 # -------------------------------------------------
 # TOP METRICS
@@ -494,6 +521,42 @@ with fc8:
     st.metric("Dividend Yield", f"{round((info.get('dividendYield', 0) or 0)*100, 2)}%" if info.get('dividendYield') is not None else "N/A")
 
 # -------------------------------------------------
+# MULTI STOCK COMPARE (NEW)
+# -------------------------------------------------
+st.markdown("<div class='glass-card'><div class='section-title'>Multi Stock Compare</div></div>", unsafe_allow_html=True)
+compare_default = [symbol] if symbol in stock_list else stock_list[:1]
+compare_symbols = st.multiselect("Select up to 5 stocks to compare", options=stock_list, default=compare_default, max_selections=5)
+
+compare_rows = []
+for cs in compare_symbols:
+    cdata = get_history(cs, period="6mo")
+    cdata = compute_indicators(cdata) if not cdata.empty else pd.DataFrame()
+    if not cdata.empty:
+        cscore, cverdict, _ = score_stock(cdata)
+        clast = safe_last(cdata["Close"])
+        crsi = safe_last(cdata["RSI14"])
+        c1m = np.nan
+        if len(cdata) > 22:
+            c1m = ((float(cdata["Close"].iloc[-1]) / float(cdata["Close"].iloc[-22])) - 1) * 100
+        compare_rows.append({
+            "Symbol": cs.replace('.NS',''),
+            "Price": round(clast, 2),
+            "1M %": round(c1m, 2) if pd.notna(c1m) else np.nan,
+            "RSI": round(crsi, 2) if pd.notna(crsi) else np.nan,
+            "Score": cscore,
+            "Verdict": cverdict,
+        })
+
+if compare_rows:
+    compare_df = pd.DataFrame(compare_rows)
+    st.dataframe(compare_df, use_container_width=True)
+    fig_cmp = px.line(compare_df, x="Symbol", y="Score", markers=True, title="Multi Stock Score Compare", template="plotly_dark")
+    fig_cmp.update_layout(height=360, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig_cmp, use_container_width=True)
+else:
+    st.info("Select stocks to compare.")
+
+# -------------------------------------------------
 # SECTOR HEATMAP (NEW)
 # -------------------------------------------------
 st.markdown("<div class='glass-card'><div class='section-title'>Sector Heatmap</div></div>", unsafe_allow_html=True)
@@ -527,6 +590,14 @@ if heat_rows:
     fig_heat = px.treemap(heat_df, path=["Sector", "Symbol"], values="Return", color="Return", color_continuous_scale="RdYlGn")
     fig_heat.update_layout(height=500, margin=dict(l=10,r=10,t=20,b=10), paper_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig_heat, use_container_width=True)
+
+    st.markdown("<div class='glass-card'><div class='section-title'>Sector Performance Leaderboard</div></div>", unsafe_allow_html=True)
+    sector_leader = heat_df.groupby("Sector", as_index=False)["Return"].mean().sort_values("Return", ascending=False)
+    sector_leader["Return"] = sector_leader["Return"].round(2)
+    st.dataframe(sector_leader, use_container_width=True)
+    fig_sector = px.bar(sector_leader, x="Sector", y="Return", title="Sector Performance Leaderboard", template="plotly_dark")
+    fig_sector.update_layout(height=360, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig_sector, use_container_width=True)
 else:
     st.info("Sector heatmap data unavailable for current selection.")
 
@@ -580,17 +651,20 @@ st.markdown("<div class='glass-card'><div class='section-title'>Balance Sheet / 
 tab1, tab2, tab3 = st.tabs(["Balance Sheet", "Financials", "Cash Flow"])
 with tab1:
     if isinstance(bs, pd.DataFrame) and not bs.empty:
-        st.dataframe(bs.iloc[:, :4].fillna(0), use_container_width=True)
+        bs_cr = (bs.iloc[:, :4].fillna(0) / 1e7).round(2)
+        st.dataframe(bs_cr, use_container_width=True)
     else:
         st.info("Balance sheet not available for this symbol.")
 with tab2:
     if isinstance(fin, pd.DataFrame) and not fin.empty:
-        st.dataframe(fin.iloc[:, :4].fillna(0), use_container_width=True)
+        fin_cr = (fin.iloc[:, :4].fillna(0) / 1e7).round(2)
+        st.dataframe(fin_cr, use_container_width=True)
     else:
         st.info("Financials not available for this symbol.")
 with tab3:
     if isinstance(cf, pd.DataFrame) and not cf.empty:
-        st.dataframe(cf.iloc[:, :4].fillna(0), use_container_width=True)
+        cf_cr = (cf.iloc[:, :4].fillna(0) / 1e7).round(2)
+        st.dataframe(cf_cr, use_container_width=True)
     else:
         st.info("Cash flow not available for this symbol.")
 
