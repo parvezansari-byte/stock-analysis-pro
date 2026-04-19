@@ -407,15 +407,13 @@ with st.sidebar:
 # -------------------------------------------------
 logo_path = "FullLogo_NoBuffer.png"
 
-logo_col1, logo_col2 = st.columns([1.2, 6])
-with logo_col1:
+logo_col1, logo_col2, logo_col3 = st.columns([2, 3, 2])
+with logo_col2:
     try:
-        st.image(logo_path, width=170)
+        st.image(logo_path, width=240)
     except Exception:
         st.markdown("<div class='nile-title'>Nile</div>", unsafe_allow_html=True)
-with logo_col2:
-    st.markdown("<div class='nile-title' style='margin-top: 0.55rem;'>Nile</div>", unsafe_allow_html=True)
-    st.markdown("<div class='nile-sub'>Stock Analysis</div>", unsafe_allow_html=True)
+    st.markdown("<div class='nile-sub' style='text-align:center; margin-top: 0.25rem;'>Stock Analysis</div>", unsafe_allow_html=True)
 
 st.markdown("<div class='hero-strip'><span class='pill'>NIFTY 50</span><span class='pill'>BANKNIFTY</span><span class='pill'>SENSEX</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span></div>", unsafe_allow_html=True)
 
