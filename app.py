@@ -431,7 +431,48 @@ with logo_col2:
         st.markdown("<div class='nile-title'>Nile</div>", unsafe_allow_html=True)
     st.markdown("<div class='nile-sub premium-subtitle'>Stock Analysis</div>", unsafe_allow_html=True)
 
-st.markdown("<div class='hero-strip'><span class='pill'>NIFTY 50</span><span class='pill'>BANKNIFTY</span><span class='pill'>SENSEX</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span></div>", unsafe_allow_html=True)
+@st.cache_data(ttl=300)
+def get_live_index(symbol: str):
+    data = get_history(symbol, period="5d")
+    if data.empty or len(data) < 2:
+        return np.nan, np.nan
+    last = float(data["Close"].iloc[-1])
+    prev = float(data["Close"].iloc[-2])
+    chg = ((last / prev) - 1) * 100 if prev else 0
+    return last, chg
+
+banknifty_last, banknifty_chg = get_live_index("^NSEBANK")
+indiavix_last, indiavix_chg = get_live_index("^INDIAVIX")
+
+st.markdown("<div class='hero-strip'><span class='pill'>NIFTY 50</span><span class='pill'>BANK NIFTY</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span><span class='pill'>Cloud Safe</span></div>", unsafe_allow_html=True)
+
+m1, m2 = st.columns(2)
+with m1:
+    if pd.notna(banknifty_last):
+        bn_color = '#22c55e' if banknifty_chg >= 0 else '#ef4444'
+        bn_arrow = '▲' if banknifty_chg >= 0 else '▼'
+        st.markdown(f"""
+        <div class='glass-card' style='padding:16px 18px; background: linear-gradient(135deg, rgba(20,83,45,0.42), rgba(15,23,42,0.92)); border:1px solid rgba(34,197,94,0.18);'>
+            <div class='section-title' style='margin-bottom:4px;'>BANK NIFTY Live</div>
+            <div style='font-size:2rem; font-weight:900; color:#ffffff;'>{banknifty_last:,.2f}</div>
+            <div style='font-size:1rem; font-weight:800; color:{bn_color};'>{bn_arrow} {banknifty_chg:+.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='glass-card'><div class='section-title'>BANK NIFTY Live</div><div style='font-size:1.3rem;font-weight:800;color:#94a3b8;'>Data unavailable</div></div>", unsafe_allow_html=True)
+with m2:
+    if pd.notna(indiavix_last):
+        vix_color = '#ef4444' if indiavix_chg >= 0 else '#22c55e'
+        vix_arrow = '▲' if indiavix_chg >= 0 else '▼'
+        st.markdown(f"""
+        <div class='glass-card' style='padding:16px 18px; background: linear-gradient(135deg, rgba(127,29,29,0.34), rgba(15,23,42,0.92)); border:1px solid rgba(239,68,68,0.18);'>
+            <div class='section-title' style='margin-bottom:4px;'>INDIA VIX Live</div>
+            <div style='font-size:2rem; font-weight:900; color:#ffffff;'>{indiavix_last:,.2f}</div>
+            <div style='font-size:1rem; font-weight:800; color:{vix_color};'>{vix_arrow} {indiavix_chg:+.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='glass-card'><div class='section-title'>INDIA VIX Live</div><div style='font-size:1.3rem;font-weight:800;color:#94a3b8;'>Data unavailable</div></div>", unsafe_allow_html=True)
 
 # -------------------------------------------------
 # MAIN DATA
