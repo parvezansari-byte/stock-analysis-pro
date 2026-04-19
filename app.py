@@ -70,8 +70,22 @@ st.markdown(
     .nile-sub {
         color: #c4b5fd;
         font-size: 1.02rem;
-        margin-bottom: 1rem;
+        margin-top: 0.15rem;
+        margin-bottom: 1.15rem;
         font-weight: 700;
+        text-align: center;
+    }
+
+    .premium-subtitle {
+        font-size: 1.18rem;
+        font-weight: 900;
+        letter-spacing: 0.6px;
+        color: #ddd6fe;
+        text-shadow: 0 0 14px rgba(167,139,250,0.18);
+        background: linear-gradient(90deg, #e9d5ff, #c4b5fd, #93c5fd);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: block;
     }
 
     .hero-strip {
@@ -410,10 +424,12 @@ logo_path = "FullLogo_NoBuffer.png"
 logo_col1, logo_col2, logo_col3 = st.columns([2, 3, 2])
 with logo_col2:
     try:
-        st.image(logo_path, width=240)
+        st.markdown("<div style='display:flex; justify-content:center; align-items:center; margin-top:0.15rem; margin-bottom:0.15rem;'><div style=\"padding:14px; border-radius:28px; background: radial-gradient(circle, rgba(245,208,92,0.10) 0%, rgba(245,208,92,0.04) 38%, rgba(0,0,0,0) 72%); box-shadow: 0 0 34px rgba(245,208,92,0.16), 0 0 70px rgba(245,208,92,0.07);\">", unsafe_allow_html=True)
+        st.image(logo_path, width=260)
+        st.markdown("</div></div>", unsafe_allow_html=True)
     except Exception:
         st.markdown("<div class='nile-title'>Nile</div>", unsafe_allow_html=True)
-    st.markdown("<div class='nile-sub' style='text-align:center; margin-top: 0.25rem;'>Stock Analysis</div>", unsafe_allow_html=True)
+    st.markdown("<div class='nile-sub premium-subtitle'>Stock Analysis</div>", unsafe_allow_html=True)
 
 st.markdown("<div class='hero-strip'><span class='pill'>NIFTY 50</span><span class='pill'>BANKNIFTY</span><span class='pill'>SENSEX</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span></div>", unsafe_allow_html=True)
 
