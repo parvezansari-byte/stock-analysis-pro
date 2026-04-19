@@ -1,8 +1,8 @@
-# FINAL NILE V12.4.1 LUXURY TERMINAL EDITION
+# FINAL NILE V12.5 IMPERIAL TERMINAL OS
 # Single-file Streamlit app.py
 # Visible App Name: Nile
 # Subtitle: Stock Analysis
-# NOTE: Keeps everything same as usual. This version adds ONLY the requested luxury terminal visual upgrades:
+# NOTE: Keeps everything same as usual. This version upgrades to IMPERIAL TERMINAL OS and keeps full Fundamental + Technical analysis as requested.
 # - Real live index ticker values (NIFTY / BANKNIFTY / SENSEX / VIX)
 # - Mini sparklines inside top cards
 # - Volume bars under candlestick
@@ -11,6 +11,7 @@
 # - Premium scanner cards with mini sparkline
 # - Top gainers / losers strip
 # - More Bloomberg-style terminal UI
+# - Full Fundamental + Technical analysis kept and enhanced
 
 import time
 import numpy as np
@@ -272,7 +273,7 @@ def style_df(df):
 # SIDEBAR
 # -------------------------------------------------
 with st.sidebar:
-    st.markdown("## Nile"); st.caption("Stock Analysis")
+    st.markdown("## Nile"); st.caption("Stock Analysis • Fundamental + Technical")
     universe_choice = st.radio("Stock Universe", ["NIFTY 50", "NIFTY NEXT 50", "NIFTY 100 (Combined)"], index=2)
     stock_list = NIFTY_50 if universe_choice == "NIFTY 50" else NIFTY_NEXT_50 if universe_choice == "NIFTY NEXT 50" else UNIVERSE
     symbol = st.selectbox("Select Stock", options=stock_list, index=0)
@@ -287,7 +288,7 @@ with st.sidebar:
 # HEADER + LIVE INDEX TICKER + TOP GAINERS/LOSERS STRIP
 # -------------------------------------------------
 st.markdown("<div class='nile-title'>Nile</div>", unsafe_allow_html=True)
-st.markdown("<div class='nile-sub'>Stock Analysis</div>", unsafe_allow_html=True)
+st.markdown("<div class='nile-sub'>Stock Analysis • Fundamental + Technical</div>", unsafe_allow_html=True)
 idx = get_index_snapshot()
 parts = []
 for k, v in idx.items():
@@ -375,6 +376,21 @@ with right:
     st.markdown("<div class='glass-card'><div class='section-title'>Momentum (RSI)</div></div>", unsafe_allow_html=True)
     st.plotly_chart(make_rsi_chart(df.tail(180)), use_container_width=True)
 
+# -------------------------------------------------
+# INSTITUTIONAL SIGNAL ENGINE (KEPT / ENHANCED)
+# -------------------------------------------------
+st.markdown("<div class='glass-card'><div class='section-title'>Institutional Signal Engine</div></div>", unsafe_allow_html=True)
+se1, se2, se3, se4 = st.columns(4)
+with se1:
+    st.metric("Trend Bias", trend_signal)
+with se2:
+    st.metric("MACD Bias", macd_signal)
+with se3:
+    st.metric("Conviction", f"{conviction_score}/100")
+with se4:
+    st.metric("AI Action", ai_action)
+
+# -------------------------------------------------
 # Trade plan
 st.markdown("<div class='glass-card'><div class='section-title'>Professional Trade Plan</div></div>", unsafe_allow_html=True)
 p1, p2, p3, p4, p5 = st.columns(5)
@@ -420,6 +436,36 @@ if heat_rows:
     st.plotly_chart(fig_heat, use_container_width=True)
     sector_leader = heat_df.groupby("Sector", as_index=False)["Return"].mean().sort_values("Return", ascending=False); sector_leader["Return"] = sector_leader["Return"].round(2)
     st.dataframe(style_df(sector_leader), use_container_width=True)
+
+# -------------------------------------------------
+# FUNDAMENTAL SNAPSHOT (ENHANCED)
+# -------------------------------------------------
+st.markdown("<div class='glass-card'><div class='section-title'>Fundamental Snapshot</div></div>", unsafe_allow_html=True)
+fs1, fs2, fs3, fs4 = st.columns(4)
+with fs1: st.metric("Sector", info.get("sector", "N/A"))
+with fs2: st.metric("Industry", info.get("industry", "N/A"))
+with fs3: st.metric("P/E", f"{info.get('trailingPE', 'N/A')}")
+with fs4: st.metric("Market Cap", f"₹{(info.get('marketCap', 0) or 0)/1e7:,.0f} Cr" if info.get('marketCap') else "N/A")
+fs5, fs6, fs7, fs8 = st.columns(4)
+with fs5: st.metric("ROE", f"{round((info.get('returnOnEquity', 0) or 0)*100, 2)}%" if info.get('returnOnEquity') is not None else "N/A")
+with fs6: st.metric("Debt / Equity", f"{info.get('debtToEquity', 'N/A')}")
+with fs7: st.metric("Revenue Growth", f"{round((info.get('revenueGrowth', 0) or 0)*100, 2)}%" if info.get('revenueGrowth') is not None else "N/A")
+with fs8: st.metric("Profit Margin", f"{round((info.get('profitMargins', 0) or 0)*100, 2)}%" if info.get('profitMargins') is not None else "N/A")
+
+# -------------------------------------------------
+# TECHNICAL SNAPSHOT (ENHANCED)
+# -------------------------------------------------
+st.markdown("<div class='glass-card'><div class='section-title'>Technical Snapshot</div></div>", unsafe_allow_html=True)
+ts1, ts2, ts3, ts4 = st.columns(4)
+with ts1: st.metric("SMA20", f"{df.iloc[-1]['SMA20']:.2f}")
+with ts2: st.metric("SMA50", f"{df.iloc[-1]['SMA50']:.2f}")
+with ts3: st.metric("MACD", f"{df.iloc[-1]['MACD']:.2f}")
+with ts4: st.metric("MACD Signal", f"{df.iloc[-1]['MACD_SIGNAL']:.2f}")
+ts5, ts6, ts7, ts8 = st.columns(4)
+with ts5: st.metric("RSI (14)", f"{rsi:.2f}")
+with ts6: st.metric("ATR (14)", f"{atr:.2f}")
+with ts7: st.metric("20D Support", f"{support_level:.2f}")
+with ts8: st.metric("20D Resistance", f"{breakout_level:.2f}")
 
 # Ratios
 if show_fundamental_ratio:
