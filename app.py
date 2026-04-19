@@ -467,6 +467,60 @@ with ts6: st.metric("ATR (14)", f"{atr:.2f}")
 with ts7: st.metric("20D Support", f"{support_level:.2f}")
 with ts8: st.metric("20D Resistance", f"{breakout_level:.2f}")
 
+# -------------------------------------------------
+# FUNDAMENTAL RATIO BUTTON (VISIBLE SECTION)
+# -------------------------------------------------
+st.markdown("<div class='glass-card'><div class='section-title'>Fundamental Ratio Controls</div></div>", unsafe_allow_html=True)
+fr1, fr2 = st.columns(2)
+with fr1:
+    show_fundamental_ratio = st.button("Fundamental Ratio")
+with fr2:
+    show_technical_ratio = st.button("Technical Ratio")
+
+if show_fundamental_ratio:
+    fund_df = pd.DataFrame([
+        {"Ratio":"P/E","Value":info.get("trailingPE","N/A")},{"Ratio":"Forward P/E","Value":info.get("forwardPE","N/A")},{"Ratio":"Price / Book","Value":info.get("priceToBook","N/A")},
+        {"Ratio":"ROE (%)","Value":round((info.get("returnOnEquity",0) or 0)*100,2) if info.get("returnOnEquity") is not None else "N/A"},{"Ratio":"ROA (%)","Value":round((info.get("returnOnAssets",0) or 0)*100,2) if info.get("returnOnAssets") is not None else "N/A"},
+        {"Ratio":"Debt / Equity","Value":info.get("debtToEquity","N/A")},{"Ratio":"Current Ratio","Value":info.get("currentRatio","N/A")},{"Ratio":"Quick Ratio","Value":info.get("quickRatio","N/A")},
+        {"Ratio":"Profit Margin (%)","Value":round((info.get("profitMargins",0) or 0)*100,2) if info.get("profitMargins") is not None else "N/A"},{"Ratio":"Operating Margin (%)","Value":round((info.get("operatingMargins",0) or 0)*100,2) if info.get("operatingMargins") is not None else "N/A"},
+        {"Ratio":"Revenue Growth (%)","Value":round((info.get("revenueGrowth",0) or 0)*100,2) if info.get("revenueGrowth") is not None else "N/A"},{"Ratio":"Dividend Yield (%)","Value":round((info.get("dividendYield",0) or 0)*100,2) if info.get("dividendYield") is not None else "N/A"},
+    ])
+    st.markdown("<div class='glass-card'><div class='section-title'>Fundamental Ratio Analysis</div></div>", unsafe_allow_html=True)
+    st.dataframe(style_df(fund_df), use_container_width=True)
+
+if show_technical_ratio:
+    last = df.iloc[-1]
+    tech_df = pd.DataFrame([
+        {"Metric":"Price vs SMA20 (%)","Value":round(((last['Close']/last['SMA20'])-1)*100,2)},{"Metric":"Price vs SMA50 (%)","Value":round(((last['Close']/last['SMA50'])-1)*100,2)},
+        {"Metric":"SMA20 vs SMA50 (%)","Value":round(((last['SMA20']/last['SMA50'])-1)*100,2)},{"Metric":"RSI (14)","Value":round(last['RSI14'],2)},{"Metric":"MACD","Value":round(last['MACD'],2)},
+        {"Metric":"MACD Signal","Value":round(last['MACD_SIGNAL'],2)},{"Metric":"MACD Histogram","Value":round(last['MACD_HIST'],2)},{"Metric":"ATR (14)","Value":round(last['ATR14'],2)},
+        {"Metric":"Distance to 20D High (%)","Value":round(((last['Close']/breakout_level)-1)*100,2)},{"Metric":"Distance to 20D Low (%)","Value":round(((last['Close']/support_level)-1)*100,2)},
+        {"Metric":"Bollinger Upper Gap (%)","Value":round(((last['Close']/last['BB_UPPER'])-1)*100,2)},{"Metric":"Bollinger Lower Gap (%)","Value":round(((last['Close']/last['BB_LOWER'])-1)*100,2)},
+    ])
+    st.markdown("<div class='glass-card'><div class='section-title'>Technical Ratio Analysis</div></div>", unsafe_allow_html=True)
+    st.dataframe(style_df(tech_df), use_container_width=True)
+
+# -------------------------------------------------
+# BALANCE SHEET / FINANCIALS / CASH FLOW (VISIBLE SECTION)
+# -------------------------------------------------
+st.markdown("<div class='glass-card'><div class='section-title'>Balance Sheet / Financials / Cash Flow (₹ Cr)</div></div>", unsafe_allow_html=True)
+btab1, btab2, btab3 = st.tabs(["Balance Sheet", "Financials", "Cash Flow"])
+with btab1:
+    if isinstance(bs, pd.DataFrame) and not bs.empty:
+        st.dataframe(style_df((bs.iloc[:, :4].fillna(0) / 1e7).round(2)), use_container_width=True)
+    else:
+        st.info("Balance sheet not available for this symbol.")
+with btab2:
+    if isinstance(fin, pd.DataFrame) and not fin.empty:
+        st.dataframe(style_df((fin.iloc[:, :4].fillna(0) / 1e7).round(2)), use_container_width=True)
+    else:
+        st.info("Financials not available for this symbol.")
+with btab3:
+    if isinstance(cf, pd.DataFrame) and not cf.empty:
+        st.dataframe(style_df((cf.iloc[:, :4].fillna(0) / 1e7).round(2)), use_container_width=True)
+    else:
+        st.info("Cash flow not available for this symbol.")
+
 # Ratios
 if show_fundamental_ratio:
     fund_df = pd.DataFrame([
