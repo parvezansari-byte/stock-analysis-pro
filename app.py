@@ -144,7 +144,7 @@ st.markdown(
     }
 
     /* ------------------------------------------------- */
-    /* BUTTON MASTER UPGRADE (ONLY CHANGED PART)        */
+    /* BUTTON PRO MAX UPGRADE (ONLY CHANGED PART)      */
     /* ------------------------------------------------- */
     .stButton > button, .stDownloadButton > button {
         width: 100%;
@@ -158,16 +158,43 @@ st.markdown(
         box-shadow: 0 10px 28px rgba(0,0,0,0.28);
     }
 
-    .stButton > button {
-        background: linear-gradient(135deg, #ff6b6b, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6);
-        background-size: 300% 300%;
-        animation: buttonGlow 8s ease infinite;
+    /* Sidebar button premium green */
+    section[data-testid="stSidebar"] .stButton > button {
+        background: linear-gradient(135deg, #16a34a, #22c55e, #4ade80);
+        background-size: 200% 200%;
+        animation: buttonGlow 6s ease infinite;
+        box-shadow: 0 10px 28px rgba(34,197,94,0.28);
     }
 
-    .stDownloadButton > button {
-        background: linear-gradient(135deg, #14b8a6, #06b6d4, #2563eb, #7c3aed);
-        background-size: 250% 250%;
+    /* Main page buttons default (fallback) */
+    .stButton > button {
+        background: linear-gradient(135deg, #3b82f6, #2563eb, #1d4ed8);
+        background-size: 200% 200%;
         animation: buttonGlow 6s ease infinite;
+    }
+
+    /* Download button teal premium */
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #0f766e, #14b8a6, #06b6d4);
+        background-size: 220% 220%;
+        animation: buttonGlow 6s ease infinite;
+        box-shadow: 0 10px 28px rgba(20,184,166,0.28);
+    }
+
+    /* Fundamental Ratio = Blue premium */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(1) .stButton > button {
+        background: linear-gradient(135deg, #2563eb, #3b82f6, #60a5fa) !important;
+        background-size: 220% 220%;
+        animation: buttonGlow 6s ease infinite;
+        box-shadow: 0 10px 28px rgba(37,99,235,0.30) !important;
+    }
+
+    /* Technical Ratio = Purple premium */
+    div[data-testid="stHorizontalBlock"] > div:nth-child(2) .stButton > button {
+        background: linear-gradient(135deg, #7c3aed, #8b5cf6, #a78bfa) !important;
+        background-size: 220% 220%;
+        animation: buttonGlow 6s ease infinite;
+        box-shadow: 0 10px 28px rgba(124,58,237,0.30) !important;
     }
 
     .stButton > button:hover, .stDownloadButton > button:hover {
