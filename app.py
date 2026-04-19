@@ -1,16 +1,8 @@
-# FINAL NILE V12.4 VISUAL MASTERPIECE
+# FINAL NILE V12.4.1 BUTTON MASTER
 # Single-file Streamlit app.py
 # Visible App Name: Nile
 # Subtitle: Stock Analysis
-# NOTE: Keeps everything same as usual. Main upgrades are visual only:
-# - New premium color system
-# - Hero market ribbon
-# - Circular conviction gauge
-# - Big AI signal card
-# - Institutional summary panel
-# - Top 5 scanner opportunity cards
-# - Normalized multi-stock comparison chart
-# - Enhanced premium glass UI / attractive cards / cleaner spacing
+# NOTE: Keeps everything same as previous code. ONLY button colors / hover effects upgraded.
 
 import time
 import numpy as np
@@ -30,7 +22,7 @@ except Exception:
 st.set_page_config(page_title="Nile", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
 # -------------------------------------------------
-# PREMIUM VISUAL MASTERPIECE CSS (ONLY COLOR / LOOK UPGRADE)
+# PREMIUM VISUAL MASTERPIECE CSS (ONLY BUTTON COLOR UPGRADE)
 # -------------------------------------------------
 st.markdown(
     """
@@ -151,12 +143,49 @@ st.markdown(
         border-right: 1px solid rgba(148,163,184,0.08);
     }
 
+    /* ------------------------------------------------- */
+    /* BUTTON MASTER UPGRADE (ONLY CHANGED PART)        */
+    /* ------------------------------------------------- */
     .stButton > button, .stDownloadButton > button {
-        width: 100%; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); color: white; font-weight: 900; padding: 0.75rem 1rem;
-        box-shadow: 0 8px 22px rgba(37,99,235,0.20);
+        width: 100%;
+        border-radius: 18px;
+        border: 1px solid rgba(255,255,255,0.10);
+        color: white;
+        font-weight: 900;
+        padding: 0.80rem 1rem;
+        font-size: 0.95rem;
+        transition: all 0.25s ease-in-out;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.28);
     }
-    .stButton > button { background: linear-gradient(90deg, #2563eb, #7c3aed, #06b6d4); }
-    .stDownloadButton > button { background: linear-gradient(90deg, #0f766e, #2563eb); }
+
+    .stButton > button {
+        background: linear-gradient(135deg, #ff6b6b, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6);
+        background-size: 300% 300%;
+        animation: buttonGlow 8s ease infinite;
+    }
+
+    .stDownloadButton > button {
+        background: linear-gradient(135deg, #14b8a6, #06b6d4, #2563eb, #7c3aed);
+        background-size: 250% 250%;
+        animation: buttonGlow 6s ease infinite;
+    }
+
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        transform: translateY(-2px) scale(1.02);
+        box-shadow: 0 14px 34px rgba(0,0,0,0.35), 0 0 18px rgba(99,102,241,0.35);
+        border: 1px solid rgba(255,255,255,0.18);
+        filter: brightness(1.08);
+    }
+
+    .stButton > button:active, .stDownloadButton > button:active {
+        transform: scale(0.98);
+    }
+
+    @keyframes buttonGlow {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -352,7 +381,6 @@ with st.sidebar:
 st.markdown("<div class='nile-title'>Nile</div>", unsafe_allow_html=True)
 st.markdown("<div class='nile-sub'>Stock Analysis</div>", unsafe_allow_html=True)
 
-# simple visual market ribbon (same logic, visual enhancement only)
 st.markdown("<div class='hero-strip'><span class='pill'>NIFTY 50</span><span class='pill'>BANKNIFTY</span><span class='pill'>SENSEX</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span></div>", unsafe_allow_html=True)
 
 # -------------------------------------------------
