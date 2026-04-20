@@ -1,10 +1,12 @@
-# FINAL NILE V12.4.1 BUTTON MASTER
+# FINAL NILE V12.5.2 ULTRA STABLE
 # Single-file Streamlit app.py
-# Visible App Name: Nile
+# Visible App Name: Nile (logo only)
 # Subtitle: Stock Analysis
-# NOTE: Keeps everything same as previous code. ONLY button colors / hover effects upgraded.
+# CLEAN FULL CODE • CLOUD SAFE • NO PATCH LEFTOVERS
 
 import time
+from datetime import datetime
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -22,7 +24,7 @@ except Exception:
 st.set_page_config(page_title="Nile", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
 # -------------------------------------------------
-# PREMIUM VISUAL MASTERPIECE CSS (ONLY BUTTON COLOR UPGRADE)
+# PREMIUM CSS (STABLE FINAL)
 # -------------------------------------------------
 st.markdown(
     """
@@ -30,17 +32,7 @@ st.markdown(
     :root {
         --bg1: #050816;
         --bg2: #0b1224;
-        --card1: rgba(15, 23, 42, 0.78);
-        --card2: rgba(17, 24, 39, 0.88);
-        --stroke: rgba(148, 163, 184, 0.14);
         --text: #eef2ff;
-        --muted: #a5b4fc;
-        --green: #22c55e;
-        --red: #ef4444;
-        --yellow: #f59e0b;
-        --blue: #2563eb;
-        --violet: #7c3aed;
-        --cyan: #06b6d4;
     }
 
     .stApp {
@@ -65,6 +57,7 @@ st.markdown(
         color: #ffffff;
         margin-bottom: 0.08rem;
         text-shadow: 0 0 28px rgba(37,99,235,0.18);
+        text-align: center;
     }
 
     .nile-sub {
@@ -86,6 +79,7 @@ st.markdown(
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         display: block;
+        text-align: center;
     }
 
     .hero-strip {
@@ -94,7 +88,7 @@ st.markdown(
         border-radius: 22px;
         padding: 14px 18px;
         margin-bottom: 14px;
-        box-shadow: 0 12px 36px rgba(0,0,0,0.25);
+        box-shadow: 0 0 22px rgba(59,130,246,0.12), 0 0 44px rgba(124,58,237,0.08), 0 12px 36px rgba(0,0,0,0.25);
         backdrop-filter: blur(12px);
     }
 
@@ -157,9 +151,6 @@ st.markdown(
         border-right: 1px solid rgba(148,163,184,0.08);
     }
 
-    /* ------------------------------------------------- */
-    /* BUTTON PRO MAX UPGRADE (ONLY CHANGED PART)      */
-    /* ------------------------------------------------- */
     .stButton > button, .stDownloadButton > button {
         width: 100%;
         border-radius: 18px;
@@ -172,7 +163,6 @@ st.markdown(
         box-shadow: 0 10px 28px rgba(0,0,0,0.28);
     }
 
-    /* Sidebar button premium green */
     section[data-testid="stSidebar"] .stButton > button {
         background: linear-gradient(135deg, #16a34a, #22c55e, #4ade80);
         background-size: 200% 200%;
@@ -180,14 +170,12 @@ st.markdown(
         box-shadow: 0 10px 28px rgba(34,197,94,0.28);
     }
 
-    /* Main page buttons default (fallback) */
     .stButton > button {
         background: linear-gradient(135deg, #3b82f6, #2563eb, #1d4ed8);
         background-size: 200% 200%;
         animation: buttonGlow 6s ease infinite;
     }
 
-    /* Download button teal premium */
     .stDownloadButton > button {
         background: linear-gradient(135deg, #0f766e, #14b8a6, #06b6d4);
         background-size: 220% 220%;
@@ -195,7 +183,7 @@ st.markdown(
         box-shadow: 0 10px 28px rgba(20,184,166,0.28);
     }
 
-    /* Fundamental Ratio = Blue premium */
+    /* Ratio buttons in 2-column row */
     div[data-testid="stHorizontalBlock"] > div:nth-child(1) .stButton > button {
         background: linear-gradient(135deg, #2563eb, #3b82f6, #60a5fa) !important;
         background-size: 220% 220%;
@@ -203,7 +191,6 @@ st.markdown(
         box-shadow: 0 10px 28px rgba(37,99,235,0.30) !important;
     }
 
-    /* Technical Ratio = Purple premium */
     div[data-testid="stHorizontalBlock"] > div:nth-child(2) .stButton > button {
         background: linear-gradient(135deg, #7c3aed, #8b5cf6, #a78bfa) !important;
         background-size: 220% 220%;
@@ -273,6 +260,16 @@ def get_financials(symbol: str):
     except Exception:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
+@st.cache_data(ttl=300)
+def get_live_index(symbol: str):
+    data = get_history(symbol, period="5d")
+    if data.empty or len(data) < 2:
+        return np.nan, np.nan
+    last = float(data["Close"].iloc[-1])
+    prev = float(data["Close"].iloc[-2])
+    chg = ((last / prev) - 1) * 100 if prev else 0
+    return last, chg
+
 
 def safe_last(series):
     try:
@@ -317,15 +314,22 @@ def score_stock(df: pd.DataFrame):
     last = df.iloc[-1]
     score = 0
     reasons = {}
-    if last["Close"] > last["SMA20"]: score += 10; reasons["Above SMA20"] = True
-    if last["Close"] > last["SMA50"]: score += 15; reasons["Above SMA50"] = True
-    if last["SMA20"] > last["SMA50"]: score += 15; reasons["Bullish Trend"] = True
-    if 50 < last["RSI14"] < 70: score += 15; reasons["Healthy RSI"] = True
-    if last["MACD"] > last["MACD_SIGNAL"]: score += 15; reasons["MACD Bullish"] = True
+    if last["Close"] > last["SMA20"]:
+        score += 10; reasons["Above SMA20"] = True
+    if last["Close"] > last["SMA50"]:
+        score += 15; reasons["Above SMA50"] = True
+    if last["SMA20"] > last["SMA50"]:
+        score += 15; reasons["Bullish Trend"] = True
+    if 50 < last["RSI14"] < 70:
+        score += 15; reasons["Healthy RSI"] = True
+    if last["MACD"] > last["MACD_SIGNAL"]:
+        score += 15; reasons["MACD Bullish"] = True
     recent_high = df["High"].tail(20).max()
-    if last["Close"] >= recent_high * 0.985: score += 20; reasons["Near Breakout"] = True
+    if last["Close"] >= recent_high * 0.985:
+        score += 20; reasons["Near Breakout"] = True
     vol20 = df["Volume"].tail(20).mean() if "Volume" in df.columns else np.nan
-    if "Volume" in df.columns and pd.notna(vol20) and last["Volume"] > vol20 * 1.2: score += 10; reasons["Volume Expansion"] = True
+    if "Volume" in df.columns and pd.notna(vol20) and last["Volume"] > vol20 * 1.2:
+        score += 10; reasons["Volume Expansion"] = True
     verdict = "Strong Bullish" if score >= 75 else "Bullish" if score >= 55 else "Neutral" if score >= 35 else "Weak"
     return score, verdict, reasons
 
@@ -340,23 +344,32 @@ def ai_badge(score, rsi, trend_signal, macd_signal):
 
 def conviction_meter(score, rsi, trend_signal, macd_signal):
     conviction = score
-    if trend_signal == "Bullish": conviction += 5
-    if macd_signal == "Bullish": conviction += 5
-    if 50 <= rsi <= 70: conviction += 5
-    elif rsi > 80 or rsi < 25: conviction -= 5
+    if trend_signal == "Bullish":
+        conviction += 5
+    if macd_signal == "Bullish":
+        conviction += 5
+    if 50 <= rsi <= 70:
+        conviction += 5
+    elif rsi > 80 or rsi < 25:
+        conviction -= 5
     conviction = max(0, min(100, conviction))
     label = "Very Strong" if conviction >= 85 else "Strong" if conviction >= 70 else "Moderate" if conviction >= 50 else "Weak"
     return conviction, label
 
 
 def rupee(v):
-    try: return f"₹{v:,.2f}"
-    except Exception: return "N/A"
+    try:
+        return f"₹{v:,.2f}"
+    except Exception:
+        return "N/A"
 
 
 def metric_box(label, value, delta_text="", positive=None):
     delta_cls = "metric-delta-up" if positive is True else "metric-delta-down" if positive is False else "metric-delta-flat"
-    st.markdown(f"<div class='metric-card'><div class='metric-label'>{label}</div><div class='metric-value'>{value}</div><div class='{delta_cls}'>{delta_text}</div></div>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='metric-card'><div class='metric-label'>{label}</div><div class='metric-value'>{value}</div><div class='{delta_cls}'>{delta_text}</div></div>",
+        unsafe_allow_html=True,
+    )
 
 
 def make_candlestick(df: pd.DataFrame, symbol: str, entry=None, stop=None, target=None, breakout=None, support=None):
@@ -364,12 +377,25 @@ def make_candlestick(df: pd.DataFrame, symbol: str, entry=None, stop=None, targe
     fig.add_trace(go.Candlestick(x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="Price"))
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA20"], name="SMA20", line=dict(width=1.8)))
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], name="SMA50", line=dict(width=1.8)))
-    if breakout is not None: fig.add_hline(y=breakout, line_dash="dot", annotation_text="Breakout")
-    if support is not None: fig.add_hline(y=support, line_dash="dot", annotation_text="Support")
-    if entry is not None: fig.add_hline(y=entry, line_dash="dash", annotation_text="Entry")
-    if stop is not None: fig.add_hline(y=stop, line_dash="dash", annotation_text="SL")
-    if target is not None: fig.add_hline(y=target, line_dash="dash", annotation_text="Target")
-    fig.update_layout(title=f"{symbol} Price Structure", template="plotly_dark", height=560, xaxis_rangeslider_visible=False, margin=dict(l=10,r=10,t=40,b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    if breakout is not None:
+        fig.add_hline(y=breakout, line_dash="dot", annotation_text="Breakout")
+    if support is not None:
+        fig.add_hline(y=support, line_dash="dot", annotation_text="Support")
+    if entry is not None:
+        fig.add_hline(y=entry, line_dash="dash", annotation_text="Entry")
+    if stop is not None:
+        fig.add_hline(y=stop, line_dash="dash", annotation_text="SL")
+    if target is not None:
+        fig.add_hline(y=target, line_dash="dash", annotation_text="Target")
+    fig.update_layout(
+        title=f"{symbol} Price Structure",
+        template="plotly_dark",
+        height=560,
+        xaxis_rangeslider_visible=False,
+        margin=dict(l=10, r=10, t=40, b=10),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
     return fig
 
 
@@ -378,7 +404,7 @@ def make_rsi_chart(df: pd.DataFrame):
     fig.add_trace(go.Scatter(x=df.index, y=df["RSI14"], name="RSI 14"))
     fig.add_hline(y=70, line_dash="dot")
     fig.add_hline(y=30, line_dash="dot")
-    fig.update_layout(template="plotly_dark", height=280, margin=dict(l=10,r=10,t=30,b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(template="plotly_dark", height=280, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     return fig
 
 
@@ -397,7 +423,7 @@ def make_gauge(value):
             ],
         }
     ))
-    fig.update_layout(height=250, margin=dict(l=20,r=20,t=40,b=10), paper_bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(height=250, margin=dict(l=20, r=20, t=40, b=10), paper_bgcolor="rgba(0,0,0,0)")
     return fig
 
 # -------------------------------------------------
@@ -417,42 +443,39 @@ with st.sidebar:
     run_scan = st.button("Run Institutional Scan")
 
 # -------------------------------------------------
-# HEADER + HERO MARKET RIBBON
+# HEADER + LOGO + SUBTITLE
 # -------------------------------------------------
 logo_path = "FullLogo_NoBuffer.png"
-
 logo_col1, logo_col2, logo_col3 = st.columns([2, 3, 2])
 with logo_col2:
     try:
-        st.markdown("<div style='display:flex; justify-content:center; align-items:center; margin-top:0.15rem; margin-bottom:0.15rem;'><div style=\"padding:14px; border-radius:28px; background: radial-gradient(circle, rgba(245,208,92,0.10) 0%, rgba(245,208,92,0.04) 38%, rgba(0,0,0,0) 72%); box-shadow: 0 0 34px rgba(245,208,92,0.16), 0 0 70px rgba(245,208,92,0.07);\">", unsafe_allow_html=True)
+        st.markdown(
+            "<div style='display:flex; justify-content:center; align-items:center; margin-top:0.15rem; margin-bottom:0.15rem;'><div style=\"padding:14px; border-radius:28px; background: radial-gradient(circle, rgba(245,208,92,0.10) 0%, rgba(245,208,92,0.04) 38%, rgba(0,0,0,0) 72%); box-shadow: 0 0 34px rgba(245,208,92,0.16), 0 0 70px rgba(245,208,92,0.07);\">",
+            unsafe_allow_html=True,
+        )
         st.image(logo_path, width=260)
         st.markdown("</div></div>", unsafe_allow_html=True)
     except Exception:
         st.markdown("<div class='nile-title'>Nile</div>", unsafe_allow_html=True)
     st.markdown("<div class='nile-sub premium-subtitle'>Stock Analysis</div>", unsafe_allow_html=True)
 
-@st.cache_data(ttl=300)
-def get_live_index(symbol: str):
-    data = get_history(symbol, period="5d")
-    if data.empty or len(data) < 2:
-        return np.nan, np.nan
-    last = float(data["Close"].iloc[-1])
-    prev = float(data["Close"].iloc[-2])
-    chg = ((last / prev) - 1) * 100 if prev else 0
-    return last, chg
-
+# -------------------------------------------------
+# LIVE TOP RIBBON + LIVE CARDS
+# -------------------------------------------------
 nifty50_last, nifty50_chg = get_live_index("^NSEI")
 banknifty_last, banknifty_chg = get_live_index("^NSEBANK")
 indiavix_last, indiavix_chg = get_live_index("^INDIAVIX")
 
-from datetime import datetime
 now_ist = datetime.now()
 market_open = now_ist.weekday() < 5 and ((now_ist.hour > 9 or (now_ist.hour == 9 and now_ist.minute >= 15)) and (now_ist.hour < 15 or (now_ist.hour == 15 and now_ist.minute <= 30)))
 market_status = "OPEN" if market_open else "CLOSED"
 market_status_color = "#22c55e" if market_open else "#ef4444"
 last_updated = now_ist.strftime("%d-%b-%Y %I:%M %p")
 
-st.markdown(f"<div class='hero-strip' style='box-shadow: 0 0 22px rgba(59,130,246,0.12), 0 0 44px rgba(124,58,237,0.08);'><span class='pill'>NIFTY 50</span><span class='pill'>BANK NIFTY</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span><span class='pill'>Cloud Safe</span><span class='pill' style='color:{market_status_color};'>Market: {market_status}</span><span class='pill'>Last Updated: {last_updated}</span></div>", unsafe_allow_html=True)
+st.markdown(
+    f"<div class='hero-strip'><span class='pill'>NIFTY 50</span><span class='pill'>BANK NIFTY</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span><span class='pill'>Cloud Safe</span><span class='pill' style='color:{market_status_color};'>Market: {market_status}</span><span class='pill'>Last Updated: {last_updated}</span></div>",
+    unsafe_allow_html=True,
+)
 
 m0, m1, m2 = st.columns(3)
 
@@ -560,10 +583,14 @@ with row3:
 # TOP METRICS
 # -------------------------------------------------
 c1, c2, c3, c4, c5 = st.columns(5)
-with c1: metric_box("Last Price", rupee(last_close), f"{change_pct:+.2f}% today", positive=change_pct >= 0)
-with c2: metric_box("Institutional Score", f"{score}/100", verdict, positive=score >= 55)
-with c3: metric_box("RSI (14)", f"{rsi:.2f}", "Healthy" if 50 <= rsi <= 70 else "Watch", positive=50 <= rsi <= 70)
-with c4: metric_box("ATR (14)", f"{atr:.2f}", "Volatility gauge", positive=None)
+with c1:
+    metric_box("Last Price", rupee(last_close), f"{change_pct:+.2f}% today", positive=change_pct >= 0)
+with c2:
+    metric_box("Institutional Score", f"{score}/100", verdict, positive=score >= 55)
+with c3:
+    metric_box("RSI (14)", f"{rsi:.2f}", "Healthy" if 50 <= rsi <= 70 else "Watch", positive=50 <= rsi <= 70)
+with c4:
+    metric_box("ATR (14)", f"{atr:.2f}", "Volatility gauge", positive=None)
 with c5:
     market_cap = info.get("marketCap", np.nan)
     metric_box("Market Cap", f"₹{market_cap/1e7:,.0f} Cr" if pd.notna(market_cap) else "N/A", info.get("sector", "Unknown"), positive=None)
@@ -573,8 +600,10 @@ with c5:
 # -------------------------------------------------
 st.markdown("<div class='glass-card'><div class='section-title'>Ratio Controls</div></div>", unsafe_allow_html=True)
 rb1, rb2 = st.columns(2)
-with rb1: show_fundamental_ratio = st.button("Fundamental Ratio")
-with rb2: show_technical_ratio = st.button("Technical Ratio")
+with rb1:
+    show_fundamental_ratio = st.button("Fundamental Ratio")
+with rb2:
+    show_technical_ratio = st.button("Technical Ratio")
 
 # -------------------------------------------------
 # CHARTS
@@ -592,35 +621,51 @@ with right:
 # -------------------------------------------------
 st.markdown("<div class='glass-card'><div class='section-title'>Institutional Signal Engine</div></div>", unsafe_allow_html=True)
 col_a, col_b, col_c = st.columns(3)
-with col_a: st.info(f"**Trend:** {trend_signal}\n\n**SMA20:** {df.iloc[-1]['SMA20']:.2f}\n\n**SMA50:** {df.iloc[-1]['SMA50']:.2f}")
-with col_b: st.info(f"**MACD:** {macd_signal}\n\n**MACD:** {df.iloc[-1]['MACD']:.2f}\n\n**Signal:** {df.iloc[-1]['MACD_SIGNAL']:.2f}")
-with col_c: st.info(f"**Breakout Level:** {breakout_level:.2f}\n\n**Support Level:** {support_level:.2f}\n\n**20D Range Strategy**")
+with col_a:
+    st.info(f"**Trend:** {trend_signal}\n\n**SMA20:** {df.iloc[-1]['SMA20']:.2f}\n\n**SMA50:** {df.iloc[-1]['SMA50']:.2f}")
+with col_b:
+    st.info(f"**MACD:** {macd_signal}\n\n**MACD:** {df.iloc[-1]['MACD']:.2f}\n\n**Signal:** {df.iloc[-1]['MACD_SIGNAL']:.2f}")
+with col_c:
+    st.info(f"**Breakout Level:** {breakout_level:.2f}\n\n**Support Level:** {support_level:.2f}\n\n**20D Range Strategy**")
 
 # -------------------------------------------------
 # TRADE PLAN
 # -------------------------------------------------
 st.markdown("<div class='glass-card'><div class='section-title'>Professional Trade Plan</div></div>", unsafe_allow_html=True)
 p1, p2, p3, p4, p5 = st.columns(5)
-with p1: metric_box("Suggested Entry", rupee(entry), "Breakout confirmation", True)
-with p2: metric_box("Stop Loss", rupee(stop_loss), "ATR + support based", False)
-with p3: metric_box("Target", rupee(target), f"R:R {rr_ratio:.1f}", True)
-with p4: metric_box("Quantity", f"{qty}", f"Risk {rupee(allowed_risk)}", True if qty > 0 else None)
-with p5: metric_box("Position Size", rupee(position_value), "Capital deployed", position_value <= capital)
+with p1:
+    metric_box("Suggested Entry", rupee(entry), "Breakout confirmation", True)
+with p2:
+    metric_box("Stop Loss", rupee(stop_loss), "ATR + support based", False)
+with p3:
+    metric_box("Target", rupee(target), f"R:R {rr_ratio:.1f}", True)
+with p4:
+    metric_box("Quantity", f"{qty}", f"Risk {rupee(allowed_risk)}", True if qty > 0 else None)
+with p5:
+    metric_box("Position Size", rupee(position_value), "Capital deployed", position_value <= capital)
 
 # -------------------------------------------------
 # FUNDAMENTAL SNAPSHOT
 # -------------------------------------------------
 st.markdown("<div class='glass-card'><div class='section-title'>Fundamental Snapshot</div></div>", unsafe_allow_html=True)
 fc1, fc2, fc3, fc4 = st.columns(4)
-with fc1: st.metric("Sector", info.get("sector", "N/A"))
-with fc2: st.metric("Industry", info.get("industry", "N/A"))
-with fc3: st.metric("P/E", f"{info.get('trailingPE', 'N/A')}")
-with fc4: st.metric("ROE", f"{round((info.get('returnOnEquity', 0) or 0)*100, 2)}%" if info.get('returnOnEquity') is not None else "N/A")
+with fc1:
+    st.metric("Sector", info.get("sector", "N/A"))
+with fc2:
+    st.metric("Industry", info.get("industry", "N/A"))
+with fc3:
+    st.metric("P/E", f"{info.get('trailingPE', 'N/A')}")
+with fc4:
+    st.metric("ROE", f"{round((info.get('returnOnEquity', 0) or 0)*100, 2)}%" if info.get('returnOnEquity') is not None else "N/A")
 fc5, fc6, fc7, fc8 = st.columns(4)
-with fc5: st.metric("Debt / Equity", f"{info.get('debtToEquity', 'N/A')}")
-with fc6: st.metric("Profit Margin", f"{round((info.get('profitMargins', 0) or 0)*100, 2)}%" if info.get('profitMargins') is not None else "N/A")
-with fc7: st.metric("Revenue Growth", f"{round((info.get('revenueGrowth', 0) or 0)*100, 2)}%" if info.get('revenueGrowth') is not None else "N/A")
-with fc8: st.metric("Dividend Yield", f"{round((info.get('dividendYield', 0) or 0)*100, 2)}%" if info.get('dividendYield') is not None else "N/A")
+with fc5:
+    st.metric("Debt / Equity", f"{info.get('debtToEquity', 'N/A')}")
+with fc6:
+    st.metric("Profit Margin", f"{round((info.get('profitMargins', 0) or 0)*100, 2)}%" if info.get('profitMargins') is not None else "N/A")
+with fc7:
+    st.metric("Revenue Growth", f"{round((info.get('revenueGrowth', 0) or 0)*100, 2)}%" if info.get('revenueGrowth') is not None else "N/A")
+with fc8:
+    st.metric("Dividend Yield", f"{round((info.get('dividendYield', 0) or 0)*100, 2)}%" if info.get('dividendYield') is not None else "N/A")
 
 # -------------------------------------------------
 # MULTI STOCK COMPARE + NORMALIZED PERFORMANCE CHART
@@ -669,7 +714,7 @@ for s in stock_list[:min(20, len(stock_list))]:
 if heat_rows:
     heat_df = pd.DataFrame(heat_rows)
     fig_heat = px.treemap(heat_df, path=["Sector", "Symbol"], values="Return", color="Return", color_continuous_scale="RdYlGn")
-    fig_heat.update_layout(height=520, margin=dict(l=10,r=10,t=20,b=10), paper_bgcolor="rgba(0,0,0,0)")
+    fig_heat.update_layout(height=520, margin=dict(l=10, r=10, t=20, b=10), paper_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig_heat, use_container_width=True)
     st.markdown("<div class='glass-card'><div class='section-title'>Sector Performance Leaderboard</div></div>", unsafe_allow_html=True)
     sector_leader = heat_df.groupby("Sector", as_index=False)["Return"].mean().sort_values("Return", ascending=False)
@@ -734,7 +779,17 @@ with tab3:
 # WATCHLIST
 # -------------------------------------------------
 st.markdown("<div class='glass-card'><div class='section-title'>Watchlist Decision Matrix</div></div>", unsafe_allow_html=True)
-watch_df = pd.DataFrame([{"Symbol": symbol, "AI": ai_action, "Last Price": round(last_close, 2), "Score": score, "Verdict": verdict, "Entry": round(entry, 2), "Stop": round(stop_loss, 2), "Target": round(target, 2), "Qty": qty}])
+watch_df = pd.DataFrame([{
+    "Symbol": symbol,
+    "AI": ai_action,
+    "Last Price": round(last_close, 2),
+    "Score": score,
+    "Verdict": verdict,
+    "Entry": round(entry, 2),
+    "Stop": round(stop_loss, 2),
+    "Target": round(target, 2),
+    "Qty": qty,
+}])
 st.dataframe(watch_df, use_container_width=True)
 st.download_button("Download Trade Plan CSV", data=watch_df.to_csv(index=False).encode("utf-8"), file_name=f"{symbol.replace('.NS','')}_trade_plan.csv", mime="text/csv")
 
