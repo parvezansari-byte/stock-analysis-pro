@@ -455,6 +455,7 @@ last_updated = now_ist.strftime("%d-%b-%Y %I:%M %p")
 st.markdown(f"<div class='hero-strip' style='box-shadow: 0 0 22px rgba(59,130,246,0.12), 0 0 44px rgba(124,58,237,0.08);'><span class='pill'>NIFTY 50</span><span class='pill'>BANK NIFTY</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span><span class='pill'>Cloud Safe</span><span class='pill' style='color:{market_status_color};'>Market: {market_status}</span><span class='pill'>Last Updated: {last_updated}</span></div>", unsafe_allow_html=True)
 
 m0, m1, m2 = st.columns(3)
+
 with m0:
     if pd.notna(nifty50_last):
         nf_color = '#22c55e' if nifty50_chg >= 0 else '#ef4444'
@@ -470,7 +471,6 @@ with m0:
         st.markdown("<div class='glass-card'><div class='section-title'>NIFTY 50 Live</div><div style='font-size:1.3rem;font-weight:800;color:#94a3b8;'>Data unavailable</div></div>", unsafe_allow_html=True)
 
 with m1:
-with m1:
     if pd.notna(banknifty_last):
         bn_color = '#22c55e' if banknifty_chg >= 0 else '#ef4444'
         bn_arrow = '▲' if banknifty_chg >= 0 else '▼'
@@ -483,6 +483,7 @@ with m1:
         """, unsafe_allow_html=True)
     else:
         st.markdown("<div class='glass-card'><div class='section-title'>BANK NIFTY Live</div><div style='font-size:1.3rem;font-weight:800;color:#94a3b8;'>Data unavailable</div></div>", unsafe_allow_html=True)
+
 with m2:
     if pd.notna(indiavix_last):
         vix_color = '#ef4444' if indiavix_chg >= 0 else '#22c55e'
