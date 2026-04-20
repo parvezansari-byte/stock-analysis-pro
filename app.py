@@ -1,7 +1,7 @@
-# FINAL NILE V12.5.4 HOTFIX CLOUD SAFE
+# FINAL NILE V12.6 BLACKROCK TERMINAL LAYOUT
 # Single-file Streamlit app.py
-# One clean full code • No patch leftovers • Cloud safe
-# Same features • Same look • Same logic
+# Tighter premium institutional layout • Compact terminal ribbon • Stronger spacing
+# Cleaner panel hierarchy • Same features • Cloud-safe • Single full code
 
 import time
 from datetime import datetime
@@ -24,113 +24,136 @@ except Exception:
 st.set_page_config(page_title="Nile", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
 # -------------------------------------------------
-# PREMIUM CSS (Cloud-safe targeting)
+# BLACKROCK TERMINAL CSS (compact + stable)
 # -------------------------------------------------
 st.markdown(
     """
     <style>
     :root {
-        --bg1: #050816;
-        --bg2: #0b1224;
+        --bg1: #040814;
+        --bg2: #0a1222;
+        --panel: rgba(12, 20, 34, 0.88);
+        --panel2: rgba(15, 23, 42, 0.92);
+        --line: rgba(148,163,184,0.10);
         --text: #eef2ff;
+        --muted: #94a3b8;
     }
 
     .stApp {
         background:
-            radial-gradient(circle at 10% 15%, rgba(37,99,235,0.18), transparent 24%),
-            radial-gradient(circle at 88% 8%, rgba(124,58,237,0.16), transparent 28%),
-            radial-gradient(circle at 50% 88%, rgba(6,182,212,0.10), transparent 24%),
+            radial-gradient(circle at 10% 15%, rgba(37,99,235,0.16), transparent 22%),
+            radial-gradient(circle at 88% 8%, rgba(124,58,237,0.14), transparent 24%),
+            radial-gradient(circle at 50% 88%, rgba(6,182,212,0.08), transparent 22%),
             linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
         color: var(--text);
     }
 
     .block-container {
-        padding-top: 2.1rem;
-        padding-bottom: 2rem;
-        max-width: 1720px;
+        max-width: 1680px;
+        padding-top: 1.35rem;
+        padding-bottom: 1.8rem;
     }
 
-    .glass-card {
-        background: linear-gradient(180deg, rgba(17,24,39,0.86), rgba(15,23,42,0.80));
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 24px;
-        padding: 18px;
-        box-shadow: 0 14px 40px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.03);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        margin-bottom: 14px;
+    .terminal-ribbon {
+        background: linear-gradient(90deg, rgba(10,18,34,0.96), rgba(15,23,42,0.96));
+        border: 1px solid rgba(59,130,246,0.12);
+        border-radius: 18px;
+        padding: 10px 14px;
+        margin-bottom: 10px;
+        box-shadow: 0 0 18px rgba(59,130,246,0.10), 0 10px 26px rgba(0,0,0,0.26);
+        backdrop-filter: blur(10px);
+    }
+
+    .ribbon-chip {
+        display:inline-block;
+        padding:6px 10px;
+        border-radius:999px;
+        margin-right:6px;
+        margin-bottom:4px;
+        background: rgba(30,41,59,0.76);
+        border:1px solid rgba(255,255,255,0.05);
+        color:#dbeafe;
+        font-weight:800;
+        font-size:0.74rem;
+        letter-spacing:0.2px;
+    }
+
+    .panel {
+        background: linear-gradient(180deg, rgba(10,18,34,0.90), rgba(15,23,42,0.92));
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 14px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.02);
+        margin-bottom: 12px;
+        backdrop-filter: blur(10px);
+    }
+
+    .panel-title {
+        font-size: 0.95rem;
+        font-weight: 900;
+        color: #f8fafc;
+        letter-spacing: 0.3px;
+        margin-bottom: 8px;
+    }
+
+    .subtle-divider {
+        height: 1px;
+        background: linear-gradient(90deg, rgba(59,130,246,0.20), rgba(124,58,237,0.12), transparent);
+        margin: 6px 0 10px 0;
+        border-radius: 999px;
     }
 
     .metric-card {
-        background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(17,24,39,0.90));
-        border: 1px solid rgba(148,163,184,0.12);
-        border-radius: 22px;
-        padding: 18px;
-        min-height: 126px;
-        box-shadow: 0 12px 28px rgba(0,0,0,0.22);
+        background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(17,24,39,0.92));
+        border: 1px solid rgba(148,163,184,0.10);
+        border-radius: 18px;
+        padding: 14px;
+        min-height: 108px;
+        box-shadow: 0 10px 22px rgba(0,0,0,0.20);
     }
 
-    .metric-label { font-size: 0.82rem; color: #94a3b8; margin-bottom: 6px; }
-    .metric-value { font-size: 1.8rem; font-weight: 900; color: #ffffff; margin-bottom: 4px; }
-    .metric-delta-up { color: #22c55e; font-weight: 800; }
-    .metric-delta-down { color: #ef4444; font-weight: 800; }
-    .metric-delta-flat { color: #94a3b8; font-weight: 800; }
-    .section-title { font-size: 1.1rem; font-weight: 900; color: #f8fafc; margin-bottom: 8px; }
+    .metric-label { font-size: 0.76rem; color: #94a3b8; margin-bottom: 4px; font-weight: 700; }
+    .metric-value { font-size: 1.55rem; font-weight: 900; color: #ffffff; margin-bottom: 3px; }
+    .metric-delta-up { color: #22c55e; font-weight: 800; font-size: 0.82rem; }
+    .metric-delta-down { color: #ef4444; font-weight: 800; font-size: 0.82rem; }
+    .metric-delta-flat { color: #94a3b8; font-weight: 800; font-size: 0.82rem; }
 
-    .pill {
-        display:inline-block; padding:7px 12px; border-radius:999px; margin-right:8px; margin-bottom:6px;
-        background: rgba(30,41,59,0.70); border:1px solid rgba(255,255,255,0.06); color:#e2e8f0; font-weight:800; font-size:0.8rem;
+    .market-card {
+        border-radius: 18px;
+        padding: 14px;
+        min-height: 110px;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.22);
     }
+    .market-card-title { font-size: 0.82rem; font-weight: 900; color: #cbd5e1; margin-bottom: 4px; }
+    .market-card-value { font-size: 1.55rem; font-weight: 900; color: #ffffff; }
+    .market-card-change { font-size: 0.92rem; font-weight: 900; margin-top: 3px; }
 
     .premium-subtitle {
-        font-size: 1.18rem;
+        font-size: 1rem;
         font-weight: 900;
-        letter-spacing: 0.6px;
-        color: #ddd6fe;
-        text-shadow: 0 0 14px rgba(167,139,250,0.18);
+        letter-spacing: 0.55px;
         background: linear-gradient(90deg, #e9d5ff, #c4b5fd, #93c5fd);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         display: block;
         text-align: center;
-        margin-bottom: 1rem;
+        margin-bottom: 0.55rem;
     }
-
-    .hero-strip {
-        background: linear-gradient(90deg, rgba(37,99,235,0.18), rgba(124,58,237,0.14), rgba(6,182,212,0.12));
-        border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 22px;
-        padding: 14px 18px;
-        margin-bottom: 14px;
-        box-shadow: 0 0 22px rgba(59,130,246,0.12), 0 0 44px rgba(124,58,237,0.08), 0 12px 36px rgba(0,0,0,0.25);
-        backdrop-filter: blur(12px);
-    }
-
-    .market-card {
-        border-radius: 24px;
-        padding: 16px 18px;
-        min-height: 128px;
-        box-shadow: 0 12px 30px rgba(0,0,0,0.24);
-    }
-
-    .market-card-title { font-size: 0.95rem; font-weight: 900; color: #cbd5e1; margin-bottom: 6px; }
-    .market-card-value { font-size: 1.9rem; font-weight: 900; color: #ffffff; }
-    .market-card-change { font-size: 1rem; font-weight: 900; margin-top: 4px; }
 
     .ai-badge-buy, .ai-badge-hold, .ai-badge-sell {
-        padding: 18px 18px; border-radius: 18px; font-weight: 900; text-align:center; font-size: 1.1rem;
+        padding: 14px; border-radius: 16px; font-weight: 900; text-align:center; font-size: 0.98rem;
     }
-    .ai-badge-buy { background: linear-gradient(90deg, rgba(34,197,94,0.22), rgba(34,197,94,0.08)); color: #86efac; border: 1px solid rgba(34,197,94,0.28); }
-    .ai-badge-hold { background: linear-gradient(90deg, rgba(245,158,11,0.22), rgba(245,158,11,0.08)); color: #fcd34d; border: 1px solid rgba(245,158,11,0.28); }
-    .ai-badge-sell { background: linear-gradient(90deg, rgba(239,68,68,0.22), rgba(239,68,68,0.08)); color: #fca5a5; border: 1px solid rgba(239,68,68,0.28); }
+    .ai-badge-buy { background: linear-gradient(90deg, rgba(34,197,94,0.20), rgba(34,197,94,0.08)); color: #86efac; border: 1px solid rgba(34,197,94,0.24); }
+    .ai-badge-hold { background: linear-gradient(90deg, rgba(245,158,11,0.20), rgba(245,158,11,0.08)); color: #fcd34d; border: 1px solid rgba(245,158,11,0.24); }
+    .ai-badge-sell { background: linear-gradient(90deg, rgba(239,68,68,0.20), rgba(239,68,68,0.08)); color: #fca5a5; border: 1px solid rgba(239,68,68,0.24); }
 
     .scanner-card {
         background: linear-gradient(180deg, rgba(30,41,59,0.85), rgba(15,23,42,0.88));
         border: 1px solid rgba(255,255,255,0.06);
-        border-radius: 20px;
-        padding: 16px;
-        box-shadow: 0 10px 24px rgba(0,0,0,0.22);
-        margin-bottom: 10px;
+        border-radius: 16px;
+        padding: 12px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.22);
+        margin-bottom: 8px;
     }
 
     div[data-testid="stSidebar"] {
@@ -140,45 +163,45 @@ st.markdown(
 
     .stButton > button, .stDownloadButton > button {
         width: 100%;
-        border-radius: 18px;
-        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.08);
         color: white;
         font-weight: 900;
-        padding: 0.80rem 1rem;
-        font-size: 0.95rem;
+        padding: 0.72rem 0.9rem;
+        font-size: 0.9rem;
         transition: all 0.25s ease-in-out;
-        box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.24);
         background-size: 220% 220% !important;
         animation: buttonGlow 6s ease infinite;
     }
 
     section[data-testid="stSidebar"] .stButton > button {
         background: linear-gradient(135deg, #16a34a, #22c55e, #4ade80) !important;
-        box-shadow: 0 10px 28px rgba(34,197,94,0.28) !important;
+        box-shadow: 0 10px 24px rgba(34,197,94,0.26) !important;
     }
 
     div[data-testid="stButton"][id*="fundamental_ratio_btn"] > button {
         background: linear-gradient(135deg, #2563eb, #3b82f6, #60a5fa) !important;
-        box-shadow: 0 10px 28px rgba(37,99,235,0.30) !important;
+        box-shadow: 0 10px 24px rgba(37,99,235,0.28) !important;
     }
     div[data-testid="stButton"][id*="technical_ratio_btn"] > button {
         background: linear-gradient(135deg, #7c3aed, #8b5cf6, #a78bfa) !important;
-        box-shadow: 0 10px 28px rgba(124,58,237,0.30) !important;
+        box-shadow: 0 10px 24px rgba(124,58,237,0.28) !important;
     }
     div[data-testid="stButton"][id*="run_scan_btn"] > button {
         background: linear-gradient(135deg, #15803d, #22c55e, #4ade80) !important;
-        box-shadow: 0 10px 28px rgba(34,197,94,0.30) !important;
+        box-shadow: 0 10px 24px rgba(34,197,94,0.28) !important;
     }
     div[data-testid="stDownloadButton"] > button {
         background: linear-gradient(135deg, #0f766e, #14b8a6, #06b6d4) !important;
-        box-shadow: 0 10px 28px rgba(20,184,166,0.28) !important;
+        box-shadow: 0 10px 24px rgba(20,184,166,0.26) !important;
     }
 
     .stButton > button:hover, .stDownloadButton > button:hover {
-        transform: translateY(-2px) scale(1.02);
-        box-shadow: 0 14px 34px rgba(0,0,0,0.35), 0 0 18px rgba(99,102,241,0.35);
-        border: 1px solid rgba(255,255,255,0.18);
-        filter: brightness(1.08);
+        transform: translateY(-2px) scale(1.015);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.32), 0 0 14px rgba(99,102,241,0.28);
+        border: 1px solid rgba(255,255,255,0.16);
+        filter: brightness(1.06);
     }
 
     @keyframes buttonGlow {
@@ -314,14 +337,10 @@ def ai_badge(score, rsi, trend_signal, macd_signal):
 
 def conviction_meter(score, rsi, trend_signal, macd_signal):
     conviction = score
-    if trend_signal == "Bullish":
-        conviction += 5
-    if macd_signal == "Bullish":
-        conviction += 5
-    if 50 <= rsi <= 70:
-        conviction += 5
-    elif rsi > 80 or rsi < 25:
-        conviction -= 5
+    if trend_signal == "Bullish": conviction += 5
+    if macd_signal == "Bullish": conviction += 5
+    if 50 <= rsi <= 70: conviction += 5
+    elif rsi > 80 or rsi < 25: conviction -= 5
     conviction = max(0, min(100, conviction))
     label = "Very Strong" if conviction >= 85 else "Strong" if conviction >= 70 else "Moderate" if conviction >= 50 else "Weak"
     return conviction, label
@@ -336,32 +355,23 @@ def rupee(v):
 
 def metric_box(label, value, delta_text="", positive=None):
     delta_cls = "metric-delta-up" if positive is True else "metric-delta-down" if positive is False else "metric-delta-flat"
-    st.markdown(
-        f"<div class='metric-card'><div class='metric-label'>{label}</div><div class='metric-value'>{value}</div><div class='{delta_cls}'>{delta_text}</div></div>",
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"<div class='metric-card'><div class='metric-label'>{label}</div><div class='metric-value'>{value}</div><div class='{delta_cls}'>{delta_text}</div></div>", unsafe_allow_html=True)
 
 
 def market_card(title, value, change, theme="blue", inverse=False):
     if pd.isna(value):
-        st.markdown(
-            f"<div class='glass-card market-card'><div class='market-card-title'>{title}</div><div class='market-card-value' style='font-size:1.2rem;color:#94a3b8;'>Data unavailable</div></div>",
-            unsafe_allow_html=True,
-        )
+        st.markdown(f"<div class='panel market-card'><div class='market-card-title'>{title}</div><div class='market-card-value' style='font-size:1.05rem;color:#94a3b8;'>Data unavailable</div></div>", unsafe_allow_html=True)
         return
     up = change >= 0
     color = '#ef4444' if (inverse and up) else '#22c55e' if (inverse and not up) else '#22c55e' if up else '#ef4444'
     arrow = '▲' if up else '▼'
     bg = {
-        'blue': "linear-gradient(135deg, rgba(30,64,175,0.38), rgba(15,23,42,0.92))",
-        'green': "linear-gradient(135deg, rgba(20,83,45,0.42), rgba(15,23,42,0.92))",
-        'red': "linear-gradient(135deg, rgba(127,29,29,0.34), rgba(15,23,42,0.92))",
-    }.get(theme, "linear-gradient(135deg, rgba(30,64,175,0.38), rgba(15,23,42,0.92))")
-    border = {'blue':'rgba(59,130,246,0.20)','green':'rgba(34,197,94,0.18)','red':'rgba(239,68,68,0.18)'}.get(theme,'rgba(59,130,246,0.20)')
-    st.markdown(
-        f"<div class='glass-card market-card' style='background:{bg}; border:1px solid {border};'><div class='market-card-title'>{title}</div><div class='market-card-value'>{value:,.2f}</div><div class='market-card-change' style='color:{color};'>{arrow} {change:+.2f}%</div></div>",
-        unsafe_allow_html=True,
-    )
+        'blue': "linear-gradient(135deg, rgba(30,64,175,0.34), rgba(10,18,34,0.94))",
+        'green': "linear-gradient(135deg, rgba(20,83,45,0.38), rgba(10,18,34,0.94))",
+        'red': "linear-gradient(135deg, rgba(127,29,29,0.30), rgba(10,18,34,0.94))",
+    }.get(theme, "linear-gradient(135deg, rgba(30,64,175,0.34), rgba(10,18,34,0.94))")
+    border = {'blue':'rgba(59,130,246,0.16)','green':'rgba(34,197,94,0.16)','red':'rgba(239,68,68,0.16)'}.get(theme,'rgba(59,130,246,0.16)')
+    st.markdown(f"<div class='panel market-card' style='background:{bg}; border:1px solid {border}; margin-bottom:0;'><div class='market-card-title'>{title}</div><div class='market-card-value'>{value:,.2f}</div><div class='market-card-change' style='color:{color};'>{arrow} {change:+.2f}%</div></div>", unsafe_allow_html=True)
 
 
 def make_gauge(value):
@@ -369,17 +379,13 @@ def make_gauge(value):
         mode="gauge+number",
         value=value,
         title={'text': "Conviction"},
-        gauge={
-            'axis': {'range': [0, 100]},
-            'bar': {'color': "#06b6d4"},
-            'steps': [
-                {'range': [0, 40], 'color': "rgba(239,68,68,0.35)"},
-                {'range': [40, 70], 'color': "rgba(245,158,11,0.35)"},
-                {'range': [70, 100], 'color': "rgba(34,197,94,0.35)"},
-            ],
-        }
+        gauge={'axis': {'range': [0, 100]}, 'bar': {'color': "#06b6d4"}, 'steps': [
+            {'range': [0, 40], 'color': "rgba(239,68,68,0.35)"},
+            {'range': [40, 70], 'color': "rgba(245,158,11,0.35)"},
+            {'range': [70, 100], 'color': "rgba(34,197,94,0.35)"},
+        ]}
     ))
-    fig.update_layout(height=250, margin=dict(l=20, r=20, t=40, b=10), paper_bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(height=225, margin=dict(l=14, r=14, t=36, b=6), paper_bgcolor="rgba(0,0,0,0)")
     return fig
 
 
@@ -388,25 +394,12 @@ def make_candlestick(df: pd.DataFrame, symbol: str, entry=None, stop=None, targe
     fig.add_trace(go.Candlestick(x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="Price"))
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA20"], name="SMA20"))
     fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], name="SMA50"))
-    if breakout is not None:
-        fig.add_hline(y=breakout, line_dash="dot", annotation_text="Breakout")
-    if support is not None:
-        fig.add_hline(y=support, line_dash="dot", annotation_text="Support")
-    if entry is not None:
-        fig.add_hline(y=entry, line_dash="dash", annotation_text="Entry")
-    if stop is not None:
-        fig.add_hline(y=stop, line_dash="dash", annotation_text="SL")
-    if target is not None:
-        fig.add_hline(y=target, line_dash="dash", annotation_text="Target")
-    fig.update_layout(
-        title=f"{symbol} Price Structure",
-        template="plotly_dark",
-        height=560,
-        xaxis_rangeslider_visible=False,
-        margin=dict(l=10, r=10, t=40, b=10),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-    )
+    if breakout is not None: fig.add_hline(y=breakout, line_dash="dot", annotation_text="Breakout")
+    if support is not None: fig.add_hline(y=support, line_dash="dot", annotation_text="Support")
+    if entry is not None: fig.add_hline(y=entry, line_dash="dash", annotation_text="Entry")
+    if stop is not None: fig.add_hline(y=stop, line_dash="dash", annotation_text="SL")
+    if target is not None: fig.add_hline(y=target, line_dash="dash", annotation_text="Target")
+    fig.update_layout(title=f"{symbol} Price Structure", template="plotly_dark", height=520, xaxis_rangeslider_visible=False, margin=dict(l=8, r=8, t=36, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     return fig
 
 
@@ -415,7 +408,7 @@ def make_rsi_chart(df: pd.DataFrame):
     fig.add_trace(go.Scatter(x=df.index, y=df["RSI14"], name="RSI 14"))
     fig.add_hline(y=70, line_dash="dot")
     fig.add_hline(y=30, line_dash="dot")
-    fig.update_layout(template="plotly_dark", height=280, margin=dict(l=10, r=10, t=30, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(template="plotly_dark", height=255, margin=dict(l=8, r=8, t=26, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     return fig
 
 # -------------------------------------------------
@@ -435,30 +428,26 @@ with st.sidebar:
     run_scan = st.button("Run Institutional Scan", key="run_scan_btn")
 
 # -------------------------------------------------
-# LOGO (with fallback)
+# HEADER / LOGO
 # -------------------------------------------------
 logo_candidates = [Path("FullLogo_NoBuffer.png"), Path("./FullLogo_NoBuffer.png"), Path("/mount/src/stock-analysis-pro/FullLogo_NoBuffer.png")]
 logo_found = next((p for p in logo_candidates if p.exists()), None)
-logo_col1, logo_col2, logo_col3 = st.columns([2, 3, 2])
-with logo_col2:
+logo_l, logo_c, logo_r = st.columns([2.2, 2.8, 2.2])
+with logo_c:
     if logo_found:
-        st.markdown(
-            "<div style='display:flex; justify-content:center; align-items:center; margin-top:0.15rem; margin-bottom:0.15rem;'><div style=\"padding:14px; border-radius:28px; background: radial-gradient(circle, rgba(245,208,92,0.10) 0%, rgba(245,208,92,0.04) 38%, rgba(0,0,0,0) 72%); box-shadow: 0 0 34px rgba(245,208,92,0.16), 0 0 70px rgba(245,208,92,0.07);\">",
-            unsafe_allow_html=True,
-        )
-        st.image(str(logo_found), width=260)
+        st.markdown("<div style='display:flex; justify-content:center; align-items:center; margin-top:0.05rem; margin-bottom:0.05rem;'><div style=\"padding:10px; border-radius:24px; background: radial-gradient(circle, rgba(245,208,92,0.08) 0%, rgba(245,208,92,0.03) 38%, rgba(0,0,0,0) 72%); box-shadow: 0 0 28px rgba(245,208,92,0.12), 0 0 56px rgba(245,208,92,0.05);\">", unsafe_allow_html=True)
+        st.image(str(logo_found), width=230)
         st.markdown("</div></div>", unsafe_allow_html=True)
     else:
-        st.markdown("<div style='font-size:3rem;font-weight:900;color:#fff;text-align:center;text-shadow:0 0 24px rgba(245,208,92,0.14);'>Nile</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:2.6rem;font-weight:900;color:#fff;text-align:center;text-shadow:0 0 20px rgba(245,208,92,0.12);'>Nile</div>", unsafe_allow_html=True)
     st.markdown("<div class='premium-subtitle'>Stock Analysis</div>", unsafe_allow_html=True)
 
 # -------------------------------------------------
-# LIVE TOP RIBBON + LIVE CARDS
+# TOP TERMINAL RIBBON + LIVE CARDS
 # -------------------------------------------------
 nifty50_last, nifty50_chg = get_live_index("^NSEI")
 banknifty_last, banknifty_chg = get_live_index("^NSEBANK")
 indiavix_last, indiavix_chg = get_live_index("^INDIAVIX")
-
 now_ist = datetime.now()
 market_open = now_ist.weekday() < 5 and ((now_ist.hour > 9 or (now_ist.hour == 9 and now_ist.minute >= 15)) and (now_ist.hour < 15 or (now_ist.hour == 15 and now_ist.minute <= 30)))
 market_status = "OPEN" if market_open else "CLOSED"
@@ -466,16 +455,24 @@ market_status_color = "#22c55e" if market_open else "#ef4444"
 last_updated = now_ist.strftime("%d-%b-%Y %I:%M %p")
 
 st.markdown(
-    f"<div class='hero-strip'><span class='pill'>NIFTY 50</span><span class='pill'>BANK NIFTY</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span><span class='pill'>Cloud Safe</span><span class='pill' style='color:{market_status_color};'>Market: {market_status}</span><span class='pill'>Last Updated: {last_updated}</span></div>",
+    f"<div class='terminal-ribbon'>"
+    f"<span class='ribbon-chip'>NIFTY 50</span>"
+    f"<span class='ribbon-chip'>BANK NIFTY</span>"
+    f"<span class='ribbon-chip'>INDIA VIX</span>"
+    f"<span class='ribbon-chip'>Institutional Terminal</span>"
+    f"<span class='ribbon-chip'>Cloud Safe</span>"
+    f"<span class='ribbon-chip' style='color:{market_status_color};'>Market: {market_status}</span>"
+    f"<span class='ribbon-chip'>Last Updated: {last_updated}</span>"
+    f"</div>",
     unsafe_allow_html=True,
 )
 
-card1, card2, card3 = st.columns([1, 1, 1], gap="medium")
-with card1:
+mc1, mc2, mc3 = st.columns([1, 1, 1], gap="small")
+with mc1:
     market_card("NIFTY 50 Live", nifty50_last, nifty50_chg, theme="blue")
-with card2:
+with mc2:
     market_card("BANK NIFTY Live", banknifty_last, banknifty_chg, theme="green")
-with card3:
+with mc3:
     market_card("INDIA VIX Live", indiavix_last, indiavix_chg, theme="red", inverse=True)
 
 # -------------------------------------------------
@@ -514,97 +511,92 @@ ai_action, ai_class, ai_reason = ai_badge(score, rsi, trend_signal, macd_signal)
 conviction_score, conviction_label = conviction_meter(score, rsi, trend_signal, macd_signal)
 
 # -------------------------------------------------
-# AI SIGNAL / GAUGE / SUMMARY
+# INSTITUTIONAL SUMMARY STRIP
 # -------------------------------------------------
-r1, r2, r3 = st.columns([1.2, 1, 1.2])
-with r1:
-    st.markdown(f"<div class='{ai_class}'>AI {ai_action} • {conviction_score}% Confidence<br><span style='font-size:0.9rem;font-weight:700'>{ai_reason}</span></div>", unsafe_allow_html=True)
-with r2:
+summary_left, summary_mid, summary_right = st.columns([1.15, 0.9, 1.2], gap="small")
+with summary_left:
+    st.markdown(f"<div class='{ai_class}'>AI {ai_action} • {conviction_score}% Confidence<br><span style='font-size:0.82rem;font-weight:700'>{ai_reason}</span></div>", unsafe_allow_html=True)
+with summary_mid:
     st.plotly_chart(make_gauge(conviction_score), use_container_width=True)
-with r3:
+with summary_right:
     st.markdown(
-        f"<div class='glass-card'><span class='pill'>Trend: {trend_signal}</span><span class='pill'>Momentum: {macd_signal}</span><span class='pill'>RSI: {rsi:.1f}</span><span class='pill'>Sector: {info.get('sector','N/A')}</span><span class='pill'>Action: {ai_action}</span><div style='margin-top:8px;color:#cbd5e1;font-weight:700;'>BUY on breakout above {entry:.2f} • SL {stop_loss:.2f} • Target {target:.2f}</div></div>",
+        f"<div class='panel'><div class='panel-title'>Institutional Summary</div><div class='subtle-divider'></div>"
+        f"<span class='ribbon-chip'>Trend: {trend_signal}</span>"
+        f"<span class='ribbon-chip'>Momentum: {macd_signal}</span>"
+        f"<span class='ribbon-chip'>RSI: {rsi:.1f}</span>"
+        f"<span class='ribbon-chip'>Sector: {info.get('sector','N/A')}</span>"
+        f"<span class='ribbon-chip'>Action: {ai_action}</span>"
+        f"<div style='margin-top:8px;color:#cbd5e1;font-weight:700;font-size:0.88rem;'>BUY above {entry:.2f} • SL {stop_loss:.2f} • Target {target:.2f}</div></div>",
         unsafe_allow_html=True,
     )
 
 # -------------------------------------------------
-# TOP METRICS
+# METRICS GRID
 # -------------------------------------------------
-c1, c2, c3, c4, c5 = st.columns(5)
-with c1:
+m1, m2, m3, m4, m5 = st.columns(5, gap="small")
+with m1:
     metric_box("Last Price", rupee(last_close), f"{change_pct:+.2f}% today", positive=change_pct >= 0)
-with c2:
+with m2:
     metric_box("Institutional Score", f"{score}/100", verdict, positive=score >= 55)
-with c3:
+with m3:
     metric_box("RSI (14)", f"{rsi:.2f}", "Healthy" if 50 <= rsi <= 70 else "Watch", positive=50 <= rsi <= 70)
-with c4:
+with m4:
     metric_box("ATR (14)", f"{atr:.2f}", "Volatility gauge", positive=None)
-with c5:
+with m5:
     market_cap = info.get("marketCap", np.nan)
     metric_box("Market Cap", f"₹{market_cap/1e7:,.0f} Cr" if pd.notna(market_cap) else "N/A", info.get("sector", "Unknown"), positive=None)
 
 # -------------------------------------------------
-# RATIO BUTTONS
+# CONTROL STRIP
 # -------------------------------------------------
-rb1, rb2 = st.columns(2)
-with rb1:
+cb1, cb2 = st.columns(2, gap="small")
+with cb1:
     show_fundamental_ratio = st.button("Fundamental Ratio", key="fundamental_ratio_btn")
-with rb2:
+with cb2:
     show_technical_ratio = st.button("Technical Ratio", key="technical_ratio_btn")
 
 # -------------------------------------------------
-# CHARTS
+# PRIMARY ANALYSIS ROW
 # -------------------------------------------------
-left, right = st.columns([2, 1])
+left, right = st.columns([2.1, 0.9], gap="small")
 with left:
+    st.markdown("<div class='panel'><div class='panel-title'>Price Structure</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
     st.plotly_chart(make_candlestick(df.tail(180), symbol, entry, stop_loss, target, breakout_level, support_level), use_container_width=True)
 with right:
+    st.markdown("<div class='panel'><div class='panel-title'>Momentum (RSI)</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
     st.plotly_chart(make_rsi_chart(df.tail(180)), use_container_width=True)
 
 # -------------------------------------------------
-# SIGNAL ENGINE
+# SIGNAL ENGINE + TRADE PLAN
 # -------------------------------------------------
-st.markdown("<div class='glass-card'><div class='section-title'>Institutional Signal Engine</div></div>", unsafe_allow_html=True)
-col_a, col_b, col_c = st.columns(3)
-with col_a:
+sg1, sg2 = st.columns([1.2, 1.8], gap="small")
+with sg1:
+    st.markdown("<div class='panel'><div class='panel-title'>Institutional Signal Engine</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
+    a, b, c = st.columns(1), st.columns(1), st.columns(1)
     st.info(f"**Trend:** {trend_signal}\n\n**SMA20:** {df.iloc[-1]['SMA20']:.2f}\n\n**SMA50:** {df.iloc[-1]['SMA50']:.2f}")
-with col_b:
     st.info(f"**MACD:** {macd_signal}\n\n**MACD:** {df.iloc[-1]['MACD']:.2f}\n\n**Signal:** {df.iloc[-1]['MACD_SIGNAL']:.2f}")
-with col_c:
     st.info(f"**Breakout Level:** {breakout_level:.2f}\n\n**Support Level:** {support_level:.2f}\n\n**20D Range Strategy**")
-
-# -------------------------------------------------
-# TRADE PLAN
-# -------------------------------------------------
-st.markdown("<div class='glass-card'><div class='section-title'>Professional Trade Plan</div></div>", unsafe_allow_html=True)
-p1, p2, p3, p4, p5 = st.columns(5)
-with p1:
-    metric_box("Suggested Entry", rupee(entry), "Breakout confirmation", True)
-with p2:
-    metric_box("Stop Loss", rupee(stop_loss), "ATR + support based", False)
-with p3:
-    metric_box("Target", rupee(target), f"R:R {rr_ratio:.1f}", True)
-with p4:
-    metric_box("Quantity", f"{qty}", f"Risk {rupee(allowed_risk)}", True if qty > 0 else None)
-with p5:
-    metric_box("Position Size", rupee(position_value), "Capital deployed", position_value <= capital)
+with sg2:
+    st.markdown("<div class='panel'><div class='panel-title'>Professional Trade Plan</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
+    p1, p2, p3, p4, p5 = st.columns(5, gap="small")
+    with p1: metric_box("Suggested Entry", rupee(entry), "Breakout confirmation", True)
+    with p2: metric_box("Stop Loss", rupee(stop_loss), "ATR + support based", False)
+    with p3: metric_box("Target", rupee(target), f"R:R {rr_ratio:.1f}", True)
+    with p4: metric_box("Quantity", f"{qty}", f"Risk {rupee(allowed_risk)}", True if qty > 0 else None)
+    with p5: metric_box("Position Size", rupee(position_value), "Capital deployed", position_value <= capital)
 
 # -------------------------------------------------
 # FUNDAMENTAL SNAPSHOT
 # -------------------------------------------------
-st.markdown("<div class='glass-card'><div class='section-title'>Fundamental Snapshot</div></div>", unsafe_allow_html=True)
-fc1, fc2, fc3, fc4 = st.columns(4)
-with fc1:
-    st.metric("Sector", info.get("sector", "N/A"))
-with fc2:
-    st.metric("Industry", info.get("industry", "N/A"))
-with fc3:
-    st.metric("P/E", f"{info.get('trailingPE', 'N/A')}")
-with fc4:
-    st.metric("ROE", f"{round((info.get('returnOnEquity', 0) or 0)*100, 2)}%" if info.get('returnOnEquity') is not None else "N/A")
+st.markdown("<div class='panel'><div class='panel-title'>Fundamental Snapshot</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
+f1, f2, f3, f4 = st.columns(4, gap="small")
+with f1: st.metric("Sector", info.get("sector", "N/A"))
+with f2: st.metric("Industry", info.get("industry", "N/A"))
+with f3: st.metric("P/E", f"{info.get('trailingPE', 'N/A')}")
+with f4: st.metric("ROE", f"{round((info.get('returnOnEquity', 0) or 0)*100, 2)}%" if info.get('returnOnEquity') is not None else "N/A")
 
 # -------------------------------------------------
-# FUNDAMENTAL RATIO BUTTON
+# OPTIONAL RATIO TABLES
 # -------------------------------------------------
 if show_fundamental_ratio:
     fund_df = pd.DataFrame([
@@ -623,9 +615,6 @@ if show_fundamental_ratio:
     ])
     st.dataframe(fund_df, use_container_width=True)
 
-# -------------------------------------------------
-# TECHNICAL RATIO BUTTON
-# -------------------------------------------------
 if show_technical_ratio:
     last = df.iloc[-1]
     tech_df = pd.DataFrame([
@@ -641,23 +630,20 @@ if show_technical_ratio:
     st.dataframe(tech_df, use_container_width=True)
 
 # -------------------------------------------------
-# BALANCE / P&L / CASH FLOW (SAFE FIXED TAB BLOCKS)
+# FINANCIAL STATEMENTS (SAFE TABS)
 # -------------------------------------------------
-st.markdown("<div class='glass-card'><div class='section-title'>Balance Sheet / P&L / Cash Flow (₹ Cr)</div></div>", unsafe_allow_html=True)
+st.markdown("<div class='panel'><div class='panel-title'>Balance Sheet / P&L / Cash Flow (₹ Cr)</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
 t1, t2, t3 = st.tabs(["Balance Sheet", "Financials", "Cash Flow"])
-
 with t1:
     if isinstance(bs, pd.DataFrame) and not bs.empty:
         st.dataframe((bs.iloc[:, :4].fillna(0) / 1e7).round(2), use_container_width=True)
     else:
         st.info("Balance sheet not available for this symbol.")
-
 with t2:
     if isinstance(fin, pd.DataFrame) and not fin.empty:
         st.dataframe((fin.iloc[:, :4].fillna(0) / 1e7).round(2), use_container_width=True)
     else:
         st.info("Financials not available for this symbol.")
-
 with t3:
     if isinstance(cf, pd.DataFrame) and not cf.empty:
         st.dataframe((cf.iloc[:, :4].fillna(0) / 1e7).round(2), use_container_width=True)
@@ -679,18 +665,15 @@ watch_df = pd.DataFrame([{
     "Qty": qty,
 }])
 
+st.markdown("<div class='panel'><div class='panel-title'>Watchlist Decision Matrix</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
 st.dataframe(watch_df, use_container_width=True)
-st.download_button(
-    "Download Trade Plan CSV",
-    data=watch_df.to_csv(index=False).encode("utf-8"),
-    file_name=f"{symbol.replace('.NS','')}_trade_plan.csv",
-    mime="text/csv",
-)
+st.download_button("Download Trade Plan CSV", data=watch_df.to_csv(index=False).encode("utf-8"), file_name=f"{symbol.replace('.NS','')}_trade_plan.csv", mime="text/csv")
 
 # -------------------------------------------------
 # SCANNER
 # -------------------------------------------------
 if run_scan:
+    st.markdown("<div class='panel'><div class='panel-title'>Institutional Breakout Scanner</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
     universe = stock_list[:scan_count]
     rows = []
     progress = st.progress(0)
@@ -728,16 +711,16 @@ if run_scan:
     if rows:
         scan_df = pd.DataFrame(rows).sort_values(["Score", "RSI"], ascending=[False, False]).reset_index(drop=True)
         top5 = scan_df.head(5)
-        cols = st.columns(min(5, len(top5)))
+        cols = st.columns(min(5, len(top5)), gap="small")
         for idx, (_, row) in enumerate(top5.iterrows()):
             with cols[idx]:
                 st.markdown(
-                    f"<div class='scanner-card'><div style='font-size:1rem;font-weight:900;color:#fff'>{row['Symbol'].replace('.NS','')}</div><div style='color:#c4b5fd;font-weight:800;margin-top:6px'>AI: {row['AI']}</div><div style='margin-top:8px;color:#e2e8f0'>Score: {row['Score']}</div><div style='color:#e2e8f0'>Entry: ₹{row['Entry']}</div><div style='color:#e2e8f0'>SL: ₹{row['Stop']}</div><div style='color:#86efac;font-weight:800;margin-top:6px'>{row['Verdict']}</div></div>",
+                    f"<div class='scanner-card'><div style='font-size:0.95rem;font-weight:900;color:#fff'>{row['Symbol'].replace('.NS','')}</div><div style='color:#c4b5fd;font-weight:800;margin-top:4px'>AI: {row['AI']}</div><div style='margin-top:6px;color:#e2e8f0'>Score: {row['Score']}</div><div style='color:#e2e8f0'>Entry: ₹{row['Entry']}</div><div style='color:#e2e8f0'>SL: ₹{row['Stop']}</div><div style='color:#86efac;font-weight:800;margin-top:5px'>{row['Verdict']}</div></div>",
                     unsafe_allow_html=True,
                 )
         st.dataframe(scan_df, use_container_width=True)
         fig = px.bar(scan_df.head(10), x="Symbol", y="Score", hover_data=["Price", "RSI", "Verdict", "AI"], template="plotly_dark", title="Top Institutional Setups")
-        fig.update_layout(height=420, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig.update_layout(height=390, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=8, r=8, t=36, b=8))
         st.plotly_chart(fig, use_container_width=True)
 
 st.caption("Nile is a stock analysis dashboard for educational and research use. Data may be delayed/incomplete depending on source availability. Always verify before trading.")
