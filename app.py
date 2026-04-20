@@ -468,6 +468,7 @@ with m0:
         """, unsafe_allow_html=True)
     else:
         st.markdown("<div class='glass-card'><div class='section-title'>NIFTY 50 Live</div><div style='font-size:1.3rem;font-weight:800;color:#94a3b8;'>Data unavailable</div></div>", unsafe_allow_html=True)
+
 with m1:
 with m1:
     if pd.notna(banknifty_last):
