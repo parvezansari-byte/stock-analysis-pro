@@ -1,7 +1,8 @@
-# FINAL NILE V12.6.1 BLACKROCK TERMINAL ULTRA
+# FINAL NILE V12.7 IMPERIAL TERMINAL OS
 # Single-file Streamlit app.py
-# More beautiful top cards • Stronger premium spacing • Safer Streamlit Cloud compatibility
-# Multi-stock compare restored • Sector heatmap restored • Same tight terminal style
+# Ultra-premium top ribbon • Institutional market breadth strip • Sector strength tiles
+# Improved scanner ranking cards • Better compare panel layout • Stronger BlackRock/Bloomberg terminal feel
+# Same logic • Cloud-safe • Single full code
 
 import time
 from datetime import datetime
@@ -24,46 +25,50 @@ except Exception:
 st.set_page_config(page_title="Nile", page_icon="📈", layout="wide", initial_sidebar_state="expanded")
 
 # -------------------------------------------------
-# ULTRA TERMINAL CSS
+# IMPERIAL TERMINAL CSS
 # -------------------------------------------------
 st.markdown(
     """
     <style>
     :root {
-        --bg1: #030713;
-        --bg2: #0a1222;
+        --bg1:#020611; --bg2:#081120; --bg3:#0b1528;
         --line: rgba(148,163,184,0.10);
-        --text: #eef2ff;
+        --text:#eef2ff; --muted:#94a3b8;
     }
     .stApp {
         background:
-            radial-gradient(circle at 12% 12%, rgba(37,99,235,0.18), transparent 22%),
-            radial-gradient(circle at 88% 10%, rgba(124,58,237,0.14), transparent 24%),
-            radial-gradient(circle at 50% 88%, rgba(6,182,212,0.08), transparent 22%),
-            linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 100%);
+            radial-gradient(circle at 10% 12%, rgba(37,99,235,0.18), transparent 22%),
+            radial-gradient(circle at 90% 8%, rgba(124,58,237,0.14), transparent 24%),
+            radial-gradient(circle at 48% 92%, rgba(6,182,212,0.08), transparent 20%),
+            linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 55%, var(--bg3) 100%);
         color: var(--text);
     }
-    .block-container {
-        max-width: 1700px;
-        padding-top: 1.2rem;
-        padding-bottom: 2rem;
+    .block-container { max-width: 1720px; padding-top: 1.1rem; padding-bottom: 2rem; }
+    div[data-testid="stSidebar"] {
+        background: linear-gradient(180deg, rgba(6,10,22,0.995), rgba(10,18,32,0.995));
+        border-right: 1px solid rgba(148,163,184,0.08);
     }
-    .terminal-ribbon {
-        background: linear-gradient(90deg, rgba(9,16,31,0.98), rgba(15,23,42,0.98));
+    .imperial-ribbon {
+        position: relative;
+        background: linear-gradient(90deg, rgba(8,14,28,0.98), rgba(13,22,40,0.98), rgba(8,14,28,0.98));
         border: 1px solid rgba(59,130,246,0.14);
         border-radius: 18px;
         padding: 10px 14px;
         margin-bottom: 10px;
-        box-shadow: 0 0 18px rgba(59,130,246,0.10), 0 10px 28px rgba(0,0,0,0.28);
-        backdrop-filter: blur(10px);
+        box-shadow: 0 0 18px rgba(59,130,246,0.10), 0 12px 30px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.02);
+        overflow: hidden;
+    }
+    .imperial-ribbon::before {
+        content:''; position:absolute; inset:0; pointer-events:none;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
     }
     .ribbon-chip {
         display:inline-block; padding:6px 10px; border-radius:999px; margin-right:6px; margin-bottom:4px;
-        background: rgba(30,41,59,0.76); border:1px solid rgba(255,255,255,0.05); color:#dbeafe;
-        font-weight:800; font-size:0.74rem;
+        background: rgba(30,41,59,0.72); border:1px solid rgba(255,255,255,0.05); color:#dbeafe;
+        font-weight:800; font-size:0.74rem; letter-spacing:0.15px;
     }
     .panel {
-        background: linear-gradient(180deg, rgba(9,16,31,0.92), rgba(15,23,42,0.94));
+        background: linear-gradient(180deg, rgba(8,14,28,0.92), rgba(13,22,40,0.94));
         border: 1px solid var(--line);
         border-radius: 20px;
         padding: 14px;
@@ -72,50 +77,54 @@ st.markdown(
         backdrop-filter: blur(10px);
     }
     .panel-title { font-size: 0.95rem; font-weight: 900; color: #f8fafc; margin-bottom: 8px; }
-    .subtle-divider { height: 1px; background: linear-gradient(90deg, rgba(59,130,246,0.20), rgba(124,58,237,0.12), transparent); margin: 6px 0 10px 0; }
-    .metric-card {
-        background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(17,24,39,0.92));
-        border: 1px solid rgba(148,163,184,0.10);
-        border-radius: 18px; padding: 14px; min-height: 110px; box-shadow: 0 10px 24px rgba(0,0,0,0.20);
-    }
-    .metric-label { font-size: 0.76rem; color: #94a3b8; margin-bottom: 4px; font-weight: 700; }
-    .metric-value { font-size: 1.55rem; font-weight: 900; color: #ffffff; margin-bottom: 3px; }
-    .metric-delta-up { color: #22c55e; font-weight: 800; font-size: 0.82rem; }
-    .metric-delta-down { color: #ef4444; font-weight: 800; font-size: 0.82rem; }
-    .metric-delta-flat { color: #94a3b8; font-weight: 800; font-size: 0.82rem; }
-    .premium-subtitle {
-        font-size: 1rem; font-weight: 900; letter-spacing: 0.55px;
-        background: linear-gradient(90deg, #e9d5ff, #c4b5fd, #93c5fd);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent; display:block; text-align:center; margin-bottom:0.55rem;
-    }
+    .subtle-divider { height:1px; background: linear-gradient(90deg, rgba(59,130,246,0.22), rgba(124,58,237,0.14), transparent); margin: 6px 0 10px 0; }
     .hero-card {
         border-radius: 20px; padding: 14px; min-height: 118px; position: relative; overflow: hidden;
         border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 14px 28px rgba(0,0,0,0.26), inset 0 1px 0 rgba(255,255,255,0.03);
     }
     .hero-card::before {
-        content: ''; position: absolute; inset: 0; pointer-events: none;
+        content:''; position:absolute; inset:0; pointer-events:none;
         background: radial-gradient(circle at 12% 18%, rgba(255,255,255,0.08), transparent 22%), radial-gradient(circle at 88% 12%, rgba(255,255,255,0.04), transparent 24%);
     }
     .hero-title { font-size: 0.82rem; font-weight: 900; color: #cbd5e1; margin-bottom: 4px; position:relative; }
     .hero-value { font-size: 1.62rem; font-weight: 900; color: #ffffff; position:relative; }
     .hero-change { font-size: 0.92rem; font-weight: 900; margin-top: 3px; position:relative; }
-    .ai-badge-buy, .ai-badge-hold, .ai-badge-sell { padding: 14px; border-radius: 16px; font-weight: 900; text-align:center; font-size: 0.98rem; }
-    .ai-badge-buy { background: linear-gradient(90deg, rgba(34,197,94,0.20), rgba(34,197,94,0.08)); color: #86efac; border: 1px solid rgba(34,197,94,0.24); }
-    .ai-badge-hold { background: linear-gradient(90deg, rgba(245,158,11,0.20), rgba(245,158,11,0.08)); color: #fcd34d; border: 1px solid rgba(245,158,11,0.24); }
-    .ai-badge-sell { background: linear-gradient(90deg, rgba(239,68,68,0.20), rgba(239,68,68,0.08)); color: #fca5a5; border: 1px solid rgba(239,68,68,0.24); }
-    .scanner-card { background: linear-gradient(180deg, rgba(30,41,59,0.85), rgba(15,23,42,0.88)); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 12px; box-shadow: 0 8px 20px rgba(0,0,0,0.22); margin-bottom: 8px; }
-    div[data-testid="stSidebar"] { background: linear-gradient(180deg, rgba(7,12,24,0.99), rgba(11,18,32,0.99)); border-right: 1px solid rgba(148,163,184,0.08); }
-    .stButton > button, .stDownloadButton > button {
-        width: 100%; border-radius: 14px; border: 1px solid rgba(255,255,255,0.08); color: white; font-weight: 900;
-        padding: 0.72rem 0.9rem; font-size: 0.9rem; transition: all 0.25s ease-in-out; box-shadow: 0 8px 20px rgba(0,0,0,0.24);
-        background-size: 220% 220% !important; animation: buttonGlow 6s ease infinite;
+    .breadth-card, .sector-tile, .scanner-rank-card, .compare-mini-card, .metric-card {
+        background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(17,24,39,0.92));
+        border: 1px solid rgba(148,163,184,0.10);
+        border-radius: 18px;
+        padding: 14px;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.20);
     }
-    section[data-testid="stSidebar"] .stButton > button { background: linear-gradient(135deg, #16a34a, #22c55e, #4ade80) !important; box-shadow: 0 10px 24px rgba(34,197,94,0.26) !important; }
-    div[data-testid="stButton"][id*="fundamental_ratio_btn"] > button { background: linear-gradient(135deg, #2563eb, #3b82f6, #60a5fa) !important; box-shadow: 0 10px 24px rgba(37,99,235,0.28) !important; }
-    div[data-testid="stButton"][id*="technical_ratio_btn"] > button { background: linear-gradient(135deg, #7c3aed, #8b5cf6, #a78bfa) !important; box-shadow: 0 10px 24px rgba(124,58,237,0.28) !important; }
-    div[data-testid="stButton"][id*="run_scan_btn"] > button { background: linear-gradient(135deg, #15803d, #22c55e, #4ade80) !important; box-shadow: 0 10px 24px rgba(34,197,94,0.28) !important; }
-    div[data-testid="stDownloadButton"] > button { background: linear-gradient(135deg, #0f766e, #14b8a6, #06b6d4) !important; box-shadow: 0 10px 24px rgba(20,184,166,0.26) !important; }
-    .stButton > button:hover, .stDownloadButton > button:hover { transform: translateY(-2px) scale(1.015); filter: brightness(1.06); }
+    .breadth-value, .metric-value { font-size: 1.4rem; font-weight: 900; color: #fff; }
+    .metric-label, .breadth-label { font-size: 0.76rem; color: #94a3b8; margin-bottom: 4px; font-weight: 700; }
+    .metric-delta-up { color:#22c55e; font-weight:800; font-size:0.82rem; }
+    .metric-delta-down { color:#ef4444; font-weight:800; font-size:0.82rem; }
+    .metric-delta-flat { color:#94a3b8; font-weight:800; font-size:0.82rem; }
+    .premium-subtitle {
+        font-size:1rem; font-weight:900; letter-spacing:0.55px;
+        background: linear-gradient(90deg, #e9d5ff, #c4b5fd, #93c5fd);
+        -webkit-background-clip:text; -webkit-text-fill-color:transparent; display:block; text-align:center; margin-bottom:0.55rem;
+    }
+    .ai-badge-buy, .ai-badge-hold, .ai-badge-sell { padding:14px; border-radius:16px; font-weight:900; text-align:center; font-size:0.98rem; }
+    .ai-badge-buy { background: linear-gradient(90deg, rgba(34,197,94,0.20), rgba(34,197,94,0.08)); color:#86efac; border:1px solid rgba(34,197,94,0.24); }
+    .ai-badge-hold { background: linear-gradient(90deg, rgba(245,158,11,0.20), rgba(245,158,11,0.08)); color:#fcd34d; border:1px solid rgba(245,158,11,0.24); }
+    .ai-badge-sell { background: linear-gradient(90deg, rgba(239,68,68,0.20), rgba(239,68,68,0.08)); color:#fca5a5; border:1px solid rgba(239,68,68,0.24); }
+    .sector-tile { min-height: 118px; }
+    .sector-name { font-size:0.8rem; font-weight:900; color:#cbd5e1; }
+    .sector-return { font-size:1.25rem; font-weight:900; margin-top:6px; }
+    .scanner-rank-card { min-height: 145px; }
+    .compare-mini-card { min-height: 100px; }
+    .stButton > button, .stDownloadButton > button {
+        width:100%; border-radius:14px; border:1px solid rgba(255,255,255,0.08); color:white; font-weight:900;
+        padding:0.72rem 0.9rem; font-size:0.9rem; transition:all 0.25s ease-in-out; box-shadow:0 8px 20px rgba(0,0,0,0.24);
+        background-size:220% 220% !important; animation: buttonGlow 6s ease infinite;
+    }
+    section[data-testid="stSidebar"] .stButton > button { background: linear-gradient(135deg, #16a34a, #22c55e, #4ade80) !important; }
+    div[data-testid="stButton"][id*="fundamental_ratio_btn"] > button { background: linear-gradient(135deg, #2563eb, #3b82f6, #60a5fa) !important; }
+    div[data-testid="stButton"][id*="technical_ratio_btn"] > button { background: linear-gradient(135deg, #7c3aed, #8b5cf6, #a78bfa) !important; }
+    div[data-testid="stButton"][id*="run_scan_btn"] > button { background: linear-gradient(135deg, #15803d, #22c55e, #4ade80) !important; }
+    div[data-testid="stDownloadButton"] > button { background: linear-gradient(135deg, #0f766e, #14b8a6, #06b6d4) !important; }
     @keyframes buttonGlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
     </style>
     """,
@@ -133,7 +142,7 @@ SECTOR_MAP = {
     "TCS.NS":"IT","INFY.NS":"IT","HCLTECH.NS":"IT","WIPRO.NS":"IT","TECHM.NS":"IT","OFSS.NS":"IT",
     "HDFCBANK.NS":"Financials","ICICIBANK.NS":"Financials","SBIN.NS":"Financials","KOTAKBANK.NS":"Financials","AXISBANK.NS":"Financials","BAJFINANCE.NS":"Financials","BAJAJFINSV.NS":"Financials","INDUSINDBK.NS":"Financials","SBILIFE.NS":"Financials","BANKBARODA.NS":"Financials","CANBK.NS":"Financials","PFC.NS":"Financials","RECLTD.NS":"Financials","LICI.NS":"Financials","PNB.NS":"Financials","ICICIGI.NS":"Financials","ICICIPRULI.NS":"Financials","CHOLAFIN.NS":"Financials","SHRIRAMFIN.NS":"Financials",
     "HINDUNILVR.NS":"Consumer","ITC.NS":"Consumer","NESTLEIND.NS":"Consumer","BRITANNIA.NS":"Consumer","TATACONSUM.NS":"Consumer","DABUR.NS":"Consumer","GODREJCP.NS":"Consumer","COLPAL.NS":"Consumer","MARICO.NS":"Consumer","UBL.NS":"Consumer","MCDOWELL-N.NS":"Consumer","UNITDSPR.NS":"Consumer",
-    "SUNPHARMA.NS":"Pharma","CIPLA.NS":"Pharma","DRREDDY.NS":"Pharma","DIVISLAB.NS":"Pharma","APOLLOHOSP.NS":"Healthcare","LUPIN.NS":"Pharma","ZYDUSLIFE.NS":"Pharma","TORNTPHARM.NS":"Pharma",
+    "SUNPHARMA.NS":"Pharma","CIPLA.NS":"Pharma","DRREDDY.NS":"Pharma","DIVISLAB.NS":"Pharma","LUPIN.NS":"Pharma","ZYDUSLIFE.NS":"Pharma","TORNTPHARM.NS":"Pharma","APOLLOHOSP.NS":"Healthcare",
     "LT.NS":"Industrials","ABB.NS":"Industrials","CGPOWER.NS":"Industrials","SIEMENS.NS":"Industrials","HAL.NS":"Industrials","CONCOR.NS":"Industrials","IRCTC.NS":"Industrials",
     "TATASTEEL.NS":"Metals","JSWSTEEL.NS":"Metals","HINDALCO.NS":"Metals","JINDALSTEL.NS":"Metals","NMDC.NS":"Metals","SAIL.NS":"Metals","VEDL.NS":"Metals",
     "TATAMOTORS.NS":"Auto","M&M.NS":"Auto","MARUTI.NS":"Auto","HEROMOTOCO.NS":"Auto","EICHERMOT.NS":"Auto","BAJAJ-AUTO.NS":"Auto","TVSMOTOR.NS":"Auto","MOTHERSON.NS":"Auto",
@@ -262,7 +271,8 @@ def make_gauge(value):
 def make_candlestick(df: pd.DataFrame, symbol: str, entry=None, stop=None, target=None, breakout=None, support=None):
     fig = go.Figure()
     fig.add_trace(go.Candlestick(x=df.index, open=df["Open"], high=df["High"], low=df["Low"], close=df["Close"], name="Price"))
-    fig.add_trace(go.Scatter(x=df.index, y=df["SMA20"], name="SMA20")); fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], name="SMA50"))
+    fig.add_trace(go.Scatter(x=df.index, y=df["SMA20"], name="SMA20"))
+    fig.add_trace(go.Scatter(x=df.index, y=df["SMA50"], name="SMA50"))
     if breakout is not None: fig.add_hline(y=breakout, line_dash="dot", annotation_text="Breakout")
     if support is not None: fig.add_hline(y=support, line_dash="dot", annotation_text="Support")
     if entry is not None: fig.add_hline(y=entry, line_dash="dash", annotation_text="Entry")
@@ -321,15 +331,46 @@ market_status = "OPEN" if market_open else "CLOSED"
 market_status_color = "#22c55e" if market_open else "#ef4444"
 last_updated = now_ist.strftime("%d-%b-%Y %I:%M %p")
 
-st.markdown(f"<div class='terminal-ribbon'><span class='ribbon-chip'>NIFTY 50</span><span class='ribbon-chip'>BANK NIFTY</span><span class='ribbon-chip'>INDIA VIX</span><span class='ribbon-chip'>Institutional Terminal</span><span class='ribbon-chip'>Cloud Safe</span><span class='ribbon-chip' style='color:{market_status_color};'>Market: {market_status}</span><span class='ribbon-chip'>Last Updated: {last_updated}</span></div>", unsafe_allow_html=True)
+st.markdown(f"<div class='imperial-ribbon'><span class='ribbon-chip'>NIFTY 50</span><span class='ribbon-chip'>BANK NIFTY</span><span class='ribbon-chip'>INDIA VIX</span><span class='ribbon-chip'>Imperial Terminal</span><span class='ribbon-chip'>Institutional Flow</span><span class='ribbon-chip'>Cloud Safe</span><span class='ribbon-chip' style='color:{market_status_color};'>Market: {market_status}</span><span class='ribbon-chip'>Last Updated: {last_updated}</span></div>", unsafe_allow_html=True)
 
 c1, c2, c3 = st.columns(3, gap="small")
 with c1:
-    beautiful_top_card("NIFTY 50 Live", nifty50_last, nifty50_chg, "linear-gradient(135deg, rgba(29,78,216,0.42), rgba(10,18,34,0.96))")
+    beautiful_top_card("NIFTY 50 Live", nifty50_last, nifty50_chg, "linear-gradient(135deg, rgba(29,78,216,0.44), rgba(8,14,28,0.96))")
 with c2:
-    beautiful_top_card("BANK NIFTY Live", banknifty_last, banknifty_chg, "linear-gradient(135deg, rgba(21,128,61,0.42), rgba(10,18,34,0.96))")
+    beautiful_top_card("BANK NIFTY Live", banknifty_last, banknifty_chg, "linear-gradient(135deg, rgba(21,128,61,0.44), rgba(8,14,28,0.96))")
 with c3:
-    beautiful_top_card("INDIA VIX Live", indiavix_last, indiavix_chg, "linear-gradient(135deg, rgba(127,29,29,0.36), rgba(10,18,34,0.96))", inverse=True)
+    beautiful_top_card("INDIA VIX Live", indiavix_last, indiavix_chg, "linear-gradient(135deg, rgba(127,29,29,0.38), rgba(8,14,28,0.96))", inverse=True)
+
+# -------------------------------------------------
+# MARKET BREADTH STRIP (NEW)
+# -------------------------------------------------
+breadth_symbols = stock_list[:min(30, len(stock_list))]
+advancers = decliners = bullish_trend_count = 0
+breadth_rows = []
+for s in breadth_symbols:
+    d = get_history(s, period="3mo")
+    d = compute_indicators(d) if not d.empty else pd.DataFrame()
+    if not d.empty and len(d) > 2:
+        last = d.iloc[-1]
+        day_ret = ((d["Close"].iloc[-1] / d["Close"].iloc[-2]) - 1) * 100
+        if day_ret >= 0: advancers += 1
+        else: decliners += 1
+        if last["SMA20"] > last["SMA50"]: bullish_trend_count += 1
+        breadth_rows.append(day_ret)
+
+avg_day_ret = np.mean(breadth_rows) if breadth_rows else 0
+breadth_ratio = round((advancers / max(advancers + decliners, 1)) * 100, 1)
+trend_ratio = round((bullish_trend_count / max(len(breadth_symbols), 1)) * 100, 1)
+
+b1, b2, b3, b4 = st.columns(4, gap="small")
+with b1:
+    st.markdown(f"<div class='breadth-card'><div class='breadth-label'>Advance / Decline</div><div class='breadth-value'>{advancers} / {decliners}</div><div class='metric-delta-flat'>Market breadth</div></div>", unsafe_allow_html=True)
+with b2:
+    st.markdown(f"<div class='breadth-card'><div class='breadth-label'>Breadth Strength</div><div class='breadth-value'>{breadth_ratio}%</div><div class='{'metric-delta-up' if breadth_ratio >= 55 else 'metric-delta-down'}'>Advancers share</div></div>", unsafe_allow_html=True)
+with b3:
+    st.markdown(f"<div class='breadth-card'><div class='breadth-label'>Bullish Trend Stocks</div><div class='breadth-value'>{bullish_trend_count}</div><div class='{'metric-delta-up' if trend_ratio >= 55 else 'metric-delta-down'}'>{trend_ratio}% above trend filter</div></div>", unsafe_allow_html=True)
+with b4:
+    st.markdown(f"<div class='breadth-card'><div class='breadth-label'>Average Daily Return</div><div class='breadth-value'>{avg_day_ret:+.2f}%</div><div class='{'metric-delta-up' if avg_day_ret >= 0 else 'metric-delta-down'}'>Universe average</div></div>", unsafe_allow_html=True)
 
 # -------------------------------------------------
 # MAIN DATA
@@ -418,12 +459,11 @@ with sg2:
     with p5: metric_box("Position Size", rupee(position_value), "Capital deployed", position_value <= capital)
 
 # -------------------------------------------------
-# MULTI-STOCK COMPARE (RESTORED)
+# MULTI-STOCK COMPARE (BETTER LAYOUT)
 # -------------------------------------------------
 if compare_symbols:
     st.markdown("<div class='panel'><div class='panel-title'>Multi-Stock Compare (Normalized Performance)</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
-    compare_df = pd.DataFrame()
-    compare_summary = []
+    compare_df = pd.DataFrame(); compare_summary = []
     for sym in compare_symbols:
         d = get_history(sym, period="6mo")
         if not d.empty and "Close" in d.columns:
@@ -432,19 +472,25 @@ if compare_symbols:
             perf = ((d["Close"].iloc[-1] / d["Close"].iloc[0]) - 1) * 100
             compare_summary.append({"Symbol": sym.replace('.NS',''), "6M Return %": round(perf, 2)})
     if not compare_df.empty:
+        summary_df = pd.DataFrame(compare_summary).sort_values("6M Return %", ascending=False).reset_index(drop=True)
+        mini_cols = st.columns(min(len(summary_df), 5), gap="small")
+        for idx, row in summary_df.head(5).iterrows():
+            with mini_cols[idx]:
+                color = "#22c55e" if row['6M Return %'] >= 0 else "#ef4444"
+                st.markdown(f"<div class='compare-mini-card'><div class='metric-label'>{row['Symbol']}</div><div class='metric-value' style='font-size:1.25rem'>{row['6M Return %']:+.2f}%</div><div style='color:{color};font-weight:800;font-size:0.82rem'>6M relative strength</div></div>", unsafe_allow_html=True)
         fig_cmp = go.Figure()
         for col in compare_df.columns:
             fig_cmp.add_trace(go.Scatter(x=compare_df.index, y=compare_df[col], mode='lines', name=col))
-        fig_cmp.update_layout(template="plotly_dark", height=380, margin=dict(l=8, r=8, t=30, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig_cmp.update_layout(template="plotly_dark", height=390, margin=dict(l=8, r=8, t=30, b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_cmp, use_container_width=True)
-        st.dataframe(pd.DataFrame(compare_summary).sort_values("6M Return %", ascending=False), use_container_width=True)
+        st.dataframe(summary_df, use_container_width=True)
     else:
         st.info("Not enough data for multi-stock comparison.")
 
 # -------------------------------------------------
-# SECTOR HEATMAP (RESTORED)
+# SECTOR STRENGTH TILES + HEATMAP
 # -------------------------------------------------
-st.markdown("<div class='panel'><div class='panel-title'>Sector Heatmap (1M Performance)</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
+st.markdown("<div class='panel'><div class='panel-title'>Sector Strength Tiles + Heatmap (1M Performance)</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
 heat_rows = []
 for sym in stock_list[:min(40, len(stock_list))]:
     d = get_history(sym, period="3mo")
@@ -453,9 +499,14 @@ for sym in stock_list[:min(40, len(stock_list))]:
         heat_rows.append({"Symbol": sym.replace('.NS',''), "Sector": SECTOR_MAP.get(sym, "Others"), "Return1M": round(ret_1m, 2)})
 if heat_rows:
     heat_df = pd.DataFrame(heat_rows)
-    sector_perf = heat_df.groupby("Sector", as_index=False)["Return1M"].mean().sort_values("Return1M", ascending=False)
+    sector_perf = heat_df.groupby("Sector", as_index=False)["Return1M"].mean().sort_values("Return1M", ascending=False).reset_index(drop=True)
+    tile_cols = st.columns(min(4, len(sector_perf)), gap="small")
+    for idx, row in sector_perf.head(4).iterrows():
+        with tile_cols[idx]:
+            color = "#22c55e" if row['Return1M'] >= 0 else "#ef4444"
+            st.markdown(f"<div class='sector-tile'><div class='sector-name'>{row['Sector']}</div><div class='sector-return' style='color:{color};'>{row['Return1M']:+.2f}%</div><div class='metric-delta-flat'>Top sector strength</div></div>", unsafe_allow_html=True)
     fig_heat = px.treemap(heat_df, path=["Sector", "Symbol"], values=abs(heat_df["Return1M"]) + 1, color="Return1M", color_continuous_scale="RdYlGn", title="Sector Heatmap")
-    fig_heat.update_layout(height=460, margin=dict(l=8, r=8, t=36, b=8), paper_bgcolor="rgba(0,0,0,0)")
+    fig_heat.update_layout(height=470, margin=dict(l=8, r=8, t=36, b=8), paper_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig_heat, use_container_width=True)
     st.dataframe(sector_perf, use_container_width=True)
 else:
@@ -519,7 +570,7 @@ st.dataframe(watch_df, use_container_width=True)
 st.download_button("Download Trade Plan CSV", data=watch_df.to_csv(index=False).encode("utf-8"), file_name=f"{symbol.replace('.NS','')}_trade_plan.csv", mime="text/csv")
 
 # -------------------------------------------------
-# SCANNER
+# SCANNER (IMPROVED RANKING CARDS)
 # -------------------------------------------------
 if run_scan:
     st.markdown("<div class='panel'><div class='panel-title'>Institutional Breakout Scanner</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
@@ -535,10 +586,13 @@ if run_scan:
         progress.progress(i / len(universe)); time.sleep(0.02)
     status.empty()
     if rows:
-        scan_df = pd.DataFrame(rows).sort_values(["Score", "RSI"], ascending=[False, False]).reset_index(drop=True); top5 = scan_df.head(5); cols = st.columns(min(5, len(top5)), gap="small")
+        scan_df = pd.DataFrame(rows).sort_values(["Score", "RSI"], ascending=[False, False]).reset_index(drop=True)
+        top5 = scan_df.head(5); cols = st.columns(min(5, len(top5)), gap="small")
         for idx, (_, row) in enumerate(top5.iterrows()):
             with cols[idx]:
-                st.markdown(f"<div class='scanner-card'><div style='font-size:0.95rem;font-weight:900;color:#fff'>{row['Symbol'].replace('.NS','')}</div><div style='color:#c4b5fd;font-weight:800;margin-top:4px'>AI: {row['AI']}</div><div style='margin-top:6px;color:#e2e8f0'>Score: {row['Score']}</div><div style='color:#e2e8f0'>Entry: ₹{row['Entry']}</div><div style='color:#e2e8f0'>SL: ₹{row['Stop']}</div><div style='color:#86efac;font-weight:800;margin-top:5px'>{row['Verdict']}</div></div>", unsafe_allow_html=True)
+                rank = idx + 1
+                rank_color = "#22c55e" if rank == 1 else "#60a5fa" if rank in [2,3] else "#a78bfa"
+                st.markdown(f"<div class='scanner-rank-card'><div style='font-size:0.78rem;font-weight:900;color:{rank_color}'>RANK #{rank}</div><div style='font-size:0.95rem;font-weight:900;color:#fff;margin-top:4px'>{row['Symbol'].replace('.NS','')}</div><div style='color:#c4b5fd;font-weight:800;margin-top:4px'>AI: {row['AI']}</div><div style='margin-top:6px;color:#e2e8f0'>Score: {row['Score']}</div><div style='color:#e2e8f0'>Entry: ₹{row['Entry']}</div><div style='color:#e2e8f0'>SL: ₹{row['Stop']}</div><div style='color:#86efac;font-weight:800;margin-top:5px'>{row['Verdict']}</div></div>", unsafe_allow_html=True)
         st.dataframe(scan_df, use_container_width=True)
         fig = px.bar(scan_df.head(10), x="Symbol", y="Score", hover_data=["Price", "RSI", "Verdict", "AI"], template="plotly_dark", title="Top Institutional Setups")
         fig.update_layout(height=390, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(l=8, r=8, t=36, b=8))
