@@ -441,12 +441,34 @@ def get_live_index(symbol: str):
     chg = ((last / prev) - 1) * 100 if prev else 0
     return last, chg
 
+nifty50_last, nifty50_chg = get_live_index("^NSEI")
 banknifty_last, banknifty_chg = get_live_index("^NSEBANK")
 indiavix_last, indiavix_chg = get_live_index("^INDIAVIX")
 
-st.markdown("<div class='hero-strip'><span class='pill'>NIFTY 50</span><span class='pill'>BANK NIFTY</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span><span class='pill'>Cloud Safe</span></div>", unsafe_allow_html=True)
+from datetime import datetime
+now_ist = datetime.now()
+market_open = now_ist.weekday() < 5 and ((now_ist.hour > 9 or (now_ist.hour == 9 and now_ist.minute >= 15)) and (now_ist.hour < 15 or (now_ist.hour == 15 and now_ist.minute <= 30)))
+market_status = "OPEN" if market_open else "CLOSED"
+market_status_color = "#22c55e" if market_open else "#ef4444"
+last_updated = now_ist.strftime("%d-%b-%Y %I:%M %p")
 
-m1, m2 = st.columns(2)
+st.markdown(f"<div class='hero-strip' style='box-shadow: 0 0 22px rgba(59,130,246,0.12), 0 0 44px rgba(124,58,237,0.08);'><span class='pill'>NIFTY 50</span><span class='pill'>BANK NIFTY</span><span class='pill'>INDIA VIX</span><span class='pill'>Institutional Dashboard</span><span class='pill'>Cloud Safe</span><span class='pill' style='color:{market_status_color};'>Market: {market_status}</span><span class='pill'>Last Updated: {last_updated}</span></div>", unsafe_allow_html=True)
+
+m0, m1, m2 = st.columns(3)
+with m0:
+    if pd.notna(nifty50_last):
+        nf_color = '#22c55e' if nifty50_chg >= 0 else '#ef4444'
+        nf_arrow = '▲' if nifty50_chg >= 0 else '▼'
+        st.markdown(f"""
+        <div class='glass-card' style='padding:16px 18px; background: linear-gradient(135deg, rgba(30,64,175,0.38), rgba(15,23,42,0.92)); border:1px solid rgba(59,130,246,0.20);'>
+            <div class='section-title' style='margin-bottom:4px;'>NIFTY 50 Live</div>
+            <div style='font-size:2rem; font-weight:900; color:#ffffff;'>{nifty50_last:,.2f}</div>
+            <div style='font-size:1rem; font-weight:800; color:{nf_color};'>{nf_arrow} {nifty50_chg:+.2f}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("<div class='glass-card'><div class='section-title'>NIFTY 50 Live</div><div style='font-size:1.3rem;font-weight:800;color:#94a3b8;'>Data unavailable</div></div>", unsafe_allow_html=True)
+with m1:
 with m1:
     if pd.notna(banknifty_last):
         bn_color = '#22c55e' if banknifty_chg >= 0 else '#ef4444'
