@@ -1,7 +1,8 @@
-# FINAL NILE V13.1 CLOUD OPTIMIZED + PDF POLISH
+# FINAL NILE V13.1.1 CLOUD OPTIMIZED + BREADTH FIX
 # Single full app.py
 # Same exact UI • All V13 features preserved • Safer cloud performance
 # Added: faster scanner, lighter breadth loops, cached PDF data helpers, improved PDF styling
+# Fixed: Market Breadth zero issue on Streamlit Cloud
 
 import time
 from datetime import datetime
@@ -32,7 +33,6 @@ try:
         Spacer,
         Table,
         TableStyle,
-        PageBreak,
     )
     PDF_AVAILABLE = True
 except Exception:
@@ -429,11 +429,7 @@ def compute_indicators(df: pd.DataFrame):
     return d.dropna().copy()
 
 def compute_scan_metrics_fast(df: pd.DataFrame):
-    """
-    Lighter than full compute_indicators for scanner/breadth.
-    Returns dict with only required values.
-    """
-    if df.empty or len(df) < 60:
+    if df.empty or len(df) < 35:
         return None
 
     d = df.copy()
@@ -736,7 +732,7 @@ def make_portfolio_risk_gauge(value):
     return fig
 
 # -------------------------------------------------
-# PDF HELPERS (IMPROVED + CACHED DATA PREP)
+# PDF HELPERS
 # -------------------------------------------------
 def pdf_styles():
     styles = getSampleStyleSheet()
@@ -819,11 +815,7 @@ def pdf_table(data, col_widths=None, header_bg="#0F172A"):
     return tbl
 
 def pdf_highlight_box(title, value, subtitle=""):
-    data = [
-        [title],
-        [value],
-        [subtitle]
-    ]
+    data = [[title], [value], [subtitle]]
     tbl = Table(data, colWidths=[55 * mm])
     tbl.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#EEF2FF")),
@@ -866,10 +858,6 @@ def prepare_stock_pdf_payload(
     portfolio_summary_key=None,
     scan_summary_key=None,
 ):
-    """
-    Cache-safe payload builder.
-    Only stores lightweight serializable data.
-    """
     return {
         "symbol": symbol,
         "generated": datetime.now().strftime("%d-%b-%Y %I:%M %p"),
@@ -899,11 +887,7 @@ def prepare_stock_pdf_payload(
         "scan_summary_key": scan_summary_key,
     }
 
-def build_stock_pdf(
-    payload,
-    portfolio_analysis_df=None,
-    scan_df=None,
-):
+def build_stock_pdf(payload, portfolio_analysis_df=None, scan_df=None):
     if not PDF_AVAILABLE:
         return None
 
@@ -923,7 +907,6 @@ def build_stock_pdf(
     story.append(Paragraph("Premium Stock Research Report", s["subtitle"]))
     story.append(Spacer(1, 2))
 
-    # Premium summary highlight row
     highlights = Table([[
         pdf_highlight_box("SYMBOL", payload["symbol"], "Selected Stock"),
         pdf_highlight_box("AI SIGNAL", payload["ai_action"], "Decision Engine"),
@@ -1200,7 +1183,6 @@ with st.sidebar:
     risk_pct = st.slider("Risk per Trade (%)", 0.5, 5.0, 1.0, 0.5)
     rr_ratio = st.slider("Risk : Reward", 1.0, 5.0, 2.0, 0.5)
 
-    # Safer cloud scan cap
     max_scan_cap = min(60, len(stock_list))
     default_scan = min(25, max_scan_cap)
     scan_count = st.slider("Scanner Universe", 10, max_scan_cap, default_scan)
@@ -1300,26 +1282,30 @@ with c3:
     )
 
 # -------------------------------------------------
-# MARKET BREADTH STRIP (LIGHTER LOOPS)
+# MARKET BREADTH STRIP (FIXED ZERO ISSUE)
 # -------------------------------------------------
-# Optimized: use smaller sample + lightweight metrics only
-breadth_sample_size = min(18, len(stock_list))
+breadth_sample_size = min(12, len(stock_list))  # safer cloud-safe sample
 breadth_symbols = stock_list[:breadth_sample_size]
+
 advancers = 0
 decliners = 0
 bullish_trend_count = 0
 breadth_rows = []
+valid_breadth_count = 0
 
 for s in breadth_symbols:
-    d = get_history(s, period="3mo")
-    if d.empty or len(d) < 55:
+    d = get_history(s, period="6mo")  # safer than 3mo for NSE on Streamlit Cloud
+    if d.empty or len(d) < 35:
         continue
 
     m = compute_scan_metrics_fast(d)
     if not m:
         continue
 
-    if m["day_ret"] >= 0:
+    valid_breadth_count += 1
+    day_ret = m.get("day_ret", 0.0)
+
+    if day_ret >= 0:
         advancers += 1
     else:
         decliners += 1
@@ -1327,11 +1313,16 @@ for s in breadth_symbols:
     if m["sma20"] > m["sma50"]:
         bullish_trend_count += 1
 
-    breadth_rows.append(m["day_ret"])
+    breadth_rows.append(day_ret)
 
-avg_day_ret = np.mean(breadth_rows) if breadth_rows else 0
-breadth_ratio = round((advancers / max(advancers + decliners, 1)) * 100, 1)
-trend_ratio = round((bullish_trend_count / max(len(breadth_rows), 1)) * 100, 1) if breadth_rows else 0
+if valid_breadth_count == 0:
+    breadth_ratio = 0.0
+    trend_ratio = 0.0
+    avg_day_ret = 0.0
+else:
+    avg_day_ret = float(np.mean(breadth_rows)) if breadth_rows else 0.0
+    breadth_ratio = round((advancers / max(valid_breadth_count, 1)) * 100, 1)
+    trend_ratio = round((bullish_trend_count / max(valid_breadth_count, 1)) * 100, 1)
 
 b1, b2, b3, b4 = st.columns(4, gap="small")
 with b1:
@@ -1340,7 +1331,7 @@ with b1:
         <div class='breadth-card'>
             <div class='breadth-label'>Advance / Decline</div>
             <div class='breadth-value'>{advancers} / {decliners}</div>
-            <div class='metric-delta-flat'>Market breadth</div>
+            <div class='metric-delta-flat'>{valid_breadth_count} stocks sampled</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1899,7 +1890,7 @@ if compare_symbols:
         st.info("Not enough data for multi-stock comparison.")
 
 # -------------------------------------------------
-# SECTOR STRENGTH TILES + HEATMAP (OPTIMIZED)
+# SECTOR STRENGTH TILES + HEATMAP
 # -------------------------------------------------
 st.markdown(
     "<div class='panel'><div class='panel-title'>Sector Strength Tiles + Heatmap (1M Performance)</div><div class='subtle-divider'></div></div>",
@@ -1907,7 +1898,6 @@ st.markdown(
 )
 
 heat_rows = []
-# lighter than V13: cap to 28 for cloud smoothness
 for sym in stock_list[:min(28, len(stock_list))]:
     d = get_history(sym, period="3mo")
     if not d.empty and len(d) > 22:
@@ -2017,7 +2007,7 @@ if show_technical_ratio:
     st.dataframe(tech_df, use_container_width=True)
 
 # -------------------------------------------------
-# FINANCIAL STATEMENTS (SAFE TABS)
+# FINANCIAL STATEMENTS
 # -------------------------------------------------
 st.markdown(
     "<div class='panel'><div class='panel-title'>Balance Sheet / P&L / Cash Flow (₹ Cr)</div><div class='subtle-divider'></div></div>",
@@ -2074,7 +2064,7 @@ st.download_button(
 )
 
 # -------------------------------------------------
-# PDF EXPORT MODULE (IMPROVED)
+# PDF EXPORT MODULE
 # -------------------------------------------------
 st.markdown(
     "<div class='panel'><div class='panel-title'>PDF Report Export</div><div class='subtle-divider'></div></div>",
@@ -2088,7 +2078,6 @@ portfolio_pdf_bytes = None
 scanner_pdf_bytes = None
 
 if PDF_AVAILABLE:
-    # cache-safe payload creation
     portfolio_key = ""
     scan_key = ""
 
@@ -2169,7 +2158,7 @@ if not PDF_AVAILABLE:
     st.warning("PDF export requires reportlab. Add 'reportlab' to requirements.txt.")
 
 # -------------------------------------------------
-# SCANNER (FASTER / LIGHTER / SAME UI)
+# SCANNER
 # -------------------------------------------------
 if run_scan:
     st.markdown(
@@ -2186,7 +2175,7 @@ if run_scan:
         status.info(f"Scanning {s} ({i}/{len(universe)})")
         data = get_history(s, period="6mo")
 
-        if not data.empty and len(data) >= 60:
+        if not data.empty and len(data) >= 35:
             m = compute_scan_metrics_fast(data)
             if m:
                 sc, vd = score_from_metrics(m)
@@ -2208,7 +2197,6 @@ if run_scan:
                 })
 
         progress.progress(i / len(universe))
-        # lighter than V13
         time.sleep(0.005)
 
     status.empty()
