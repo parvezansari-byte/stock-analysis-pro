@@ -730,6 +730,357 @@ def make_portfolio_risk_gauge(value):
         paper_bgcolor="rgba(0,0,0,0)",
     )
     return fig
+    # -------------------------------------------------
+# V14 BACKTEST ENGINE HELPERS
+# -------------------------------------------------
+def calculate_max_drawdown(equity_curve):
+    if not equity_curve:
+        return 0.0
+    eq = pd.Series(equity_curve)
+    peak = eq.cummax()
+    dd = ((eq - peak) / peak.replace(0, np.nan)) * 100
+    return float(dd.min()) if not dd.empty else 0.0
+
+def summarize_backtest(trades, equity_curve, initial_capital=100000):
+    if not trades:
+        return {
+            "Total Trades": 0,
+            "Win Rate %": 0.0,
+            "Avg Gain %": 0.0,
+            "Avg Loss %": 0.0,
+            "Profit Factor": 0.0,
+            "Expectancy %": 0.0,
+            "Net Return %": 0.0,
+            "Max Drawdown %": 0.0,
+        }
+
+    trade_df = pd.DataFrame(trades)
+    wins = trade_df[trade_df["Return %"] > 0]
+    losses = trade_df[trade_df["Return %"] <= 0]
+
+    total_trades = len(trade_df)
+    win_rate = (len(wins) / total_trades) * 100 if total_trades else 0.0
+    avg_gain = wins["Return %"].mean() if not wins.empty else 0.0
+    avg_loss = losses["Return %"].mean() if not losses.empty else 0.0
+
+    gross_profit = wins["P/L ₹"].sum() if not wins.empty else 0.0
+    gross_loss = abs(losses["P/L ₹"].sum()) if not losses.empty else 0.0
+    profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (999.0 if gross_profit > 0 else 0.0)
+
+    expectancy = trade_df["Return %"].mean() if total_trades else 0.0
+    net_return = ((equity_curve[-1] / initial_capital) - 1) * 100 if equity_curve else 0.0
+    max_dd = calculate_max_drawdown(equity_curve)
+
+    return {
+        "Total Trades": int(total_trades),
+        "Win Rate %": round(float(win_rate), 2),
+        "Avg Gain %": round(float(avg_gain), 2),
+        "Avg Loss %": round(float(avg_loss), 2),
+        "Profit Factor": round(float(profit_factor), 2) if profit_factor != 999.0 else 999.0,
+        "Expectancy %": round(float(expectancy), 2),
+        "Net Return %": round(float(net_return), 2),
+        "Max Drawdown %": round(float(max_dd), 2),
+    }
+
+def run_breakout_backtest(df, initial_capital=100000, risk_per_trade_pct=1.0, rr_ratio=2.0):
+    """
+    Simple breakout backtest:
+    - Entry: close > previous 20D high
+    - Stop: recent 20D low OR ATR-based
+    - Exit priority:
+        1) stop loss hit
+        2) target hit
+        3) time exit after 10 bars
+    - Single active trade at a time
+    """
+    if df.empty or len(df) < 80:
+        return [], [initial_capital]
+
+    d = df.copy().dropna().reset_index()
+    equity = initial_capital
+    equity_curve = [equity]
+    trades = []
+    in_trade = False
+    trade = None
+
+    for i in range(50, len(d) - 1):
+        row = d.iloc[i]
+
+        if not in_trade:
+            recent_high = d.loc[i-20:i-1, "High"].max()
+            recent_low = d.loc[i-20:i-1, "Low"].min()
+            atr = row["ATR14"] if "ATR14" in d.columns and pd.notna(row["ATR14"]) else max((row["High"] - row["Low"]), 1)
+
+            breakout_signal = row["Close"] > recent_high
+            trend_ok = row["SMA20"] > row["SMA50"] if "SMA20" in d.columns and "SMA50" in d.columns else True
+            rsi_ok = 45 <= row["RSI14"] <= 75 if "RSI14" in d.columns and pd.notna(row["RSI14"]) else True
+
+            if breakout_signal and trend_ok and rsi_ok:
+                entry = float(row["Close"])
+                stop = max(float(entry - atr * 1.5), float(recent_low))
+                risk_per_share = max(entry - stop, 0.01)
+                risk_amount = equity * (risk_per_trade_pct / 100.0)
+                qty = max(int(risk_amount // risk_per_share), 1)
+                target = entry + (risk_per_share * rr_ratio)
+
+                trade = {
+                    "Entry Date": row["Date"] if "Date" in row else d.iloc[i, 0],
+                    "Entry Price": entry,
+                    "Stop": stop,
+                    "Target": target,
+                    "Qty": qty,
+                    "Entry Index": i,
+                }
+                in_trade = True
+
+        else:
+            current = d.iloc[i]
+            low = float(current["Low"])
+            high = float(current["High"])
+            close = float(current["Close"])
+            bars_held = i - trade["Entry Index"]
+
+            exit_reason = None
+            exit_price = None
+
+            if low <= trade["Stop"]:
+                exit_reason = "Stop Loss"
+                exit_price = trade["Stop"]
+            elif high >= trade["Target"]:
+                exit_reason = "Target Hit"
+                exit_price = trade["Target"]
+            elif bars_held >= 10:
+                exit_reason = "Time Exit"
+                exit_price = close
+
+            if exit_reason:
+                pl = (exit_price - trade["Entry Price"]) * trade["Qty"]
+                ret_pct = ((exit_price / trade["Entry Price"]) - 1) * 100
+
+                equity += pl
+                equity_curve.append(equity)
+
+                trades.append({
+                    "Entry Date": trade["Entry Date"],
+                    "Exit Date": current["Date"] if "Date" in current else d.iloc[i, 0],
+                    "Entry": round(trade["Entry Price"], 2),
+                    "Exit": round(exit_price, 2),
+                    "Qty": trade["Qty"],
+                    "P/L ₹": round(pl, 2),
+                    "Return %": round(ret_pct, 2),
+                    "Reason": exit_reason,
+                })
+
+                in_trade = False
+                trade = None
+
+    return trades, equity_curve
+
+def run_rsi_pullback_backtest(df, initial_capital=100000, risk_per_trade_pct=1.0, rr_ratio=1.8):
+    """
+    RSI Pullback in uptrend:
+    - SMA20 > SMA50
+    - RSI between 35 and 50
+    - bullish close (close > previous close)
+    """
+    if df.empty or len(df) < 80:
+        return [], [initial_capital]
+
+    d = df.copy().dropna().reset_index()
+    equity = initial_capital
+    equity_curve = [equity]
+    trades = []
+    in_trade = False
+    trade = None
+
+    for i in range(50, len(d) - 1):
+        row = d.iloc[i]
+
+        if not in_trade:
+            trend_ok = row["SMA20"] > row["SMA50"]
+            rsi_ok = 35 <= row["RSI14"] <= 50
+            bullish_bar = row["Close"] > d.iloc[i - 1]["Close"]
+
+            if trend_ok and rsi_ok and bullish_bar:
+                atr = row["ATR14"] if pd.notna(row["ATR14"]) else max((row["High"] - row["Low"]), 1)
+                entry = float(row["Close"])
+                stop = float(entry - atr * 1.3)
+                risk_per_share = max(entry - stop, 0.01)
+                risk_amount = equity * (risk_per_trade_pct / 100.0)
+                qty = max(int(risk_amount // risk_per_share), 1)
+                target = entry + (risk_per_share * rr_ratio)
+
+                trade = {
+                    "Entry Date": row["Date"] if "Date" in row else d.iloc[i, 0],
+                    "Entry Price": entry,
+                    "Stop": stop,
+                    "Target": target,
+                    "Qty": qty,
+                    "Entry Index": i,
+                }
+                in_trade = True
+
+        else:
+            current = d.iloc[i]
+            low = float(current["Low"])
+            high = float(current["High"])
+            close = float(current["Close"])
+            bars_held = i - trade["Entry Index"]
+
+            exit_reason = None
+            exit_price = None
+
+            if low <= trade["Stop"]:
+                exit_reason = "Stop Loss"
+                exit_price = trade["Stop"]
+            elif high >= trade["Target"]:
+                exit_reason = "Target Hit"
+                exit_price = trade["Target"]
+            elif bars_held >= 8:
+                exit_reason = "Time Exit"
+                exit_price = close
+
+            if exit_reason:
+                pl = (exit_price - trade["Entry Price"]) * trade["Qty"]
+                ret_pct = ((exit_price / trade["Entry Price"]) - 1) * 100
+
+                equity += pl
+                equity_curve.append(equity)
+
+                trades.append({
+                    "Entry Date": trade["Entry Date"],
+                    "Exit Date": current["Date"] if "Date" in current else d.iloc[i, 0],
+                    "Entry": round(trade["Entry Price"], 2),
+                    "Exit": round(exit_price, 2),
+                    "Qty": trade["Qty"],
+                    "P/L ₹": round(pl, 2),
+                    "Return %": round(ret_pct, 2),
+                    "Reason": exit_reason,
+                })
+
+                in_trade = False
+                trade = None
+
+    return trades, equity_curve
+
+def run_trend_follow_backtest(df, initial_capital=100000, risk_per_trade_pct=1.0, rr_ratio=2.2):
+    """
+    Trend follow:
+    - SMA20 > SMA50
+    - MACD > MACD_SIGNAL
+    - Close above SMA20
+    """
+    if df.empty or len(df) < 80:
+        return [], [initial_capital]
+
+    d = df.copy().dropna().reset_index()
+    equity = initial_capital
+    equity_curve = [equity]
+    trades = []
+    in_trade = False
+    trade = None
+
+    for i in range(50, len(d) - 1):
+        row = d.iloc[i]
+
+        if not in_trade:
+            cond = (
+                row["SMA20"] > row["SMA50"]
+                and row["MACD"] > row["MACD_SIGNAL"]
+                and row["Close"] > row["SMA20"]
+            )
+
+            if cond:
+                atr = row["ATR14"] if pd.notna(row["ATR14"]) else max((row["High"] - row["Low"]), 1)
+                entry = float(row["Close"])
+                stop = float(entry - atr * 1.6)
+                risk_per_share = max(entry - stop, 0.01)
+                risk_amount = equity * (risk_per_trade_pct / 100.0)
+                qty = max(int(risk_amount // risk_per_share), 1)
+                target = entry + (risk_per_share * rr_ratio)
+
+                trade = {
+                    "Entry Date": row["Date"] if "Date" in row else d.iloc[i, 0],
+                    "Entry Price": entry,
+                    "Stop": stop,
+                    "Target": target,
+                    "Qty": qty,
+                    "Entry Index": i,
+                }
+                in_trade = True
+
+        else:
+            current = d.iloc[i]
+            low = float(current["Low"])
+            high = float(current["High"])
+            close = float(current["Close"])
+            bars_held = i - trade["Entry Index"]
+
+            exit_reason = None
+            exit_price = None
+
+            if low <= trade["Stop"]:
+                exit_reason = "Stop Loss"
+                exit_price = trade["Stop"]
+            elif high >= trade["Target"]:
+                exit_reason = "Target Hit"
+                exit_price = trade["Target"]
+            elif bars_held >= 12:
+                exit_reason = "Time Exit"
+                exit_price = close
+
+            if exit_reason:
+                pl = (exit_price - trade["Entry Price"]) * trade["Qty"]
+                ret_pct = ((exit_price / trade["Entry Price"]) - 1) * 100
+
+                equity += pl
+                equity_curve.append(equity)
+
+                trades.append({
+                    "Entry Date": trade["Entry Date"],
+                    "Exit Date": current["Date"] if "Date" in current else d.iloc[i, 0],
+                    "Entry": round(trade["Entry Price"], 2),
+                    "Exit": round(exit_price, 2),
+                    "Qty": trade["Qty"],
+                    "P/L ₹": round(pl, 2),
+                    "Return %": round(ret_pct, 2),
+                    "Reason": exit_reason,
+                })
+
+                in_trade = False
+                trade = None
+
+    return trades, equity_curve
+
+def plot_equity_curve(equity_curve, title="Equity Curve"):
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=list(range(len(equity_curve))),
+            y=equity_curve,
+            mode="lines+markers",
+            name="Equity",
+        )
+    )
+    fig.update_layout(
+        title=title,
+        template="plotly_dark",
+        height=340,
+        margin=dict(l=8, r=8, t=36, b=8),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+    return fig
+
+def run_backtest_by_strategy(df, strategy_name, initial_capital=100000, risk_per_trade_pct=1.0, rr_ratio=2.0):
+    if strategy_name == "Breakout":
+        return run_breakout_backtest(df, initial_capital, risk_per_trade_pct, rr_ratio)
+    elif strategy_name == "RSI Pullback":
+        return run_rsi_pullback_backtest(df, initial_capital, risk_per_trade_pct, rr_ratio=1.8)
+    elif strategy_name == "Trend Follow":
+        return run_trend_follow_backtest(df, initial_capital, risk_per_trade_pct, rr_ratio=2.2)
+    else:
+        return [], [initial_capital]
 
 # -------------------------------------------------
 # PDF HELPERS
