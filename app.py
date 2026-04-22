@@ -1549,6 +1549,25 @@ with st.sidebar:
     )
 
     run_scan = st.button("Run Institutional Scan", key="run_scan_btn")
+        st.markdown("---")
+    st.markdown("### V14 Backtest Engine")
+    backtest_strategy = st.selectbox(
+        "Backtest Strategy",
+        ["Breakout", "Trend Follow", "RSI Pullback"],
+        index=0,
+    )
+    backtest_period = st.selectbox(
+        "Backtest Period",
+        ["1y", "2y", "5y"],
+        index=1,
+    )
+    backtest_initial_capital = st.number_input(
+        "Backtest Initial Capital (₹)",
+        min_value=10000,
+        value=100000,
+        step=10000,
+    )
+    run_backtest = st.button("Run Backtest Engine", key="run_backtest_btn")
 
 # -------------------------------------------------
 # HEADER / LOGO
@@ -2597,6 +2616,170 @@ if run_scan:
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("No valid scanner results available for the selected universe.")
+        # -------------------------------------------------
+# V14 BACKTEST ENGINE MODULE
+# -------------------------------------------------
+if run_backtest:
+    st.markdown(
+        "<div class='panel'><div class='panel-title'>V14 Strategy Backtest Engine</div><div class='subtle-divider'></div></div>",
+        unsafe_allow_html=True,
+    )
+
+    # Selected Stock Backtest
+    bt_raw = get_history(symbol, period=backtest_period)
+    bt_df = compute_indicators(bt_raw) if not bt_raw.empty else pd.DataFrame()
+
+    if bt_df.empty or len(bt_df) < 80:
+        st.warning("Not enough data available for selected stock backtest.")
+    else:
+        st.markdown(
+            f"""
+            <div class='panel'>
+                <div class='panel-title'>Selected Stock Backtest • {symbol.replace('.NS','')} • {backtest_strategy}</div>
+                <div class='subtle-divider'></div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        selected_trades, selected_equity = run_backtest_by_strategy(
+            bt_df,
+            backtest_strategy,
+            initial_capital=backtest_initial_capital,
+            risk_per_trade_pct=risk_pct,
+            rr_ratio=rr_ratio,
+        )
+
+        selected_summary = summarize_backtest(
+            selected_trades,
+            selected_equity,
+            initial_capital=backtest_initial_capital,
+        )
+
+        sb1, sb2, sb3, sb4 = st.columns(4, gap="small")
+        with sb1:
+            metric_box("Total Trades", f"{selected_summary['Total Trades']}", "Selected stock", None)
+        with sb2:
+            metric_box("Win Rate", f"{selected_summary['Win Rate %']:.2f}%", "Hit ratio", selected_summary["Win Rate %"] >= 50)
+        with sb3:
+            metric_box("Net Return", f"{selected_summary['Net Return %']:+.2f}%", "Strategy return", selected_summary["Net Return %"] >= 0)
+        with sb4:
+            metric_box("Max Drawdown", f"{selected_summary['Max Drawdown %']:.2f}%", "Lower is better", selected_summary["Max Drawdown %"] >= -12)
+
+        sb5, sb6, sb7, sb8 = st.columns(4, gap="small")
+        with sb5:
+            metric_box("Avg Gain", f"{selected_summary['Avg Gain %']:+.2f}%", "Winning trades", selected_summary["Avg Gain %"] >= 0)
+        with sb6:
+            metric_box("Avg Loss", f"{selected_summary['Avg Loss %']:+.2f}%", "Losing trades", selected_summary["Avg Loss %"] > -2)
+        with sb7:
+            metric_box("Profit Factor", f"{selected_summary['Profit Factor']}", "Gross profit / loss", selected_summary["Profit Factor"] >= 1.2)
+        with sb8:
+            metric_box("Expectancy", f"{selected_summary['Expectancy %']:+.2f}%", "Per trade edge", selected_summary["Expectancy %"] >= 0)
+
+        st.plotly_chart(
+            plot_equity_curve(selected_equity, f"{symbol.replace('.NS','')} Equity Curve"),
+            use_container_width=True,
+        )
+
+        if selected_trades:
+            st.dataframe(pd.DataFrame(selected_trades), use_container_width=True)
+        else:
+            st.info("No trades generated for selected stock under current strategy rules.")
+
+    # Scanner Results Backtest
+    st.markdown(
+        "<div class='panel'><div class='panel-title'>Scanner Top Setups Backtest</div><div class='subtle-divider'></div></div>",
+        unsafe_allow_html=True,
+    )
+
+    if st.session_state.scan_df.empty:
+        st.info("Run Institutional Scan first to enable scanner results backtest.")
+    else:
+        scan_candidates = st.session_state.scan_df.head(5)["Symbol"].tolist()
+        scanner_results = []
+
+        progress_bt = st.progress(0)
+        status_bt = st.empty()
+
+        for idx, sc_sym in enumerate(scan_candidates, start=1):
+            status_bt.info(f"Backtesting scanner setup {sc_sym} ({idx}/{len(scan_candidates)})")
+
+            sc_raw = get_history(sc_sym, period=backtest_period)
+            sc_df = compute_indicators(sc_raw) if not sc_raw.empty else pd.DataFrame()
+
+            if not sc_df.empty and len(sc_df) >= 80:
+                sc_trades, sc_equity = run_backtest_by_strategy(
+                    sc_df,
+                    backtest_strategy,
+                    initial_capital=backtest_initial_capital,
+                    risk_per_trade_pct=risk_pct,
+                    rr_ratio=rr_ratio,
+                )
+
+                sc_summary = summarize_backtest(
+                    sc_trades,
+                    sc_equity,
+                    initial_capital=backtest_initial_capital,
+                )
+
+                scanner_results.append({
+                    "Symbol": sc_sym,
+                    "Total Trades": sc_summary["Total Trades"],
+                    "Win Rate %": sc_summary["Win Rate %"],
+                    "Net Return %": sc_summary["Net Return %"],
+                    "Max Drawdown %": sc_summary["Max Drawdown %"],
+                    "Profit Factor": sc_summary["Profit Factor"],
+                    "Expectancy %": sc_summary["Expectancy %"],
+                })
+
+            progress_bt.progress(idx / len(scan_candidates))
+
+        status_bt.empty()
+
+        if scanner_results:
+            scanner_bt_df = pd.DataFrame(scanner_results).sort_values(
+                ["Net Return %", "Win Rate %"],
+                ascending=[False, False]
+            ).reset_index(drop=True)
+
+            top_cols = st.columns(min(5, len(scanner_bt_df)), gap="small")
+            for i, (_, row) in enumerate(scanner_bt_df.head(5).iterrows()):
+                with top_cols[i]:
+                    rank = i + 1
+                    color = "#22c55e" if rank == 1 else "#60a5fa" if rank in [2, 3] else "#a78bfa"
+                    st.markdown(
+                        f"""
+                        <div class='scanner-rank-card'>
+                            <div style='font-size:0.78rem;font-weight:900;color:{color}'>BACKTEST RANK #{rank}</div>
+                            <div style='font-size:0.95rem;font-weight:900;color:#fff;margin-top:4px'>{row['Symbol'].replace('.NS','')}</div>
+                            <div style='color:#86efac;font-weight:800;margin-top:4px'>Return: {row['Net Return %']:+.2f}%</div>
+                            <div style='color:#e2e8f0;margin-top:4px'>Win Rate: {row['Win Rate %']:.2f}%</div>
+                            <div style='color:#e2e8f0'>PF: {row['Profit Factor']}</div>
+                            <div style='color:#fca5a5'>MDD: {row['Max Drawdown %']:.2f}%</div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+            st.dataframe(scanner_bt_df, use_container_width=True)
+
+            fig_bt_bar = px.bar(
+                scanner_bt_df,
+                x="Symbol",
+                y="Net Return %",
+                hover_data=["Win Rate %", "Profit Factor", "Max Drawdown %", "Expectancy %"],
+                template="plotly_dark",
+                title="Scanner Backtest Ranking • Net Return %",
+            )
+            fig_bt_bar.update_layout(
+                height=380,
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                margin=dict(l=8, r=8, t=36, b=8),
+            )
+            st.plotly_chart(fig_bt_bar, use_container_width=True)
+        else:
+            st.warning("No valid scanner backtest results available for current settings.")
 
 # -------------------------------------------------
 # FOOTER
