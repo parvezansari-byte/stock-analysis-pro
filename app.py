@@ -1,8 +1,7 @@
-# FINAL NILE V13.1.1 CLOUD OPTIMIZED + BREADTH FIX
+# FINAL NILE V13 PDF REPORT EXPORT
 # Single full app.py
-# Same exact UI • All V13 features preserved • Safer cloud performance
-# Added: faster scanner, lighter breadth loops, cached PDF data helpers, improved PDF styling
-# Fixed: Market Breadth zero issue on Streamlit Cloud
+# Same premium terminal UI • Same cloud-safe structure • All V12.8 features preserved
+# Added: PDF export for Stock Report + Portfolio Summary + Scanner Top Setups (if scanner run)
 
 import time
 from datetime import datetime
@@ -33,6 +32,7 @@ try:
         Spacer,
         Table,
         TableStyle,
+        PageBreak,
     )
     PDF_AVAILABLE = True
 except Exception:
@@ -49,7 +49,7 @@ st.set_page_config(
 )
 
 # -------------------------------------------------
-# PREMIUM IMPERIAL TERMINAL CSS (SAME EXACT UI)
+# PREMIUM IMPERIAL TERMINAL CSS
 # -------------------------------------------------
 st.markdown(
     """
@@ -350,19 +350,19 @@ SECTOR_MAP = {
 # -------------------------------------------------
 # HELPERS
 # -------------------------------------------------
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=900)
 def get_history(symbol: str, period: str = "1y", interval: str = "1d"):
     if yf is None:
         return pd.DataFrame()
     try:
-        df = yf.download(symbol, period=period, interval=interval, auto_adjust=True, progress=False, threads=False)
+        df = yf.download(symbol, period=period, interval=interval, auto_adjust=True, progress=False)
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = [c[0] for c in df.columns]
         return df.dropna().copy()
     except Exception:
         return pd.DataFrame()
 
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=1800)
 def get_info(symbol: str):
     if yf is None:
         return {}
@@ -371,7 +371,7 @@ def get_info(symbol: str):
     except Exception:
         return {}
 
-@st.cache_data(ttl=1800, show_spinner=False)
+@st.cache_data(ttl=1800)
 def get_financials(symbol: str):
     if yf is None:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
@@ -385,7 +385,7 @@ def get_financials(symbol: str):
     except Exception:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=300)
 def get_live_index(symbol: str):
     data = get_history(symbol, period="5d")
     if data.empty or len(data) < 2:
@@ -428,57 +428,6 @@ def compute_indicators(df: pd.DataFrame):
 
     return d.dropna().copy()
 
-def compute_scan_metrics_fast(df: pd.DataFrame):
-    if df.empty or len(df) < 35:
-        return None
-
-    d = df.copy()
-    close = d["Close"]
-    high = d["High"]
-    low = d["Low"]
-    vol = d["Volume"] if "Volume" in d.columns else pd.Series(index=d.index, dtype=float)
-
-    sma20 = close.rolling(20).mean()
-    sma50 = close.rolling(50).mean()
-
-    delta = close.diff()
-    gain = delta.clip(lower=0).rolling(14).mean()
-    loss = (-delta.clip(upper=0)).rolling(14).mean()
-    rs = gain / loss.replace(0, np.nan)
-    rsi14 = 100 - (100 / (1 + rs))
-
-    ema12 = close.ewm(span=12, adjust=False).mean()
-    ema26 = close.ewm(span=26, adjust=False).mean()
-    macd = ema12 - ema26
-    macd_signal = macd.ewm(span=9, adjust=False).mean()
-
-    tr1 = high - low
-    tr2 = (high - close.shift()).abs()
-    tr3 = (low - close.shift()).abs()
-    tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
-    atr14 = tr.rolling(14).mean()
-
-    if pd.isna(sma20.iloc[-1]) or pd.isna(sma50.iloc[-1]) or pd.isna(rsi14.iloc[-1]) or pd.isna(atr14.iloc[-1]):
-        return None
-
-    vol20 = vol.tail(20).mean() if len(vol) >= 20 else np.nan
-
-    return {
-        "close": float(close.iloc[-1]),
-        "prev_close": float(close.iloc[-2]) if len(close) > 1 else float(close.iloc[-1]),
-        "sma20": float(sma20.iloc[-1]),
-        "sma50": float(sma50.iloc[-1]),
-        "rsi": float(rsi14.iloc[-1]),
-        "macd": float(macd.iloc[-1]),
-        "macd_signal": float(macd_signal.iloc[-1]),
-        "atr": float(atr14.iloc[-1]),
-        "breakout": float(high.tail(20).max()),
-        "support": float(low.tail(20).min()),
-        "last_volume": float(vol.iloc[-1]) if len(vol) > 0 and pd.notna(vol.iloc[-1]) else np.nan,
-        "vol20": float(vol20) if pd.notna(vol20) else np.nan,
-        "day_ret": ((float(close.iloc[-1]) / float(close.iloc[-2])) - 1) * 100 if len(close) > 1 and float(close.iloc[-2]) != 0 else 0.0,
-    }
-
 def score_stock(df: pd.DataFrame):
     if df.empty or len(df) < 60:
         return 0, "Insufficient Data", {}
@@ -519,26 +468,6 @@ def score_stock(df: pd.DataFrame):
 
     verdict = "Strong Bullish" if score >= 75 else "Bullish" if score >= 55 else "Neutral" if score >= 35 else "Weak"
     return score, verdict, reasons
-
-def score_from_metrics(m):
-    score = 0
-    if m["close"] > m["sma20"]:
-        score += 10
-    if m["close"] > m["sma50"]:
-        score += 15
-    if m["sma20"] > m["sma50"]:
-        score += 15
-    if 50 < m["rsi"] < 70:
-        score += 15
-    if m["macd"] > m["macd_signal"]:
-        score += 15
-    if m["close"] >= m["breakout"] * 0.985:
-        score += 20
-    if pd.notna(m["vol20"]) and pd.notna(m["last_volume"]) and m["last_volume"] > m["vol20"] * 1.2:
-        score += 10
-
-    verdict = "Strong Bullish" if score >= 75 else "Bullish" if score >= 55 else "Neutral" if score >= 35 else "Weak"
-    return score, verdict
 
 def ai_badge(score, rsi, trend_signal, macd_signal):
     if score >= 75 and trend_signal == "Bullish" and macd_signal == "Bullish" and rsi < 75:
@@ -730,360 +659,9 @@ def make_portfolio_risk_gauge(value):
         paper_bgcolor="rgba(0,0,0,0)",
     )
     return fig
-    # -------------------------------------------------
-# V14 BACKTEST ENGINE HELPERS
-# -------------------------------------------------
-def calculate_max_drawdown(equity_curve):
-    if not equity_curve:
-        return 0.0
-    eq = pd.Series(equity_curve)
-    peak = eq.cummax()
-    dd = ((eq - peak) / peak.replace(0, np.nan)) * 100
-    return float(dd.min()) if not dd.empty else 0.0
-
-def summarize_backtest(trades, equity_curve, initial_capital=100000):
-    if not trades:
-        return {
-            "Total Trades": 0,
-            "Win Rate %": 0.0,
-            "Avg Gain %": 0.0,
-            "Avg Loss %": 0.0,
-            "Profit Factor": 0.0,
-            "Expectancy %": 0.0,
-            "Net Return %": 0.0,
-            "Max Drawdown %": 0.0,
-        }
-
-    trade_df = pd.DataFrame(trades)
-    wins = trade_df[trade_df["Return %"] > 0]
-    losses = trade_df[trade_df["Return %"] <= 0]
-
-    total_trades = len(trade_df)
-    win_rate = (len(wins) / total_trades) * 100 if total_trades else 0.0
-    avg_gain = wins["Return %"].mean() if not wins.empty else 0.0
-    avg_loss = losses["Return %"].mean() if not losses.empty else 0.0
-
-    gross_profit = wins["P/L ₹"].sum() if not wins.empty else 0.0
-    gross_loss = abs(losses["P/L ₹"].sum()) if not losses.empty else 0.0
-    profit_factor = (gross_profit / gross_loss) if gross_loss > 0 else (999.0 if gross_profit > 0 else 0.0)
-
-    expectancy = trade_df["Return %"].mean() if total_trades else 0.0
-    net_return = ((equity_curve[-1] / initial_capital) - 1) * 100 if equity_curve else 0.0
-    max_dd = calculate_max_drawdown(equity_curve)
-
-    return {
-        "Total Trades": int(total_trades),
-        "Win Rate %": round(float(win_rate), 2),
-        "Avg Gain %": round(float(avg_gain), 2),
-        "Avg Loss %": round(float(avg_loss), 2),
-        "Profit Factor": round(float(profit_factor), 2) if profit_factor != 999.0 else 999.0,
-        "Expectancy %": round(float(expectancy), 2),
-        "Net Return %": round(float(net_return), 2),
-        "Max Drawdown %": round(float(max_dd), 2),
-    }
-
-def run_breakout_backtest(df, initial_capital=100000, risk_per_trade_pct=1.0, rr_ratio=2.0):
-    """
-    Simple breakout backtest:
-    - Entry: close > previous 20D high
-    - Stop: recent 20D low OR ATR-based
-    - Exit priority:
-        1) stop loss hit
-        2) target hit
-        3) time exit after 10 bars
-    - Single active trade at a time
-    """
-    if df.empty or len(df) < 80:
-        return [], [initial_capital]
-
-    d = df.copy().dropna().reset_index()
-    equity = initial_capital
-    equity_curve = [equity]
-    trades = []
-    in_trade = False
-    trade = None
-
-    for i in range(50, len(d) - 1):
-        row = d.iloc[i]
-
-        if not in_trade:
-            recent_high = d.loc[i-20:i-1, "High"].max()
-            recent_low = d.loc[i-20:i-1, "Low"].min()
-            atr = row["ATR14"] if "ATR14" in d.columns and pd.notna(row["ATR14"]) else max((row["High"] - row["Low"]), 1)
-
-            breakout_signal = row["Close"] > recent_high
-            trend_ok = row["SMA20"] > row["SMA50"] if "SMA20" in d.columns and "SMA50" in d.columns else True
-            rsi_ok = 45 <= row["RSI14"] <= 75 if "RSI14" in d.columns and pd.notna(row["RSI14"]) else True
-
-            if breakout_signal and trend_ok and rsi_ok:
-                entry = float(row["Close"])
-                stop = max(float(entry - atr * 1.5), float(recent_low))
-                risk_per_share = max(entry - stop, 0.01)
-                risk_amount = equity * (risk_per_trade_pct / 100.0)
-                qty = max(int(risk_amount // risk_per_share), 1)
-                target = entry + (risk_per_share * rr_ratio)
-
-                trade = {
-                    "Entry Date": row["Date"] if "Date" in row else d.iloc[i, 0],
-                    "Entry Price": entry,
-                    "Stop": stop,
-                    "Target": target,
-                    "Qty": qty,
-                    "Entry Index": i,
-                }
-                in_trade = True
-
-        else:
-            current = d.iloc[i]
-            low = float(current["Low"])
-            high = float(current["High"])
-            close = float(current["Close"])
-            bars_held = i - trade["Entry Index"]
-
-            exit_reason = None
-            exit_price = None
-
-            if low <= trade["Stop"]:
-                exit_reason = "Stop Loss"
-                exit_price = trade["Stop"]
-            elif high >= trade["Target"]:
-                exit_reason = "Target Hit"
-                exit_price = trade["Target"]
-            elif bars_held >= 10:
-                exit_reason = "Time Exit"
-                exit_price = close
-
-            if exit_reason:
-                pl = (exit_price - trade["Entry Price"]) * trade["Qty"]
-                ret_pct = ((exit_price / trade["Entry Price"]) - 1) * 100
-
-                equity += pl
-                equity_curve.append(equity)
-
-                trades.append({
-                    "Entry Date": trade["Entry Date"],
-                    "Exit Date": current["Date"] if "Date" in current else d.iloc[i, 0],
-                    "Entry": round(trade["Entry Price"], 2),
-                    "Exit": round(exit_price, 2),
-                    "Qty": trade["Qty"],
-                    "P/L ₹": round(pl, 2),
-                    "Return %": round(ret_pct, 2),
-                    "Reason": exit_reason,
-                })
-
-                in_trade = False
-                trade = None
-
-    return trades, equity_curve
-
-def run_rsi_pullback_backtest(df, initial_capital=100000, risk_per_trade_pct=1.0, rr_ratio=1.8):
-    """
-    RSI Pullback in uptrend:
-    - SMA20 > SMA50
-    - RSI between 35 and 50
-    - bullish close (close > previous close)
-    """
-    if df.empty or len(df) < 80:
-        return [], [initial_capital]
-
-    d = df.copy().dropna().reset_index()
-    equity = initial_capital
-    equity_curve = [equity]
-    trades = []
-    in_trade = False
-    trade = None
-
-    for i in range(50, len(d) - 1):
-        row = d.iloc[i]
-
-        if not in_trade:
-            trend_ok = row["SMA20"] > row["SMA50"]
-            rsi_ok = 35 <= row["RSI14"] <= 50
-            bullish_bar = row["Close"] > d.iloc[i - 1]["Close"]
-
-            if trend_ok and rsi_ok and bullish_bar:
-                atr = row["ATR14"] if pd.notna(row["ATR14"]) else max((row["High"] - row["Low"]), 1)
-                entry = float(row["Close"])
-                stop = float(entry - atr * 1.3)
-                risk_per_share = max(entry - stop, 0.01)
-                risk_amount = equity * (risk_per_trade_pct / 100.0)
-                qty = max(int(risk_amount // risk_per_share), 1)
-                target = entry + (risk_per_share * rr_ratio)
-
-                trade = {
-                    "Entry Date": row["Date"] if "Date" in row else d.iloc[i, 0],
-                    "Entry Price": entry,
-                    "Stop": stop,
-                    "Target": target,
-                    "Qty": qty,
-                    "Entry Index": i,
-                }
-                in_trade = True
-
-        else:
-            current = d.iloc[i]
-            low = float(current["Low"])
-            high = float(current["High"])
-            close = float(current["Close"])
-            bars_held = i - trade["Entry Index"]
-
-            exit_reason = None
-            exit_price = None
-
-            if low <= trade["Stop"]:
-                exit_reason = "Stop Loss"
-                exit_price = trade["Stop"]
-            elif high >= trade["Target"]:
-                exit_reason = "Target Hit"
-                exit_price = trade["Target"]
-            elif bars_held >= 8:
-                exit_reason = "Time Exit"
-                exit_price = close
-
-            if exit_reason:
-                pl = (exit_price - trade["Entry Price"]) * trade["Qty"]
-                ret_pct = ((exit_price / trade["Entry Price"]) - 1) * 100
-
-                equity += pl
-                equity_curve.append(equity)
-
-                trades.append({
-                    "Entry Date": trade["Entry Date"],
-                    "Exit Date": current["Date"] if "Date" in current else d.iloc[i, 0],
-                    "Entry": round(trade["Entry Price"], 2),
-                    "Exit": round(exit_price, 2),
-                    "Qty": trade["Qty"],
-                    "P/L ₹": round(pl, 2),
-                    "Return %": round(ret_pct, 2),
-                    "Reason": exit_reason,
-                })
-
-                in_trade = False
-                trade = None
-
-    return trades, equity_curve
-
-def run_trend_follow_backtest(df, initial_capital=100000, risk_per_trade_pct=1.0, rr_ratio=2.2):
-    """
-    Trend follow:
-    - SMA20 > SMA50
-    - MACD > MACD_SIGNAL
-    - Close above SMA20
-    """
-    if df.empty or len(df) < 80:
-        return [], [initial_capital]
-
-    d = df.copy().dropna().reset_index()
-    equity = initial_capital
-    equity_curve = [equity]
-    trades = []
-    in_trade = False
-    trade = None
-
-    for i in range(50, len(d) - 1):
-        row = d.iloc[i]
-
-        if not in_trade:
-            cond = (
-                row["SMA20"] > row["SMA50"]
-                and row["MACD"] > row["MACD_SIGNAL"]
-                and row["Close"] > row["SMA20"]
-            )
-
-            if cond:
-                atr = row["ATR14"] if pd.notna(row["ATR14"]) else max((row["High"] - row["Low"]), 1)
-                entry = float(row["Close"])
-                stop = float(entry - atr * 1.6)
-                risk_per_share = max(entry - stop, 0.01)
-                risk_amount = equity * (risk_per_trade_pct / 100.0)
-                qty = max(int(risk_amount // risk_per_share), 1)
-                target = entry + (risk_per_share * rr_ratio)
-
-                trade = {
-                    "Entry Date": row["Date"] if "Date" in row else d.iloc[i, 0],
-                    "Entry Price": entry,
-                    "Stop": stop,
-                    "Target": target,
-                    "Qty": qty,
-                    "Entry Index": i,
-                }
-                in_trade = True
-
-        else:
-            current = d.iloc[i]
-            low = float(current["Low"])
-            high = float(current["High"])
-            close = float(current["Close"])
-            bars_held = i - trade["Entry Index"]
-
-            exit_reason = None
-            exit_price = None
-
-            if low <= trade["Stop"]:
-                exit_reason = "Stop Loss"
-                exit_price = trade["Stop"]
-            elif high >= trade["Target"]:
-                exit_reason = "Target Hit"
-                exit_price = trade["Target"]
-            elif bars_held >= 12:
-                exit_reason = "Time Exit"
-                exit_price = close
-
-            if exit_reason:
-                pl = (exit_price - trade["Entry Price"]) * trade["Qty"]
-                ret_pct = ((exit_price / trade["Entry Price"]) - 1) * 100
-
-                equity += pl
-                equity_curve.append(equity)
-
-                trades.append({
-                    "Entry Date": trade["Entry Date"],
-                    "Exit Date": current["Date"] if "Date" in current else d.iloc[i, 0],
-                    "Entry": round(trade["Entry Price"], 2),
-                    "Exit": round(exit_price, 2),
-                    "Qty": trade["Qty"],
-                    "P/L ₹": round(pl, 2),
-                    "Return %": round(ret_pct, 2),
-                    "Reason": exit_reason,
-                })
-
-                in_trade = False
-                trade = None
-
-    return trades, equity_curve
-
-def plot_equity_curve(equity_curve, title="Equity Curve"):
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=list(range(len(equity_curve))),
-            y=equity_curve,
-            mode="lines+markers",
-            name="Equity",
-        )
-    )
-    fig.update_layout(
-        title=title,
-        template="plotly_dark",
-        height=340,
-        margin=dict(l=8, r=8, t=36, b=8),
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-    )
-    return fig
-
-def run_backtest_by_strategy(df, strategy_name, initial_capital=100000, risk_per_trade_pct=1.0, rr_ratio=2.0):
-    if strategy_name == "Breakout":
-        return run_breakout_backtest(df, initial_capital, risk_per_trade_pct, rr_ratio)
-    elif strategy_name == "RSI Pullback":
-        return run_rsi_pullback_backtest(df, initial_capital, risk_per_trade_pct, rr_ratio=1.8)
-    elif strategy_name == "Trend Follow":
-        return run_trend_follow_backtest(df, initial_capital, risk_per_trade_pct, rr_ratio=2.2)
-    else:
-        return [], [initial_capital]
 
 # -------------------------------------------------
-# PDF HELPERS
+# PDF HELPERS (NEW)
 # -------------------------------------------------
 def pdf_styles():
     styles = getSampleStyleSheet()
@@ -1096,7 +674,7 @@ def pdf_styles():
             leading=22,
             alignment=TA_CENTER,
             textColor=colors.HexColor("#0F172A"),
-            spaceAfter=4,
+            spaceAfter=8,
         ),
         "subtitle": ParagraphStyle(
             "SubNile",
@@ -1116,17 +694,6 @@ def pdf_styles():
             leading=14,
             alignment=TA_LEFT,
             textColor=colors.HexColor("#1E3A8A"),
-            spaceAfter=6,
-            spaceBefore=6,
-        ),
-        "section_alt": ParagraphStyle(
-            "SectionAltNile",
-            parent=styles["Heading2"],
-            fontName="Helvetica-Bold",
-            fontSize=12,
-            leading=14,
-            alignment=TA_LEFT,
-            textColor=colors.HexColor("#0F766E"),
             spaceAfter=6,
             spaceBefore=6,
         ),
@@ -1156,7 +723,7 @@ def pdf_table(data, col_widths=None, header_bg="#0F172A"):
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 8),
         ("BACKGROUND", (0, 1), (-1, -1), colors.HexColor("#F8FAFC")),
-        ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#CBD5E1")),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#CBD5E1")),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LEFTPADDING", (0, 0), (-1, -1), 5),
         ("RIGHTPADDING", (0, 0), (-1, -1), 5),
@@ -1165,30 +732,7 @@ def pdf_table(data, col_widths=None, header_bg="#0F172A"):
     ]))
     return tbl
 
-def pdf_highlight_box(title, value, subtitle=""):
-    data = [[title], [value], [subtitle]]
-    tbl = Table(data, colWidths=[55 * mm])
-    tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#EEF2FF")),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#C7D2FE")),
-        ("INNERGRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#E0E7FF")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor("#1E3A8A")),
-        ("TEXTCOLOR", (0, 1), (-1, 1), colors.HexColor("#0F172A")),
-        ("TEXTCOLOR", (0, 2), (-1, 2), colors.HexColor("#475569")),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (0, 1), (-1, 1), "Helvetica-Bold"),
-        ("FONTNAME", (0, 2), (-1, 2), "Helvetica"),
-        ("FONTSIZE", (0, 0), (-1, 0), 8),
-        ("FONTSIZE", (0, 1), (-1, 1), 12),
-        ("FONTSIZE", (0, 2), (-1, 2), 7),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-        ("TOPPADDING", (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-    ]))
-    return tbl
-
-@st.cache_data(ttl=600, show_spinner=False)
-def prepare_stock_pdf_payload(
+def build_stock_pdf(
     symbol,
     info,
     last_close,
@@ -1206,39 +750,9 @@ def prepare_stock_pdf_payload(
     target,
     qty,
     position_value,
-    portfolio_summary_key=None,
-    scan_summary_key=None,
+    portfolio_analysis_df=None,
+    scan_df=None,
 ):
-    return {
-        "symbol": symbol,
-        "generated": datetime.now().strftime("%d-%b-%Y %I:%M %p"),
-        "last_close": last_close,
-        "change_pct": change_pct,
-        "sector": str(info.get("sector", "N/A")),
-        "industry": str(info.get("industry", "N/A")),
-        "ai_action": ai_action,
-        "conviction": f"{conviction_score}/100 ({conviction_label})",
-        "score": f"{score}/100 ({verdict})",
-        "trend_signal": trend_signal,
-        "macd_signal": macd_signal,
-        "rsi": round(float(rsi), 2) if pd.notna(rsi) else "N/A",
-        "entry": entry,
-        "stop_loss": stop_loss,
-        "target": target,
-        "qty": qty,
-        "position_value": position_value,
-        "market_cap": f"₹{info.get('marketCap', 0)/1e7:,.0f} Cr" if pd.notna(info.get("marketCap", np.nan)) else "N/A",
-        "trailing_pe": str(info.get("trailingPE", "N/A")),
-        "forward_pe": str(info.get("forwardPE", "N/A")),
-        "price_to_book": str(info.get("priceToBook", "N/A")),
-        "roe": str(round((info.get("returnOnEquity", 0) or 0) * 100, 2)) if info.get("returnOnEquity") is not None else "N/A",
-        "de_ratio": str(info.get("debtToEquity", "N/A")),
-        "profit_margin": str(round((info.get("profitMargins", 0) or 0) * 100, 2)) if info.get("profitMargins") is not None else "N/A",
-        "portfolio_summary_key": portfolio_summary_key,
-        "scan_summary_key": scan_summary_key,
-    }
-
-def build_stock_pdf(payload, portfolio_analysis_df=None, scan_df=None):
     if not PDF_AVAILABLE:
         return None
 
@@ -1256,27 +770,22 @@ def build_stock_pdf(payload, portfolio_analysis_df=None, scan_df=None):
 
     story.append(Paragraph("NILE", s["title"]))
     story.append(Paragraph("Premium Stock Research Report", s["subtitle"]))
-    story.append(Spacer(1, 2))
-
-    highlights = Table([[
-        pdf_highlight_box("SYMBOL", payload["symbol"], "Selected Stock"),
-        pdf_highlight_box("AI SIGNAL", payload["ai_action"], "Decision Engine"),
-        pdf_highlight_box("CONVICTION", payload["conviction"], "Confidence Model"),
-    ]], colWidths=[58 * mm, 58 * mm, 58 * mm])
-    story.append(highlights)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 4))
 
     summary_data = [
         ["Field", "Value"],
-        ["Generated", payload["generated"]],
-        ["Current Price", rupee(payload["last_close"])],
-        ["Daily Change", f"{payload['change_pct']:+.2f}%"],
-        ["Sector", payload["sector"]],
-        ["Industry", payload["industry"]],
-        ["Institutional Score", payload["score"]],
-        ["Trend Signal", payload["trend_signal"]],
-        ["MACD Signal", payload["macd_signal"]],
-        ["RSI", str(payload["rsi"])],
+        ["Symbol", symbol],
+        ["Generated", datetime.now().strftime("%d-%b-%Y %I:%M %p")],
+        ["Current Price", rupee(last_close)],
+        ["Daily Change", f"{change_pct:+.2f}%"],
+        ["Sector", str(info.get("sector", "N/A"))],
+        ["Industry", str(info.get("industry", "N/A"))],
+        ["AI Signal", ai_action],
+        ["Conviction", f"{conviction_score}/100 ({conviction_label})"],
+        ["Institutional Score", f"{score}/100 ({verdict})"],
+        ["Trend Signal", trend_signal],
+        ["MACD Signal", macd_signal],
+        ["RSI", f"{rsi:.2f}"],
     ]
     story.append(Paragraph("Stock Summary", s["section"]))
     story.append(pdf_table(summary_data, col_widths=[55 * mm, 115 * mm]))
@@ -1284,25 +793,25 @@ def build_stock_pdf(payload, portfolio_analysis_df=None, scan_df=None):
 
     trade_data = [
         ["Trade Plan", "Value"],
-        ["Suggested Entry", rupee(payload["entry"])],
-        ["Stop Loss", rupee(payload["stop_loss"])],
-        ["Target", rupee(payload["target"])],
-        ["Quantity", str(payload["qty"])],
-        ["Position Size", rupee(payload["position_value"])],
+        ["Suggested Entry", rupee(entry)],
+        ["Stop Loss", rupee(stop_loss)],
+        ["Target", rupee(target)],
+        ["Quantity", str(qty)],
+        ["Position Size", rupee(position_value)],
     ]
-    story.append(Paragraph("Professional Trade Plan", s["section_alt"]))
+    story.append(Paragraph("Professional Trade Plan", s["section"]))
     story.append(pdf_table(trade_data, col_widths=[55 * mm, 115 * mm], header_bg="#0F766E"))
     story.append(Spacer(1, 8))
 
     fundamental_data = [
         ["Fundamental Metric", "Value"],
-        ["Market Cap", payload["market_cap"]],
-        ["P/E", payload["trailing_pe"]],
-        ["Forward P/E", payload["forward_pe"]],
-        ["Price / Book", payload["price_to_book"]],
-        ["ROE (%)", payload["roe"]],
-        ["Debt / Equity", payload["de_ratio"]],
-        ["Profit Margin (%)", payload["profit_margin"]],
+        ["Market Cap", f"₹{info.get('marketCap', 0)/1e7:,.0f} Cr" if pd.notna(info.get("marketCap", np.nan)) else "N/A"],
+        ["P/E", str(info.get("trailingPE", "N/A"))],
+        ["Forward P/E", str(info.get("forwardPE", "N/A"))],
+        ["Price / Book", str(info.get("priceToBook", "N/A"))],
+        ["ROE (%)", str(round((info.get("returnOnEquity", 0) or 0) * 100, 2)) if info.get("returnOnEquity") is not None else "N/A"],
+        ["Debt / Equity", str(info.get("debtToEquity", "N/A"))],
+        ["Profit Margin (%)", str(round((info.get("profitMargins", 0) or 0) * 100, 2)) if info.get("profitMargins") is not None else "N/A"],
     ]
     story.append(Paragraph("Fundamental Snapshot", s["section"]))
     story.append(pdf_table(fundamental_data, col_widths=[65 * mm, 105 * mm], header_bg="#1D4ED8"))
@@ -1326,7 +835,7 @@ def build_stock_pdf(payload, portfolio_analysis_df=None, scan_df=None):
             ["Top Gainer", f"{top_gainer['Symbol']} ({top_gainer['P/L %']:+.2f}%)"],
             ["Top Loser", f"{top_loser['Symbol']} ({top_loser['P/L %']:+.2f}%)"],
         ]
-        story.append(Paragraph("Portfolio Snapshot", s["section_alt"]))
+        story.append(Paragraph("Portfolio Snapshot", s["section"]))
         story.append(pdf_table(port_summary, col_widths=[55 * mm, 115 * mm], header_bg="#7C3AED"))
         story.append(Spacer(1, 8))
 
@@ -1384,23 +893,19 @@ def build_portfolio_pdf(portfolio_analysis_df):
 
     story.append(Paragraph("NILE", s["title"]))
     story.append(Paragraph("Portfolio Command Center Report", s["subtitle"]))
-    story.append(Spacer(1, 2))
-
-    highlights = Table([[
-        pdf_highlight_box("INVESTED", rupee(total_invested), "Capital Deployed"),
-        pdf_highlight_box("CURRENT", rupee(total_current), "Marked-to-Market"),
-        pdf_highlight_box("TOTAL P/L", f"{rupee(total_pl)} ({total_pl_pct:+.2f}%)", "Performance"),
-    ]], colWidths=[58 * mm, 58 * mm, 58 * mm])
-    story.append(highlights)
-    story.append(Spacer(1, 8))
+    story.append(Spacer(1, 4))
 
     summary = [
         ["Portfolio Metric", "Value"],
         ["Generated", datetime.now().strftime("%d-%b-%Y %I:%M %p")],
+        ["Total Invested", rupee(total_invested)],
+        ["Current Value", rupee(total_current)],
+        ["Total P/L", rupee(total_pl)],
+        ["Total P/L %", f"{total_pl_pct:+.2f}%"],
         ["Top Gainer", f"{top_gainer['Symbol']} ({top_gainer['P/L %']:+.2f}%)"],
         ["Top Loser", f"{top_loser['Symbol']} ({top_loser['P/L %']:+.2f}%)"],
     ]
-    story.append(Paragraph("Portfolio Summary", s["section_alt"]))
+    story.append(Paragraph("Portfolio Summary", s["section"]))
     story.append(pdf_table(summary, col_widths=[60 * mm, 110 * mm], header_bg="#7C3AED"))
     story.append(Spacer(1, 8))
 
@@ -1462,17 +967,16 @@ def build_scanner_pdf(scan_df):
 
     story.append(Paragraph("NILE", s["title"]))
     story.append(Paragraph("Institutional Scanner Report", s["subtitle"]))
-    story.append(Spacer(1, 2))
+    story.append(Spacer(1, 4))
 
-    top_symbol = str(scan_df.iloc[0]["Symbol"]) if not scan_df.empty else "N/A"
-    top_score = str(scan_df.iloc[0]["Score"]) if not scan_df.empty else "N/A"
-
-    highlights = Table([[
-        pdf_highlight_box("TOTAL SETUPS", str(len(scan_df)), "Scanned Universe"),
-        pdf_highlight_box("TOP SETUP", top_symbol, "Best Ranked"),
-        pdf_highlight_box("TOP SCORE", top_score, "Institutional Rank"),
-    ]], colWidths=[58 * mm, 58 * mm, 58 * mm])
-    story.append(highlights)
+    summary = [
+        ["Scanner Metric", "Value"],
+        ["Generated", datetime.now().strftime("%d-%b-%Y %I:%M %p")],
+        ["Total Setups", str(len(scan_df))],
+        ["Top Setup", str(scan_df.iloc[0]["Symbol"]) if not scan_df.empty else "N/A"],
+    ]
+    story.append(Paragraph("Scanner Summary", s["section"]))
+    story.append(pdf_table(summary, col_widths=[60 * mm, 110 * mm], header_bg="#15803D"))
     story.append(Spacer(1, 8))
 
     rows = [["Rank", "Symbol", "AI", "Score", "Price", "Entry", "Stop", "RSI"]]
@@ -1503,7 +1007,7 @@ def build_scanner_pdf(scan_df):
     return buffer.getvalue()
 
 # -------------------------------------------------
-# SESSION STATE
+# SESSION STATE FOR SCANNER
 # -------------------------------------------------
 if "scan_df" not in st.session_state:
     st.session_state.scan_df = pd.DataFrame()
@@ -1534,9 +1038,7 @@ with st.sidebar:
     risk_pct = st.slider("Risk per Trade (%)", 0.5, 5.0, 1.0, 0.5)
     rr_ratio = st.slider("Risk : Reward", 1.0, 5.0, 2.0, 0.5)
 
-    max_scan_cap = min(60, len(stock_list))
-    default_scan = min(25, max_scan_cap)
-    scan_count = st.slider("Scanner Universe", 10, max_scan_cap, default_scan)
+    scan_count = st.slider("Scanner Universe", 10, min(100, len(stock_list)), min(30, len(stock_list)))
     compare_symbols = st.multiselect("Multi-Stock Compare", stock_list, default=stock_list[:3], max_selections=5)
 
     st.markdown("---")
@@ -1549,25 +1051,6 @@ with st.sidebar:
     )
 
     run_scan = st.button("Run Institutional Scan", key="run_scan_btn")
-        st.markdown("---")
-    st.markdown("### V14 Backtest Engine")
-    backtest_strategy = st.selectbox(
-        "Backtest Strategy",
-        ["Breakout", "Trend Follow", "RSI Pullback"],
-        index=0,
-    )
-    backtest_period = st.selectbox(
-        "Backtest Period",
-        ["1y", "2y", "5y"],
-        index=1,
-    )
-    backtest_initial_capital = st.number_input(
-        "Backtest Initial Capital (₹)",
-        min_value=10000,
-        value=100000,
-        step=10000,
-    )
-    run_backtest = st.button("Run Backtest Engine", key="run_backtest_btn")
 
 # -------------------------------------------------
 # HEADER / LOGO
@@ -1652,47 +1135,31 @@ with c3:
     )
 
 # -------------------------------------------------
-# MARKET BREADTH STRIP (FIXED ZERO ISSUE)
+# MARKET BREADTH STRIP
 # -------------------------------------------------
-breadth_sample_size = min(12, len(stock_list))  # safer cloud-safe sample
-breadth_symbols = stock_list[:breadth_sample_size]
-
+breadth_symbols = stock_list[:min(30, len(stock_list))]
 advancers = 0
 decliners = 0
 bullish_trend_count = 0
 breadth_rows = []
-valid_breadth_count = 0
 
 for s in breadth_symbols:
-    d = get_history(s, period="6mo")  # safer than 3mo for NSE on Streamlit Cloud
-    if d.empty or len(d) < 35:
-        continue
+    d = get_history(s, period="3mo")
+    d = compute_indicators(d) if not d.empty else pd.DataFrame()
+    if not d.empty and len(d) > 2:
+        last = d.iloc[-1]
+        day_ret = ((d["Close"].iloc[-1] / d["Close"].iloc[-2]) - 1) * 100
+        if day_ret >= 0:
+            advancers += 1
+        else:
+            decliners += 1
+        if last["SMA20"] > last["SMA50"]:
+            bullish_trend_count += 1
+        breadth_rows.append(day_ret)
 
-    m = compute_scan_metrics_fast(d)
-    if not m:
-        continue
-
-    valid_breadth_count += 1
-    day_ret = m.get("day_ret", 0.0)
-
-    if day_ret >= 0:
-        advancers += 1
-    else:
-        decliners += 1
-
-    if m["sma20"] > m["sma50"]:
-        bullish_trend_count += 1
-
-    breadth_rows.append(day_ret)
-
-if valid_breadth_count == 0:
-    breadth_ratio = 0.0
-    trend_ratio = 0.0
-    avg_day_ret = 0.0
-else:
-    avg_day_ret = float(np.mean(breadth_rows)) if breadth_rows else 0.0
-    breadth_ratio = round((advancers / max(valid_breadth_count, 1)) * 100, 1)
-    trend_ratio = round((bullish_trend_count / max(valid_breadth_count, 1)) * 100, 1)
+avg_day_ret = np.mean(breadth_rows) if breadth_rows else 0
+breadth_ratio = round((advancers / max(advancers + decliners, 1)) * 100, 1)
+trend_ratio = round((bullish_trend_count / max(len(breadth_symbols), 1)) * 100, 1)
 
 b1, b2, b3, b4 = st.columns(4, gap="small")
 with b1:
@@ -1701,7 +1168,7 @@ with b1:
         <div class='breadth-card'>
             <div class='breadth-label'>Advance / Decline</div>
             <div class='breadth-value'>{advancers} / {decliners}</div>
-            <div class='metric-delta-flat'>{valid_breadth_count} stocks sampled</div>
+            <div class='metric-delta-flat'>Market breadth</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -1943,12 +1410,12 @@ if not portfolio_df.empty:
             continue
 
         pinfo = get_info(psym)
-        pm = compute_scan_metrics_fast(pdata)
-        if not pm:
+        pdata_ind = compute_indicators(pdata)
+        if pdata_ind.empty:
             continue
 
-        current_price = pm["close"]
-        prev_price = pm["prev_close"]
+        current_price = float(pdata["Close"].iloc[-1])
+        prev_price = float(pdata["Close"].iloc[-2]) if len(pdata) > 1 else current_price
         day_change_pct = ((current_price / prev_price) - 1) * 100 if prev_price else 0
 
         invested = qty_p * avg_buy
@@ -1956,8 +1423,8 @@ if not portfolio_df.empty:
         pl_abs = current_value - invested
         pl_pct = ((current_price / avg_buy) - 1) * 100 if avg_buy else 0
 
-        pscore, pverdict = score_from_metrics(pm)
-        prsi = pm["rsi"]
+        pscore, pverdict, _ = score_stock(pdata_ind)
+        prsi = safe_last(pdata_ind["RSI14"])
         psector = SECTOR_MAP.get(psym, pinfo.get("sector", "Others"))
         action = portfolio_action_from_metrics(pl_pct, pscore, prsi)
 
@@ -2268,7 +1735,7 @@ st.markdown(
 )
 
 heat_rows = []
-for sym in stock_list[:min(28, len(stock_list))]:
+for sym in stock_list[:min(40, len(stock_list))]:
     d = get_history(sym, period="3mo")
     if not d.empty and len(d) > 22:
         ret_1m = ((d["Close"].iloc[-1] / d["Close"].iloc[-22]) - 1) * 100
@@ -2377,7 +1844,7 @@ if show_technical_ratio:
     st.dataframe(tech_df, use_container_width=True)
 
 # -------------------------------------------------
-# FINANCIAL STATEMENTS
+# FINANCIAL STATEMENTS (SAFE TABS)
 # -------------------------------------------------
 st.markdown(
     "<div class='panel'><div class='panel-title'>Balance Sheet / P&L / Cash Flow (₹ Cr)</div><div class='subtle-divider'></div></div>",
@@ -2434,7 +1901,7 @@ st.download_button(
 )
 
 # -------------------------------------------------
-# PDF EXPORT MODULE
+# PDF EXPORT MODULE (NEW)
 # -------------------------------------------------
 st.markdown(
     "<div class='panel'><div class='panel-title'>PDF Report Export</div><div class='subtle-divider'></div></div>",
@@ -2448,16 +1915,7 @@ portfolio_pdf_bytes = None
 scanner_pdf_bytes = None
 
 if PDF_AVAILABLE:
-    portfolio_key = ""
-    scan_key = ""
-
-    if not portfolio_analysis_df.empty:
-        portfolio_key = f"{round(portfolio_analysis_df['Current Value'].sum(),2)}_{len(portfolio_analysis_df)}"
-
-    if not st.session_state.scan_df.empty:
-        scan_key = f"{len(st.session_state.scan_df)}_{st.session_state.scan_df.iloc[0]['Symbol']}"
-
-    stock_pdf_payload = prepare_stock_pdf_payload(
+    stock_pdf_bytes = build_stock_pdf(
         symbol=symbol,
         info=info,
         last_close=last_close,
@@ -2475,12 +1933,6 @@ if PDF_AVAILABLE:
         target=target,
         qty=qty,
         position_value=position_value,
-        portfolio_summary_key=portfolio_key,
-        scan_summary_key=scan_key,
-    )
-
-    stock_pdf_bytes = build_stock_pdf(
-        payload=stock_pdf_payload,
         portfolio_analysis_df=portfolio_analysis_df if not portfolio_analysis_df.empty else None,
         scan_df=st.session_state.scan_df if not st.session_state.scan_df.empty else None,
     )
@@ -2528,7 +1980,7 @@ if not PDF_AVAILABLE:
     st.warning("PDF export requires reportlab. Add 'reportlab' to requirements.txt.")
 
 # -------------------------------------------------
-# SCANNER
+# SCANNER (IMPROVED RANKING CARDS)
 # -------------------------------------------------
 if run_scan:
     st.markdown(
@@ -2544,30 +1996,33 @@ if run_scan:
     for i, s in enumerate(universe, start=1):
         status.info(f"Scanning {s} ({i}/{len(universe)})")
         data = get_history(s, period="6mo")
+        data = compute_indicators(data) if not data.empty else pd.DataFrame()
 
-        if not data.empty and len(data) >= 35:
-            m = compute_scan_metrics_fast(data)
-            if m:
-                sc, vd = score_from_metrics(m)
-                tr_sig = "Bullish" if m["sma20"] > m["sma50"] else "Bearish"
-                mc_sig = "Bullish" if m["macd"] > m["macd_signal"] else "Bearish"
-                ai_sig, _, _ = ai_badge(sc, m["rsi"], tr_sig, mc_sig)
-                ent = m["breakout"] * 1.002
+        if not data.empty:
+            sc, vd, _ = score_stock(data)
+            lc = safe_last(data["Close"])
+            r = safe_last(data["RSI14"])
+            bh = data["High"].tail(20).max()
+            sl = data["Low"].tail(20).min()
+            tr_sig = "Bullish" if data.iloc[-1]["SMA20"] > data.iloc[-1]["SMA50"] else "Bearish"
+            mc_sig = "Bullish" if data.iloc[-1]["MACD"] > data.iloc[-1]["MACD_SIGNAL"] else "Bearish"
+            ai_sig, _, _ = ai_badge(sc, r, tr_sig, mc_sig)
+            ent = bh * 1.002
 
-                rows.append({
-                    "Symbol": s,
-                    "AI": ai_sig,
-                    "Price": round(m["close"], 2),
-                    "Score": sc,
-                    "Verdict": vd,
-                    "RSI": round(m["rsi"], 2) if pd.notna(m["rsi"]) else np.nan,
-                    "Entry": round(ent, 2),
-                    "Stop": round(m["support"], 2),
-                    "Breakout Level": round(m["breakout"], 2),
-                })
+            rows.append({
+                "Symbol": s,
+                "AI": ai_sig,
+                "Price": round(lc, 2),
+                "Score": sc,
+                "Verdict": vd,
+                "RSI": round(r, 2) if pd.notna(r) else np.nan,
+                "Entry": round(ent, 2),
+                "Stop": round(sl, 2),
+                "Breakout Level": round(bh, 2),
+            })
 
         progress.progress(i / len(universe))
-        time.sleep(0.005)
+        time.sleep(0.02)
 
     status.empty()
 
@@ -2614,172 +2069,6 @@ if run_scan:
             margin=dict(l=8, r=8, t=36, b=8),
         )
         st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.warning("No valid scanner results available for the selected universe.")
-        # -------------------------------------------------
-# V14 BACKTEST ENGINE MODULE
-# -------------------------------------------------
-if run_backtest:
-    st.markdown(
-        "<div class='panel'><div class='panel-title'>V14 Strategy Backtest Engine</div><div class='subtle-divider'></div></div>",
-        unsafe_allow_html=True,
-    )
-
-    # Selected Stock Backtest
-    bt_raw = get_history(symbol, period=backtest_period)
-    bt_df = compute_indicators(bt_raw) if not bt_raw.empty else pd.DataFrame()
-
-    if bt_df.empty or len(bt_df) < 80:
-        st.warning("Not enough data available for selected stock backtest.")
-    else:
-        st.markdown(
-            f"""
-            <div class='panel'>
-                <div class='panel-title'>Selected Stock Backtest • {symbol.replace('.NS','')} • {backtest_strategy}</div>
-                <div class='subtle-divider'></div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        selected_trades, selected_equity = run_backtest_by_strategy(
-            bt_df,
-            backtest_strategy,
-            initial_capital=backtest_initial_capital,
-            risk_per_trade_pct=risk_pct,
-            rr_ratio=rr_ratio,
-        )
-
-        selected_summary = summarize_backtest(
-            selected_trades,
-            selected_equity,
-            initial_capital=backtest_initial_capital,
-        )
-
-        sb1, sb2, sb3, sb4 = st.columns(4, gap="small")
-        with sb1:
-            metric_box("Total Trades", f"{selected_summary['Total Trades']}", "Selected stock", None)
-        with sb2:
-            metric_box("Win Rate", f"{selected_summary['Win Rate %']:.2f}%", "Hit ratio", selected_summary["Win Rate %"] >= 50)
-        with sb3:
-            metric_box("Net Return", f"{selected_summary['Net Return %']:+.2f}%", "Strategy return", selected_summary["Net Return %"] >= 0)
-        with sb4:
-            metric_box("Max Drawdown", f"{selected_summary['Max Drawdown %']:.2f}%", "Lower is better", selected_summary["Max Drawdown %"] >= -12)
-
-        sb5, sb6, sb7, sb8 = st.columns(4, gap="small")
-        with sb5:
-            metric_box("Avg Gain", f"{selected_summary['Avg Gain %']:+.2f}%", "Winning trades", selected_summary["Avg Gain %"] >= 0)
-        with sb6:
-            metric_box("Avg Loss", f"{selected_summary['Avg Loss %']:+.2f}%", "Losing trades", selected_summary["Avg Loss %"] > -2)
-        with sb7:
-            metric_box("Profit Factor", f"{selected_summary['Profit Factor']}", "Gross profit / loss", selected_summary["Profit Factor"] >= 1.2)
-        with sb8:
-            metric_box("Expectancy", f"{selected_summary['Expectancy %']:+.2f}%", "Per trade edge", selected_summary["Expectancy %"] >= 0)
-
-        st.plotly_chart(
-            plot_equity_curve(selected_equity, f"{symbol.replace('.NS','')} Equity Curve"),
-            use_container_width=True,
-        )
-
-        if selected_trades:
-            st.dataframe(pd.DataFrame(selected_trades), use_container_width=True)
-        else:
-            st.info("No trades generated for selected stock under current strategy rules.")
-
-    # Scanner Results Backtest
-    st.markdown(
-        "<div class='panel'><div class='panel-title'>Scanner Top Setups Backtest</div><div class='subtle-divider'></div></div>",
-        unsafe_allow_html=True,
-    )
-
-    if st.session_state.scan_df.empty:
-        st.info("Run Institutional Scan first to enable scanner results backtest.")
-    else:
-        scan_candidates = st.session_state.scan_df.head(5)["Symbol"].tolist()
-        scanner_results = []
-
-        progress_bt = st.progress(0)
-        status_bt = st.empty()
-
-        for idx, sc_sym in enumerate(scan_candidates, start=1):
-            status_bt.info(f"Backtesting scanner setup {sc_sym} ({idx}/{len(scan_candidates)})")
-
-            sc_raw = get_history(sc_sym, period=backtest_period)
-            sc_df = compute_indicators(sc_raw) if not sc_raw.empty else pd.DataFrame()
-
-            if not sc_df.empty and len(sc_df) >= 80:
-                sc_trades, sc_equity = run_backtest_by_strategy(
-                    sc_df,
-                    backtest_strategy,
-                    initial_capital=backtest_initial_capital,
-                    risk_per_trade_pct=risk_pct,
-                    rr_ratio=rr_ratio,
-                )
-
-                sc_summary = summarize_backtest(
-                    sc_trades,
-                    sc_equity,
-                    initial_capital=backtest_initial_capital,
-                )
-
-                scanner_results.append({
-                    "Symbol": sc_sym,
-                    "Total Trades": sc_summary["Total Trades"],
-                    "Win Rate %": sc_summary["Win Rate %"],
-                    "Net Return %": sc_summary["Net Return %"],
-                    "Max Drawdown %": sc_summary["Max Drawdown %"],
-                    "Profit Factor": sc_summary["Profit Factor"],
-                    "Expectancy %": sc_summary["Expectancy %"],
-                })
-
-            progress_bt.progress(idx / len(scan_candidates))
-
-        status_bt.empty()
-
-        if scanner_results:
-            scanner_bt_df = pd.DataFrame(scanner_results).sort_values(
-                ["Net Return %", "Win Rate %"],
-                ascending=[False, False]
-            ).reset_index(drop=True)
-
-            top_cols = st.columns(min(5, len(scanner_bt_df)), gap="small")
-            for i, (_, row) in enumerate(scanner_bt_df.head(5).iterrows()):
-                with top_cols[i]:
-                    rank = i + 1
-                    color = "#22c55e" if rank == 1 else "#60a5fa" if rank in [2, 3] else "#a78bfa"
-                    st.markdown(
-                        f"""
-                        <div class='scanner-rank-card'>
-                            <div style='font-size:0.78rem;font-weight:900;color:{color}'>BACKTEST RANK #{rank}</div>
-                            <div style='font-size:0.95rem;font-weight:900;color:#fff;margin-top:4px'>{row['Symbol'].replace('.NS','')}</div>
-                            <div style='color:#86efac;font-weight:800;margin-top:4px'>Return: {row['Net Return %']:+.2f}%</div>
-                            <div style='color:#e2e8f0;margin-top:4px'>Win Rate: {row['Win Rate %']:.2f}%</div>
-                            <div style='color:#e2e8f0'>PF: {row['Profit Factor']}</div>
-                            <div style='color:#fca5a5'>MDD: {row['Max Drawdown %']:.2f}%</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-
-            st.dataframe(scanner_bt_df, use_container_width=True)
-
-            fig_bt_bar = px.bar(
-                scanner_bt_df,
-                x="Symbol",
-                y="Net Return %",
-                hover_data=["Win Rate %", "Profit Factor", "Max Drawdown %", "Expectancy %"],
-                template="plotly_dark",
-                title="Scanner Backtest Ranking • Net Return %",
-            )
-            fig_bt_bar.update_layout(
-                height=380,
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                margin=dict(l=8, r=8, t=36, b=8),
-            )
-            st.plotly_chart(fig_bt_bar, use_container_width=True)
-        else:
-            st.warning("No valid scanner backtest results available for current settings.")
 
 # -------------------------------------------------
 # FOOTER
