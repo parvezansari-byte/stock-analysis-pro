@@ -103,6 +103,7 @@ st.markdown(
         box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
     }
     .panel {
+        position: relative;
         background: linear-gradient(180deg, rgba(12,18,34,0.72), rgba(16,24,42,0.64));
         border: 1px solid rgba(255,255,255,0.07);
         border-radius: 22px;
@@ -113,8 +114,30 @@ st.markdown(
             0 0 24px rgba(59,130,246,0.04);
         margin-bottom: 12px;
         backdrop-filter: blur(16px);
+        transition: all 0.25s ease-in-out;
+        overflow: hidden;
     }
-    .panel-title { font-size: 0.95rem; font-weight: 900; color: #f8fafc; margin-bottom: 8px; }
+    .panel::before {
+        content:"";
+        position:absolute;
+        inset:0;
+        border-radius:22px;
+        padding:1px;
+        background: linear-gradient(135deg, rgba(34,211,238,0.16), rgba(139,92,246,0.12), rgba(34,197,94,0.10), rgba(255,255,255,0.02));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events:none;
+    }
+    .panel:hover {
+        transform: translateY(-2px);
+        box-shadow:
+            0 22px 44px rgba(0,0,0,0.34),
+            0 0 0 1px rgba(255,255,255,0.03) inset,
+            0 0 28px rgba(34,211,238,0.06),
+            0 0 22px rgba(139,92,246,0.05);
+    }
+    .panel-title { font-size: 0.95rem; font-weight: 900; color: #f8fafc; margin-bottom: 8px; letter-spacing:0.2px; }
     .subtle-divider { height:1px; background: linear-gradient(90deg, rgba(59,130,246,0.22), rgba(124,58,237,0.14), transparent); margin: 6px 0 10px 0; }
     .hero-card, .breadth-card, .sector-tile, .metric-card, .portfolio-card, .scanner-rank-card {
         position: relative;
@@ -128,6 +151,15 @@ st.markdown(
             0 0 18px rgba(59,130,246,0.04);
         backdrop-filter: blur(16px);
         overflow: hidden;
+        transition: all 0.22s ease-in-out;
+    }
+    .hero-card:hover, .breadth-card:hover, .sector-tile:hover, .metric-card:hover, .portfolio-card:hover, .scanner-rank-card:hover {
+        transform: translateY(-2px);
+        box-shadow:
+            0 20px 40px rgba(0,0,0,0.30),
+            0 0 0 1px rgba(255,255,255,0.03) inset,
+            0 0 22px rgba(34,211,238,0.06),
+            0 0 18px rgba(139,92,246,0.05);
     }
     .hero-card::before, .breadth-card::before, .metric-card::before {
         content: "";
@@ -196,6 +228,32 @@ st.markdown(
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
     }
+    div[data-baseweb="tab-list"] {
+        gap: 8px;
+        margin-bottom: 10px;
+    }
+    button[data-baseweb="tab"] {
+        background: linear-gradient(180deg, rgba(15,23,42,0.75), rgba(17,24,39,0.58)) !important;
+        border: 1px solid rgba(255,255,255,0.06) !important;
+        border-radius: 14px !important;
+        color: #dbeafe !important;
+        font-weight: 800 !important;
+        padding: 8px 14px !important;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.02) !important;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        background: linear-gradient(135deg, rgba(29,78,216,0.35), rgba(124,58,237,0.28), rgba(34,211,238,0.22)) !important;
+        border: 1px solid rgba(96,165,250,0.20) !important;
+        box-shadow: 0 0 18px rgba(59,130,246,0.06), 0 10px 22px rgba(0,0,0,0.22) !important;
+    }
+    div[data-testid="stDownloadButton"] {
+        padding: 6px;
+        border-radius: 18px;
+        background: linear-gradient(180deg, rgba(8,14,28,0.62), rgba(13,22,40,0.48));
+        border: 1px solid rgba(255,255,255,0.05);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+    
     </style>
     """,
     unsafe_allow_html=True,
@@ -688,7 +746,7 @@ if run_scan:
     st.session_state.scan_df = pd.DataFrame(scan_rows).sort_values(["Score", "RSI"], ascending=[False, True]).reset_index(drop=True) if scan_rows else pd.DataFrame()
 
 if not st.session_state.scan_df.empty:
-    st.markdown("<div class='panel'><div class='panel-title'>Watchlist Decision Matrix</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='panel'><div class='panel-title'>Watchlist Decision Matrix</div><div class='subtle-divider'></div><div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;'><span class='ribbon-chip'>Ranked Institutional Watchlist</span><span class='ribbon-chip'>AI Decision Layer</span><span class='ribbon-chip'>Scanner Priority</span></div></div>", unsafe_allow_html=True)
     top_scan = st.session_state.scan_df.head(8).copy()
     rank_cols = st.columns(min(4, len(top_scan)))
     for i, (_, r) in enumerate(top_scan.head(4).iterrows()):
@@ -816,7 +874,7 @@ if compare_symbols:
 # -------------------------------------------------
 # PDF REPORT EXPORT
 # -------------------------------------------------
-st.markdown("<div class='panel'><div class='panel-title'>PDF Report Export</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
+st.markdown("<div class='panel'><div class='panel-title'>PDF Report Export</div><div class='subtle-divider'></div><div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;'><span class='ribbon-chip'>Premium Institutional PDF</span><span class='ribbon-chip'>Trade Plan Ready</span><span class='ribbon-chip'>Client Presentation Safe</span></div></div>", unsafe_allow_html=True)
 pdf_bytes = build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value)
 if pdf_bytes:
     st.download_button("Download PDF Report", data=pdf_bytes, file_name=f"NILE_{symbol.replace('.NS','')}_Report.pdf", mime="application/pdf")
