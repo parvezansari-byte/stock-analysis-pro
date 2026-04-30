@@ -207,36 +207,23 @@ st.markdown(
     .ai-badge-hold { background: linear-gradient(135deg, rgba(245,158,11,0.22), rgba(245,158,11,0.10)); color:#fcd34d; border:1px solid rgba(245,158,11,0.24); }
     .ai-badge-sell { background: linear-gradient(135deg, rgba(239,68,68,0.22), rgba(239,68,68,0.10)); color:#fca5a5; border:1px solid rgba(239,68,68,0.24); }
     .stButton > button, .stDownloadButton > button {
-        width:100%; border-radius:18px; border:1px solid rgba(255,255,255,0.12); color:white;
-        font-weight:900; padding:0.82rem 1rem; font-size:0.93rem; letter-spacing:0.2px; transition:all 0.22s ease-in-out;
-        background-size:260% 260% !important;
+        width:100%; border-radius:16px; border:1px solid rgba(255,255,255,0.10); color:white;
+        font-weight:900; padding:0.78rem 0.95rem; font-size:0.92rem; transition:all 0.25s ease-in-out;
+        background-size:240% 240% !important;
         box-shadow:
-            0 14px 28px rgba(0,0,0,0.32),
-            0 0 0 1px rgba(255,255,255,0.04) inset,
-            0 0 18px rgba(59,130,246,0.06),
-            0 0 22px rgba(139,92,246,0.04);
+            0 12px 26px rgba(0,0,0,0.30),
+            0 0 0 1px rgba(255,255,255,0.03) inset,
+            0 0 16px rgba(59,130,246,0.05);
         animation: buttonGlow 7s ease infinite;
-        backdrop-filter: blur(12px);
-        position: relative;
-        overflow: hidden;
-    }
-    .stButton > button::before, .stDownloadButton > button::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(120deg, transparent 20%, rgba(255,255,255,0.10) 45%, transparent 70%);
-        transform: translateX(-120%);
-        animation: sheenMove 4.5s linear infinite;
-        pointer-events: none;
+        backdrop-filter: blur(10px);
     }
     .stButton > button:hover, .stDownloadButton > button:hover {
-        transform: translateY(-2px) scale(1.01);
-        filter: brightness(1.08);
+        transform: translateY(-1px);
+        filter: brightness(1.06);
         box-shadow:
-            0 18px 34px rgba(0,0,0,0.36),
-            0 0 0 1px rgba(255,255,255,0.05) inset,
-            0 0 24px rgba(96,165,250,0.10),
-            0 0 26px rgba(139,92,246,0.08);
+            0 16px 30px rgba(0,0,0,0.34),
+            0 0 0 1px rgba(255,255,255,0.04) inset,
+            0 0 20px rgba(96,165,250,0.08);
     }
     section[data-testid="stSidebar"] .stButton > button {
         background: linear-gradient(135deg, #15803d, #16a34a, #22c55e, #4ade80) !important;
@@ -257,10 +244,6 @@ st.markdown(
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
-    }
-    @keyframes sheenMove {
-        0% { transform: translateX(-120%); }
-        100% { transform: translateX(120%); }
     }
     div[data-baseweb="tab-list"] {
         gap: 8px;
@@ -455,22 +438,6 @@ def metric_box(label, value, delta_text="", positive=None):
 def beautiful_top_card(title, value, change, inverse=False):
     if pd.isna(value):
         st.markdown(f"<div class='hero-card'><div class='hero-title'>{title}</div><div class='hero-value' style='font-size:1.05rem;color:#94a3b8;'>Data unavailable</div></div>", unsafe_allow_html=True)
-        return
-    up = change >= 0
-    color = "#ef4444" if (inverse and up) else "#22c55e" if (inverse and not up) else "#22c55e" if up else "#ef4444"
-    arrow = "▲" if up else "▼"
-    glow = "rgba(34,197,94,0.12)" if color == "#22c55e" else "rgba(239,68,68,0.12)"
-    st.markdown(f"""
-    <div class='hero-card' style='box-shadow:0 20px 42px rgba(0,0,0,0.32),0 0 0 1px rgba(255,255,255,0.03) inset,0 0 28px {glow};'>
-        <div style='height:5px;border-radius:999px;background:linear-gradient(90deg,{color},rgba(255,255,255,0.10),transparent);margin-bottom:10px;'></div>
-        <div style='display:flex;justify-content:space-between;align-items:center;'>
-            <div class='hero-title'>{title}</div>
-            <div style='padding:4px 8px;border-radius:999px;background:{glow};border:1px solid rgba(255,255,255,0.05);color:{color};font-size:0.68rem;font-weight:900;'>LIVE</div>
-        </div>
-        <div class='hero-value' style='font-size:1.55rem;'>{value:,.2f}</div>
-        <div class='hero-change' style='color:{color};'>{arrow} {change:+.2f}%</div>
-    </div>
-    """, unsafe_allow_html=True)
         return
     up = change >= 0
     color = "#ef4444" if (inverse and up) else "#22c55e" if (inverse and not up) else "#22c55e" if up else "#ef4444"
@@ -1140,12 +1107,7 @@ if not st.session_state.scan_df.empty:
                 </div>
             </div>
             """, unsafe_allow_html=True)
-    scan_table = st.session_state.scan_df.head(15).style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'})\
-        .set_table_styles([
-            {'selector':'thead th','props':[('background','linear-gradient(135deg, rgba(29,78,216,0.45), rgba(124,58,237,0.32))'),('color','white'),('font-weight','900')]},
-            {'selector':'tbody tr:hover','props':[('background-color','rgba(59,130,246,0.08)')]}
-        ])
-    st.dataframe(scan_table, use_container_width=True)
+    st.dataframe(st.session_state.scan_df.head(15).style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'}), use_container_width=True)
 
 # -------------------------------------------------
 # PORTFOLIO COMMAND CENTER
@@ -1178,9 +1140,7 @@ else:
     with pc3: metric_box("P/L ₹", rupee(total_pl), f"{total_pl_pct:+.2f}%", positive=total_pl >= 0)
     risk_score = min(100, max(0, 50 + (portfolio_analysis_df["P/L %"].std() if len(portfolio_analysis_df) > 1 else 0)))
     with pc4: st.plotly_chart(make_portfolio_risk_gauge(risk_score), use_container_width=True)
-    portfolio_table = portfolio_analysis_df.style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'})\
-        .set_table_styles([{'selector':'thead th','props':[('background','linear-gradient(135deg, rgba(124,58,237,0.34), rgba(34,211,238,0.24))'),('color','white'),('font-weight','900')]}])
-    st.dataframe(portfolio_table, use_container_width=True)
+    st.dataframe(portfolio_analysis_df.style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'}), use_container_width=True)
     alloc = portfolio_analysis_df.groupby('Sector', as_index=False)['Current Value'].sum()
     if not alloc.empty:
         donut = go.Figure(data=[go.Pie(labels=alloc['Sector'], values=alloc['Current Value'], hole=0.58, textinfo='label+percent')])
@@ -1251,9 +1211,7 @@ if compare_symbols:
         cmp_rows.append({"Symbol": s, "Price": round(float(dd["Close"].iloc[-1]), 2), "RSI": round(float(dd["RSI14"].iloc[-1]), 2), "Score": sc, "Verdict": ver})
     if cmp_rows:
         cmp_df = pd.DataFrame(cmp_rows)
-        cmp_table = cmp_df.style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'})\
-            .set_table_styles([{'selector':'thead th','props':[('background','linear-gradient(135deg, rgba(6,182,212,0.32), rgba(59,130,246,0.28))'),('color','white'),('font-weight','900')]}])
-        st.dataframe(cmp_table, use_container_width=True)
+        st.dataframe(cmp_df.style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'}), use_container_width=True)
 
 # -------------------------------------------------
 # PDF REPORT EXPORT
