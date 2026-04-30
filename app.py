@@ -540,17 +540,72 @@ def pdf_table(data, col_widths=None, header_bg="#0F172A"):
     ]))
     return tbl
 
-def build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value):
+def build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value, fund_verdict='N/A', tech_verdict='N/A', overall_ratio_score='N/A', fund_summary='N/A', tech_summary='N/A', overall_summary='N/A'):
     if not PDF_AVAILABLE: return None
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=12 * mm, bottomMargin=12 * mm)
     s = pdf_styles(); story = []
-    story.append(Paragraph("NILE", s["title"])); story.append(Paragraph("Premium Stock Research Report", s["subtitle"])); story.append(Spacer(1, 6))
-    summary = [["Field", "Value"], ["Symbol", symbol], ["Current Price", rupee(last_close)], ["Daily Change", f"{change_pct:+.2f}%"], ["AI Signal", ai_action], ["Conviction", f"{conviction_score}/100"], ["Score", f"{score}/100"], ["RSI", f"{rsi:.2f}"]]
-    story.append(Paragraph("Stock Summary", s["section"])); story.append(pdf_table(summary, col_widths=[60 * mm, 110 * mm])); story.append(Spacer(1, 6))
-    trade = [["Trade Plan", "Value"], ["Entry", rupee(entry)], ["Stop", rupee(stop_loss)], ["Target", rupee(target)], ["Qty", str(qty)], ["Position Size", rupee(position_value)]]
-    story.append(Paragraph("Professional Trade Plan", s["section"])); story.append(pdf_table(trade, col_widths=[60 * mm, 110 * mm], header_bg="#0F766E"))
-    doc.build(story); buffer.seek(0); return buffer.getvalue()
+    story.append(Paragraph("NILE", s["title"]))
+    story.append(Paragraph("Premium Stock Research Report", s["subtitle"]))
+    story.append(Spacer(1, 6))
+
+    summary = [
+        ["Field", "Value"],
+        ["Symbol", symbol],
+        ["Current Price", rupee(last_close)],
+        ["Daily Change", f"{change_pct:+.2f}%"],
+        ["AI Signal", ai_action],
+        ["Conviction", f"{conviction_score}/100"],
+        ["Institutional Score", f"{score}/100"],
+        ["RSI", f"{rsi:.2f}"],
+    ]
+    story.append(Paragraph("Stock Summary", s["section"]))
+    story.append(pdf_table(summary, col_widths=[60 * mm, 110 * mm]))
+    story.append(Spacer(1, 6))
+
+    ratio_table = [
+        ["Ratio Interpretation", "Verdict / Score"],
+        ["Fundamental Verdict", str(fund_verdict)],
+        ["Technical Verdict", str(tech_verdict)],
+        ["Overall Combined Score", f"{overall_ratio_score}/100" if overall_ratio_score != 'N/A' else 'N/A'],
+    ]
+    story.append(Paragraph("Ratio Interpretation Engine", s["section"]))
+    story.append(pdf_table(ratio_table, col_widths=[70 * mm, 100 * mm], header_bg="#1E3A8A"))
+    story.append(Spacer(1, 6))
+
+    chip_table = [
+        ["Signal Chips", "Status"],
+        ["Fundamental", str(fund_verdict)],
+        ["Technical", str(tech_verdict)],
+        ["Overall", f"{overall_ratio_score}/100" if overall_ratio_score != 'N/A' else 'N/A'],
+        ["AI Action", str(ai_action)],
+    ]
+    story.append(Paragraph("Decision Chips (PDF Translation)", s["section"]))
+    story.append(pdf_table(chip_table, col_widths=[60 * mm, 110 * mm], header_bg="#0F766E"))
+    story.append(Spacer(1, 6))
+
+    trade = [
+        ["Trade Plan", "Value"],
+        ["Entry", rupee(entry)],
+        ["Stop", rupee(stop_loss)],
+        ["Target", rupee(target)],
+        ["Qty", str(qty)],
+        ["Position Size", rupee(position_value)],
+    ]
+    story.append(Paragraph("Professional Trade Plan", s["section"]))
+    story.append(pdf_table(trade, col_widths=[60 * mm, 110 * mm], header_bg="#0F172A"))
+    story.append(Spacer(1, 6))
+
+    story.append(Paragraph("Analyst Summary", s["section"]))
+    story.append(Paragraph(f"<b>Fundamental View:</b> {fund_summary}", s["body"]))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(f"<b>Technical View:</b> {tech_summary}", s["body"]))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(f"<b>Overall View:</b> {overall_summary}", s["body"]))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
 
 # -------------------------------------------------
 # SESSION STATE
@@ -1078,7 +1133,7 @@ if compare_symbols:
 # PDF REPORT EXPORT
 # -------------------------------------------------
 st.markdown("<div class='panel'><div class='panel-title'>PDF Report Export</div><div class='subtle-divider'></div><div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;'><span class='ribbon-chip'>Premium Institutional PDF</span><span class='ribbon-chip'>Trade Plan Ready</span><span class='ribbon-chip'>Client Presentation Safe</span></div></div>", unsafe_allow_html=True)
-pdf_bytes = build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value)
+pdf_bytes = build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value, fund_verdict, tech_verdict, overall_ratio_score, fund_summary, tech_summary, overall_summary)
 if pdf_bytes:
     st.download_button("Download PDF Report", data=pdf_bytes, file_name=f"NILE_{symbol.replace('.NS','')}_Report.pdf", mime="application/pdf")
 else:
