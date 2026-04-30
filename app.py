@@ -61,11 +61,12 @@ st.markdown(
     }
     .stApp {
         background:
-            radial-gradient(circle at 8% 12%, rgba(59,130,246,0.18), transparent 22%),
-            radial-gradient(circle at 88% 10%, rgba(168,85,247,0.16), transparent 24%),
-            radial-gradient(circle at 52% 90%, rgba(6,182,212,0.10), transparent 20%),
-            radial-gradient(circle at 30% 45%, rgba(244,114,182,0.05), transparent 18%),
-            linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 35%, var(--bg3) 72%, var(--bg4) 100%);
+            radial-gradient(circle at 12% 14%, rgba(59,130,246,0.22), transparent 20%),
+            radial-gradient(circle at 84% 12%, rgba(168,85,247,0.18), transparent 22%),
+            radial-gradient(circle at 50% 82%, rgba(6,182,212,0.12), transparent 18%),
+            radial-gradient(circle at 26% 58%, rgba(244,114,182,0.08), transparent 16%),
+            radial-gradient(circle at 72% 64%, rgba(34,197,94,0.06), transparent 14%),
+            linear-gradient(135deg, #01040d 0%, #050b16 22%, #0a1222 48%, #0d1830 74%, #132347 100%);
         color: var(--text);
     }
     .block-container { max-width: 1720px; padding-top: 1.0rem; padding-bottom: 2rem; }
@@ -141,32 +142,47 @@ st.markdown(
     .subtle-divider { height:1px; background: linear-gradient(90deg, rgba(59,130,246,0.22), rgba(124,58,237,0.14), transparent); margin: 6px 0 10px 0; }
     .hero-card, .breadth-card, .sector-tile, .metric-card, .portfolio-card, .scanner-rank-card {
         position: relative;
-        background: linear-gradient(180deg, rgba(15,23,42,0.58), rgba(17,24,39,0.46));
-        border: 1px solid rgba(255,255,255,0.07);
-        border-radius: 20px;
+        background:
+            linear-gradient(180deg, rgba(20,28,48,0.62), rgba(14,20,36,0.52)),
+            radial-gradient(circle at top right, rgba(96,165,250,0.08), transparent 32%),
+            radial-gradient(circle at bottom left, rgba(168,85,247,0.06), transparent 30%);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 22px;
         padding: 14px;
         box-shadow:
-            0 16px 36px rgba(0,0,0,0.26),
+            0 18px 40px rgba(0,0,0,0.32),
             0 0 0 1px rgba(255,255,255,0.02) inset,
-            0 0 18px rgba(59,130,246,0.04);
-        backdrop-filter: blur(16px);
+            0 0 22px rgba(59,130,246,0.05),
+            0 0 18px rgba(139,92,246,0.04);
+        backdrop-filter: blur(18px);
         overflow: hidden;
         transition: all 0.22s ease-in-out;
     }
     .hero-card:hover, .breadth-card:hover, .sector-tile:hover, .metric-card:hover, .portfolio-card:hover, .scanner-rank-card:hover {
-        transform: translateY(-2px);
+        transform: translateY(-3px) scale(1.01);
         box-shadow:
-            0 20px 40px rgba(0,0,0,0.30),
+            0 24px 46px rgba(0,0,0,0.34),
             0 0 0 1px rgba(255,255,255,0.03) inset,
-            0 0 22px rgba(34,211,238,0.06),
-            0 0 18px rgba(139,92,246,0.05);
-    }
+            0 0 26px rgba(34,211,238,0.08),
+            0 0 20px rgba(139,
     .hero-card::before, .breadth-card::before, .metric-card::before {
         content: "";
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 1px;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+    }
+    .hero-card::after, .breadth-card::after, .metric-card::after, .scanner-rank-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 22px;
+        padding: 1px;
+        background: linear-gradient(135deg, rgba(34,211,238,0.12), rgba(139,92,246,0.10), rgba(255,255,255,0.03));
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
     }
     .hero-title, .metric-label, .breadth-label, .portfolio-label { font-size: 0.76rem; color: #94a3b8; margin-bottom: 4px; font-weight: 700; }
     .hero-value, .metric-value, .breadth-value, .portfolio-value { font-size: 1.4rem; font-weight: 900; color: #fff; }
