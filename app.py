@@ -51,6 +51,11 @@ st.set_page_config(
 # -------------------------------------------------
 # PREMIUM IMPERIAL TERMINAL CSS
 # -------------------------------------------------
+# =========================
+# PASTE THIS SINGLE BLOCK
+# Put it IMMEDIATELY AFTER st.set_page_config(...)
+# =========================
+
 st.markdown("""
 <style>
 :root{
@@ -87,22 +92,6 @@ section[data-testid="stSidebar"]{
         radial-gradient(circle at 85% 20%, rgba(0, 209, 255, 0.08), transparent 24%),
         linear-gradient(180deg, rgba(5,8,20,0.98), rgba(8,14,34,0.98));
     border-right: 1px solid rgba(255,255,255,0.06);
-}
-
-/* GENERAL GLASS CARD */
-.glass-panel{
-    background:
-        linear-gradient(180deg, rgba(14,20,42,0.72), rgba(12,18,36,0.60)),
-        radial-gradient(circle at top right, rgba(0,209,255,0.05), transparent 30%),
-        radial-gradient(circle at bottom left, rgba(255,0,153,0.05), transparent 30%);
-    border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 22px;
-    box-shadow:
-        0 16px 38px rgba(0,0,0,0.35),
-        0 0 0 1px rgba(255,255,255,0.02) inset,
-        0 0 18px rgba(0,209,255,0.05),
-        0 0 14px rgba(255,0,153,0.04);
-    backdrop-filter: blur(14px);
 }
 
 /* ALL BUTTONS BASE */
@@ -172,7 +161,7 @@ div[data-testid="stButton"][id*="technical_ratio_btn"] > button{
         0 0 0 1px rgba(255,255,255,0.03) inset;
 }
 
-/* DOWNLOAD / EXPORT */
+/* DOWNLOAD / EXPORT BUTTONS */
 div[data-testid="stDownloadButton"] > button{
     background:
         linear-gradient(135deg, #0f766e 0%, #0891b2 28%, #06b6d4 60%, #67e8f9 100%) !important;
@@ -182,7 +171,23 @@ div[data-testid="stDownloadButton"] > button{
         0 0 0 1px rgba(255,255,255,0.03) inset;
 }
 
-/* SUBTLE ANIMATION */
+/* OPTIONAL EXTRA BUTTON TARGETS */
+div[data-testid="stButton"][id*="compare_btn"] > button{
+    background:
+        linear-gradient(135deg, #4338ca 0%, #6366f1 35%, #8b5cf6 70%, #c084fc 100%) !important;
+}
+
+div[data-testid="stButton"][id*="portfolio_btn"] > button{
+    background:
+        linear-gradient(135deg, #0f766e 0%, #14b8a6 40%, #22d3ee 75%, #67e8f9 100%) !important;
+}
+
+div[data-testid="stButton"][id*="alert_btn"] > button{
+    background:
+        linear-gradient(135deg, #be123c 0%, #e11d48 35%, #f43f5e 70%, #fb7185 100%) !important;
+}
+
+/* BUTTON ANIMATION */
 @keyframes nileGlow{
     0%{background-position:0% 50%;}
     50%{background-position:100% 50%;}
@@ -190,6 +195,33 @@ div[data-testid="stDownloadButton"] > button{
 }
 </style>
 """, unsafe_allow_html=True)
+
+# =========================
+# REPLACE YOUR BUTTON LINES WITH THIS
+# =========================
+
+col1, col2 = st.columns(2)
+
+with col1:
+    run_scan = st.button("Run Institutional Scan", key="run_scan_btn", use_container_width=True)
+
+with col2:
+    fundamental_btn = st.button("Fundamental Ratio", key="fundamental_ratio_btn", use_container_width=True)
+
+col3, col4 = st.columns(2)
+
+with col3:
+    technical_btn = st.button("Technical Ratio", key="technical_ratio_btn", use_container_width=True)
+
+with col4:
+    st.download_button(
+        "Download Trade Plan / PDF Export",
+        data=b"",
+        file_name="trade_plan.csv",
+        mime="text/csv",
+        use_container_width=True,
+        key="download_trade_plan_btn"
+    )
 
 # -------------------------------------------------
 # UNIVERSE
