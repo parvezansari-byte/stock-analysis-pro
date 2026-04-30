@@ -55,50 +55,86 @@ st.markdown(
     """
     <style>
     :root {
-        --bg1:#020611; --bg2:#081120; --bg3:#0b1528;
-        --line: rgba(148,163,184,0.10);
+        --bg1:#01040d; --bg2:#060d1a; --bg3:#0a1324; --bg4:#0f1c33;
+        --line: rgba(148,163,184,0.12);
         --text:#eef2ff; --muted:#94a3b8;
     }
     .stApp {
         background:
-            radial-gradient(circle at 10% 12%, rgba(37,99,235,0.18), transparent 22%),
-            radial-gradient(circle at 90% 8%, rgba(124,58,237,0.14), transparent 24%),
-            radial-gradient(circle at 48% 92%, rgba(6,182,212,0.08), transparent 20%),
-            linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 55%, var(--bg3) 100%);
+            radial-gradient(circle at 8% 12%, rgba(59,130,246,0.18), transparent 22%),
+            radial-gradient(circle at 88% 10%, rgba(168,85,247,0.16), transparent 24%),
+            radial-gradient(circle at 52% 90%, rgba(6,182,212,0.10), transparent 20%),
+            radial-gradient(circle at 30% 45%, rgba(244,114,182,0.05), transparent 18%),
+            linear-gradient(180deg, var(--bg1) 0%, var(--bg2) 35%, var(--bg3) 72%, var(--bg4) 100%);
         color: var(--text);
     }
-    .block-container { max-width: 1720px; padding-top: 1.1rem; padding-bottom: 2rem; }
+    .block-container { max-width: 1720px; padding-top: 1.0rem; padding-bottom: 2rem; }
     div[data-testid="stSidebar"] {
-        background: linear-gradient(180deg, rgba(6,10,22,0.995), rgba(10,18,32,0.995));
+        background: linear-gradient(180deg, rgba(4,8,18,0.995), rgba(8,16,30,0.995));
         border-right: 1px solid rgba(148,163,184,0.08);
+        box-shadow: inset -1px 0 0 rgba(255,255,255,0.02);
     }
     .imperial-ribbon {
         position: relative;
-        background: linear-gradient(90deg, rgba(8,14,28,0.98), rgba(13,22,40,0.98), rgba(8,14,28,0.98));
-        border: 1px solid rgba(59,130,246,0.14);
-        border-radius: 18px;
+        background: linear-gradient(90deg, rgba(9,15,28,0.92), rgba(16,25,46,0.88), rgba(10,16,30,0.92));
+        border: 1px solid rgba(96,165,250,0.16);
+        border-radius: 20px;
         padding: 10px 14px;
-        margin-bottom: 10px;
-        box-shadow: 0 0 18px rgba(59,130,246,0.10), 0 12px 30px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.02);
+        margin-bottom: 12px;
+        box-shadow:
+            0 0 0 1px rgba(255,255,255,0.015) inset,
+            0 0 28px rgba(59,130,246,0.08),
+            0 12px 32px rgba(0,0,0,0.34);
+        backdrop-filter: blur(14px);
         overflow: hidden;
+    }
+    .imperial-ribbon::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+        pointer-events: none;
     }
     .ribbon-chip {
         display:inline-block; padding:6px 10px; border-radius:999px; margin-right:6px; margin-bottom:4px;
-        background: rgba(30,41,59,0.72); border:1px solid rgba(255,255,255,0.05); color:#dbeafe;
-        font-weight:800; font-size:0.74rem; letter-spacing:0.15px;
+        background: rgba(30,41,59,0.58);
+        border:1px solid rgba(255,255,255,0.06);
+        color:#dbeafe; font-weight:800; font-size:0.74rem; letter-spacing:0.15px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
     }
     .panel {
-        background: linear-gradient(180deg, rgba(8,14,28,0.92), rgba(13,22,40,0.94));
-        border: 1px solid var(--line); border-radius: 20px; padding: 14px;
-        box-shadow: 0 14px 34px rgba(0,0,0,0.24), inset 0 1px 0 rgba(255,255,255,0.02);
-        margin-bottom: 12px; backdrop-filter: blur(10px);
+        background: linear-gradient(180deg, rgba(12,18,34,0.72), rgba(16,24,42,0.64));
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 22px;
+        padding: 14px;
+        box-shadow:
+            0 18px 40px rgba(0,0,0,0.30),
+            0 0 0 1px rgba(255,255,255,0.02) inset,
+            0 0 24px rgba(59,130,246,0.04);
+        margin-bottom: 12px;
+        backdrop-filter: blur(16px);
     }
     .panel-title { font-size: 0.95rem; font-weight: 900; color: #f8fafc; margin-bottom: 8px; }
     .subtle-divider { height:1px; background: linear-gradient(90deg, rgba(59,130,246,0.22), rgba(124,58,237,0.14), transparent); margin: 6px 0 10px 0; }
     .hero-card, .breadth-card, .sector-tile, .metric-card, .portfolio-card, .scanner-rank-card {
-        background: linear-gradient(180deg, rgba(15,23,42,0.96), rgba(17,24,39,0.92));
-        border: 1px solid rgba(148,163,184,0.10); border-radius: 18px; padding: 14px;
-        box-shadow: 0 10px 24px rgba(0,0,0,0.20);
+        position: relative;
+        background: linear-gradient(180deg, rgba(15,23,42,0.58), rgba(17,24,39,0.46));
+        border: 1px solid rgba(255,255,255,0.07);
+        border-radius: 20px;
+        padding: 14px;
+        box-shadow:
+            0 16px 36px rgba(0,0,0,0.26),
+            0 0 0 1px rgba(255,255,255,0.02) inset,
+            0 0 18px rgba(59,130,246,0.04);
+        backdrop-filter: blur(16px);
+        overflow: hidden;
+    }
+    .hero-card::before, .breadth-card::before, .metric-card::before {
+        content: "";
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.14), transparent);
     }
     .hero-title, .metric-label, .breadth-label, .portfolio-label { font-size: 0.76rem; color: #94a3b8; margin-bottom: 4px; font-weight: 700; }
     .hero-value, .metric-value, .breadth-value, .portfolio-value { font-size: 1.4rem; font-weight: 900; color: #fff; }
@@ -108,27 +144,58 @@ st.markdown(
     .metric-delta-flat { color:#94a3b8; font-weight:800; font-size:0.82rem; }
     .premium-subtitle {
         font-size:1rem; font-weight:900; letter-spacing:0.55px;
-        background: linear-gradient(90deg, #e9d5ff, #c4b5fd, #93c5fd);
+        background: linear-gradient(90deg, #f5d0fe, #c4b5fd, #93c5fd, #67e8f9);
         -webkit-background-clip:text; -webkit-text-fill-color:transparent;
         display:block; text-align:center; margin-bottom:0.55rem;
+        filter: drop-shadow(0 0 10px rgba(168,85,247,0.12));
     }
     .ai-badge-buy, .ai-badge-hold, .ai-badge-sell {
-        padding:14px; border-radius:16px; font-weight:900; text-align:center; font-size:0.98rem;
+        padding:14px; border-radius:18px; font-weight:900; text-align:center; font-size:0.98rem;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.02);
     }
-    .ai-badge-buy { background: linear-gradient(90deg, rgba(34,197,94,0.20), rgba(34,197,94,0.08)); color:#86efac; border:1px solid rgba(34,197,94,0.24); }
-    .ai-badge-hold { background: linear-gradient(90deg, rgba(245,158,11,0.20), rgba(245,158,11,0.08)); color:#fcd34d; border:1px solid rgba(245,158,11,0.24); }
-    .ai-badge-sell { background: linear-gradient(90deg, rgba(239,68,68,0.20), rgba(239,68,68,0.08)); color:#fca5a5; border:1px solid rgba(239,68,68,0.24); }
+    .ai-badge-buy { background: linear-gradient(135deg, rgba(34,197,94,0.22), rgba(34,197,94,0.10)); color:#86efac; border:1px solid rgba(34,197,94,0.24); }
+    .ai-badge-hold { background: linear-gradient(135deg, rgba(245,158,11,0.22), rgba(245,158,11,0.10)); color:#fcd34d; border:1px solid rgba(245,158,11,0.24); }
+    .ai-badge-sell { background: linear-gradient(135deg, rgba(239,68,68,0.22), rgba(239,68,68,0.10)); color:#fca5a5; border:1px solid rgba(239,68,68,0.24); }
     .stButton > button, .stDownloadButton > button {
-        width:100%; border-radius:14px; border:1px solid rgba(255,255,255,0.08); color:white;
-        font-weight:900; padding:0.72rem 0.9rem; font-size:0.9rem; transition:all 0.25s ease-in-out;
-        box-shadow:0 8px 20px rgba(0,0,0,0.24); background-size:220% 220% !important; animation: buttonGlow 6s ease infinite;
+        width:100%; border-radius:16px; border:1px solid rgba(255,255,255,0.10); color:white;
+        font-weight:900; padding:0.78rem 0.95rem; font-size:0.92rem; transition:all 0.25s ease-in-out;
+        background-size:240% 240% !important;
+        box-shadow:
+            0 12px 26px rgba(0,0,0,0.30),
+            0 0 0 1px rgba(255,255,255,0.03) inset,
+            0 0 16px rgba(59,130,246,0.05);
+        animation: buttonGlow 7s ease infinite;
+        backdrop-filter: blur(10px);
     }
-    section[data-testid="stSidebar"] .stButton > button { background: linear-gradient(135deg, #16a34a, #22c55e, #4ade80) !important; }
-    div[data-testid="stButton"][id*="fundamental_ratio_btn"] > button { background: linear-gradient(135deg, #2563eb, #3b82f6, #60a5fa) !important; }
-    div[data-testid="stButton"][id*="technical_ratio_btn"] > button { background: linear-gradient(135deg, #7c3aed, #8b5cf6, #a78bfa) !important; }
-    div[data-testid="stButton"][id*="run_scan_btn"] > button { background: linear-gradient(135deg, #15803d, #22c55e, #4ade80) !important; }
-    div[data-testid="stDownloadButton"] > button { background: linear-gradient(135deg, #0f766e, #14b8a6, #06b6d4) !important; }
-    @keyframes buttonGlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.06);
+        box-shadow:
+            0 16px 30px rgba(0,0,0,0.34),
+            0 0 0 1px rgba(255,255,255,0.04) inset,
+            0 0 20px rgba(96,165,250,0.08);
+    }
+    section[data-testid="stSidebar"] .stButton > button {
+        background: linear-gradient(135deg, #15803d, #16a34a, #22c55e, #4ade80) !important;
+    }
+    div[data-testid="stButton"][id*="fundamental_ratio_btn"] > button {
+        background: linear-gradient(135deg, #1d4ed8, #2563eb, #3b82f6, #60a5fa) !important;
+    }
+    div[data-testid="stButton"][id*="technical_ratio_btn"] > button {
+        background: linear-gradient(135deg, #6d28d9, #7c3aed, #8b5cf6, #a78bfa) !important;
+    }
+    div[data-testid="stButton"][id*="run_scan_btn"] > button {
+        background: linear-gradient(135deg, #15803d, #16a34a, #22c55e, #4ade80) !important;
+    }
+    div[data-testid="stDownloadButton"] > button {
+        background: linear-gradient(135deg, #0f766e, #0d9488, #14b8a6, #22d3ee) !important;
+    }
+    @keyframes buttonGlow {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
     </style>
     """,
     unsafe_allow_html=True,
