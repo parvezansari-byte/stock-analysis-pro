@@ -367,11 +367,36 @@ def beautiful_top_card(title, value, change, inverse=False):
     up = change >= 0
     color = "#ef4444" if (inverse and up) else "#22c55e" if (inverse and not up) else "#22c55e" if up else "#ef4444"
     arrow = "▲" if up else "▼"
-    st.markdown(f"<div class='hero-card'><div class='hero-title'>{title}</div><div class='hero-value'>{value:,.2f}</div><div class='hero-change' style='color:{color};'>{arrow} {change:+.2f}%</div></div>", unsafe_allow_html=True)
+    glow = "rgba(34,197,94,0.10)" if color == "#22c55e" else "rgba(239,68,68,0.10)"
+    st.markdown(f"""
+    <div class='hero-card' style='box-shadow:0 16px 36px rgba(0,0,0,0.26),0 0 0 1px rgba(255,255,255,0.02) inset,0 0 24px {glow};'>
+        <div style='height:4px;border-radius:999px;background:linear-gradient(90deg,{color},rgba(255,255,255,0.08));margin-bottom:10px;'></div>
+        <div class='hero-title'>{title}</div>
+        <div class='hero-value'>{value:,.2f}</div>
+        <div class='hero-change' style='color:{color};'>{arrow} {change:+.2f}%</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 def make_gauge(value):
-    fig = go.Figure(go.Indicator(mode="gauge+number", value=value, title={"text": "Conviction"}, gauge={"axis": {"range": [0, 100]}, "bar": {"color": "#06b6d4"}, "steps": [{"range": [0, 40], "color": "rgba(239,68,68,0.35)"}, {"range": [40, 70], "color": "rgba(245,158,11,0.35)"}, {"range": [70, 100], "color": "rgba(34,197,94,0.35)"}] }))
-    fig.update_layout(height=225, margin=dict(l=14, r=14, t=36, b=6), paper_bgcolor="rgba(0,0,0,0)")
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=value,
+        title={"text": "Conviction", "font": {"size": 18}},
+        number={"font": {"size": 34}},
+        gauge={
+            "axis": {"range": [0, 100], "tickwidth": 1},
+            "bar": {"color": "#22d3ee", "thickness": 0.32},
+            "bgcolor": "rgba(255,255,255,0.02)",
+            "borderwidth": 0,
+            "steps": [
+                {"range": [0, 40], "color": "rgba(239,68,68,0.30)"},
+                {"range": [40, 70], "color": "rgba(245,158,11,0.28)"},
+                {"range": [70, 100], "color": "rgba(34,197,94,0.28)"}
+            ],
+            "threshold": {"line": {"color": "#ffffff", "width": 3}, "thickness": 0.8, "value": value}
+        }
+    ))
+    fig.update_layout(height=245, margin=dict(l=10, r=10, t=34, b=4), paper_bgcolor="rgba(0,0,0,0)", font_color="white")
     return fig
 
 def make_candlestick(df, symbol, entry=None, stop=None, target=None, breakout=None, support=None):
@@ -664,7 +689,25 @@ if run_scan:
 
 if not st.session_state.scan_df.empty:
     st.markdown("<div class='panel'><div class='panel-title'>Watchlist Decision Matrix</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
-    st.dataframe(st.session_state.scan_df.head(15), use_container_width=True)
+    top_scan = st.session_state.scan_df.head(8).copy()
+    rank_cols = st.columns(min(4, len(top_scan)))
+    for i, (_, r) in enumerate(top_scan.head(4).iterrows()):
+        with rank_cols[i]:
+            badge_color = "#22c55e" if r['AI'] == 'BUY' else "#f59e0b" if r['AI'] == 'HOLD' else "#ef4444"
+            st.markdown(f"""
+            <div class='scanner-rank-card'>
+                <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;'>
+                    <div style='font-weight:900;color:white;font-size:1rem;'>{r['Symbol']}</div>
+                    <div style='padding:4px 8px;border-radius:999px;background:{badge_color}22;border:1px solid {badge_color}44;color:{badge_color};font-weight:900;font-size:0.72rem;'>{r['AI']}</div>
+                </div>
+                <div style='font-size:1.45rem;font-weight:900;color:white;'>{int(r['Score'])}/100</div>
+                <div style='color:#93c5fd;font-weight:800;font-size:0.8rem;margin-top:4px;'>RSI {r['RSI']:.2f} • {r['Sector']}</div>
+                <div style='height:6px;border-radius:999px;background:rgba(255,255,255,0.05);margin-top:10px;overflow:hidden;'>
+                    <div style='width:{min(max(r['Score'],0),100)}%;height:100%;background:linear-gradient(90deg,#22d3ee,#8b5cf6);'></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+    st.dataframe(st.session_state.scan_df.head(15).style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'}), use_container_width=True)
 
 # -------------------------------------------------
 # PORTFOLIO COMMAND CENTER
@@ -697,7 +740,13 @@ else:
     with pc3: metric_box("P/L ₹", rupee(total_pl), f"{total_pl_pct:+.2f}%", positive=total_pl >= 0)
     risk_score = min(100, max(0, 50 + (portfolio_analysis_df["P/L %"].std() if len(portfolio_analysis_df) > 1 else 0)))
     with pc4: st.plotly_chart(make_portfolio_risk_gauge(risk_score), use_container_width=True)
-    st.dataframe(portfolio_analysis_df, use_container_width=True)
+    st.dataframe(portfolio_analysis_df.style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'}), use_container_width=True)
+    alloc = portfolio_analysis_df.groupby('Sector', as_index=False)['Current Value'].sum()
+    if not alloc.empty:
+        donut = go.Figure(data=[go.Pie(labels=alloc['Sector'], values=alloc['Current Value'], hole=0.58, textinfo='label+percent')])
+        donut.update_traces(marker=dict(line=dict(color='rgba(255,255,255,0.08)', width=1.5)))
+        donut.update_layout(title='Portfolio Allocation', template='plotly_dark', height=360, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', legend=dict(orientation='h', y=-0.15))
+        st.plotly_chart(donut, use_container_widt
 
 # -------------------------------------------------
 # PORTFOLIO ACTION SUGGESTIONS
@@ -761,7 +810,8 @@ if compare_symbols:
         met = compute_scan_metrics_fast(d); sc, ver = score_from_metrics(met) if met else (0, "Weak")
         cmp_rows.append({"Symbol": s, "Price": round(float(dd["Close"].iloc[-1]), 2), "RSI": round(float(dd["RSI14"].iloc[-1]), 2), "Score": sc, "Verdict": ver})
     if cmp_rows:
-        st.dataframe(pd.DataFrame(cmp_rows), use_container_width=True)
+        cmp_df = pd.DataFrame(cmp_rows)
+        st.dataframe(cmp_df.style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'}), use_container_width=True)
 
 # -------------------------------------------------
 # PDF REPORT EXPORT
