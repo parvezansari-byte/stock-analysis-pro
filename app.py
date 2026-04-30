@@ -801,6 +801,112 @@ if show_technical_ratio:
     st.dataframe(tr.style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'}), use_container_width=True)
 
 # -------------------------------------------------
+# RATIO INTERPRETATION ENGINE
+# -------------------------------------------------
+def chip_html(text, tone='neutral'):
+    tones = {
+        'green': ('rgba(34,197,94,0.16)', 'rgba(34,197,94,0.28)', '#86efac'),
+        'yellow': ('rgba(245,158,11,0.16)', 'rgba(245,158,11,0.28)', '#fcd34d'),
+        'red': ('rgba(239,68,68,0.16)', 'rgba(239,68,68,0.28)', '#fca5a5'),
+        'blue': ('rgba(59,130,246,0.16)', 'rgba(59,130,246,0.28)', '#93c5fd'),
+        'neutral': ('rgba(148,163,184,0.14)', 'rgba(148,163,184,0.22)', '#cbd5e1')
+    }
+    bg, bd, fg = tones.get(tone, tones['neutral'])
+    return f"<span style='display:inline-block;padding:7px 12px;border-radius:999px;background:{bg};border:1px solid {bd};color:{fg};font-weight:900;font-size:0.76rem;margin-right:6px;margin-bottom:6px;'>{text}</span>"
+
+def to_num(x):
+    try:
+        if x in [None, 'N/A', 'nan']: return np.nan
+        return float(x)
+    except Exception:
+        return np.nan
+
+def get_fundamental_interpretation(info):
+    pe = to_num(info.get('trailingPE'))
+    pb = to_num(info.get('priceToBook'))
+    roe_v = to_num((info.get('returnOnEquity', np.nan) or np.nan) * 100 if info.get('returnOnEquity') is not None else np.nan)
+    de = to_num(info.get('debtToEquity'))
+    revg = to_num((info.get('revenueGrowth', np.nan) or np.nan) * 100 if info.get('revenueGrowth') is not None else np.nan)
+    pm = to_num((info.get('profitMargins', np.nan) or np.nan) * 100 if info.get('profitMargins') is not None else np.nan)
+    score_f = 50
+    if pd.notna(roe_v): score_f += 15 if roe_v >= 15 else (5 if roe_v >= 10 else -10)
+    if pd.notna(de): score_f += 10 if de <= 80 else (0 if de <= 150 else -12)
+    if pd.notna(revg): score_f += 10 if revg >= 10 else (4 if revg >= 5 else -8)
+    if pd.notna(pm): score_f += 10 if pm >= 10 else (4 if pm >= 5 else -8)
+    if pd.notna(pe): score_f += 8 if pe <= 25 else (2 if pe <= 40 else -10)
+    if pd.notna(pb): score_f += 7 if pb <= 6 else (2 if pb <= 10 else -8)
+    score_f = max(0, min(100, score_f))
+    if score_f >= 75:
+        verdict = 'Strong'; tone = 'green'; summary = 'Healthy profitability, manageable valuation, and balance-sheet quality support strong long-term conviction.'
+    elif score_f >= 55:
+        verdict = 'Fair'; tone = 'yellow'; summary = 'Fundamentals are broadly acceptable, but valuation or growth quality needs selective monitoring.'
+    elif score_f >= 35:
+        verdict = 'Expensive'; tone = 'red'; summary = 'Business quality may be reasonable, but current valuation or efficiency metrics look stretched.'
+    else:
+        verdict = 'Weak'; tone = 'red'; summary = 'Balance sheet, profitability, or growth profile does not currently support strong conviction.'
+    return score_f, verdict, tone, summary
+
+def get_technical_interpretation(last_close, sma20, sma50, rsi, macd, macd_signal, vol_ratio):
+    score_t = 50
+    if last_close > sma20: score_t += 12
+    else: score_t -= 8
+    if last_close > sma50: score_t += 14
+    else: score_t -= 10
+    if sma20 > sma50: score_t += 14
+    else: score_t -= 8
+    if 50 <= rsi <= 70: score_t += 14
+    elif rsi > 75 or rsi < 35: score_t -= 10
+    if macd > macd_signal: score_t += 12
+    else: score_t -= 8
+    if isinstance(vol_ratio, (int, float)) and not pd.isna(vol_ratio):
+        score_t += 8 if vol_ratio >= 1.2 else (2 if vol_ratio >= 0.9 else -6)
+    score_t = max(0, min(100, score_t))
+    if score_t >= 70:
+        verdict = 'Bullish'; tone = 'green'; summary = 'Trend, momentum, and participation are aligned for a constructive tactical setup.'
+    elif score_t >= 45:
+        verdict = 'Neutral'; tone = 'yellow'; summary = 'Technical structure is mixed. Price action is tradable but not fully confirmed.'
+    else:
+        verdict = 'Risky'; tone = 'red'; summary = 'Trend or momentum quality is weak; capital protection should take priority.'
+    return score_t, verdict, tone, summary
+
+fund_score, fund_verdict, fund_tone, fund_summary = get_fundamental_interpretation(info)
+tech_sma20 = round(df.iloc[-1]['SMA20'], 2)
+tech_sma50 = round(df.iloc[-1]['SMA50'], 2)
+tech_macd = round(df.iloc[-1]['MACD'], 2)
+tech_macd_signal = round(df.iloc[-1]['MACD_SIGNAL'], 2)
+tech_vol20 = round(df['Volume'].tail(20).mean(), 2) if 'Volume' in df.columns else np.nan
+tech_last_vol = round(df['Volume'].iloc[-1], 2) if 'Volume' in df.columns else np.nan
+tech_vol_ratio = round((tech_last_vol / tech_vol20), 2) if pd.notna(tech_last_vol) and pd.notna(tech_vol20) and tech_vol20 != 0 else np.nan
+tech_score, tech_verdict, tech_tone, tech_summary = get_technical_interpretation(last_close, tech_sma20, tech_sma50, rsi, tech_macd, tech_macd_signal, tech_vol_ratio)
+overall_ratio_score = round((fund_score * 0.5) + (tech_score * 0.5), 1)
+overall_tone = 'green' if overall_ratio_score >= 70 else 'yellow' if overall_ratio_score >= 50 else 'red'
+overall_summary = 'High-conviction alignment across business quality and price structure.' if overall_ratio_score >= 70 else 'Balanced but selective setup; wait for stronger confirmation on weaker side.' if overall_ratio_score >= 50 else 'Risk-reward is currently weak unless price or fundamentals improve materially.'
+
+st.markdown("<div class='panel'><div class='panel-title'>Ratio Interpretation Engine</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
+ri1, ri2, ri3 = st.columns(3)
+with ri1: metric_box('Fundamental Score', f'{fund_score}/100', fund_verdict, positive=True if fund_tone=='green' else False if fund_tone=='red' else None)
+with ri2: metric_box('Technical Score', f'{tech_score}/100', tech_verdict, positive=True if tech_tone=='green' else False if tech_tone=='red' else None)
+with ri3: metric_box('Overall Combined', f'{overall_ratio_score}/100', 'Blended ratio score', positive=True if overall_tone=='green' else False if overall_tone=='red' else None)
+
+st.markdown(
+    f"<div class='panel'>"
+    f"<div class='panel-title'>Instant Analyst-Style Summary</div>"
+    f"<div class='subtle-divider'></div>"
+    f"{chip_html('Fundamental Verdict: ' + fund_verdict, fund_tone)}"
+    f"{chip_html('Technical Verdict: ' + tech_verdict, tech_tone)}"
+    f"{chip_html('Overall Score: ' + str(overall_ratio_score) + '/100', overall_tone)}"
+    f"{chip_html('AI Action: ' + ai_action, 'green' if ai_action=='BUY' else 'yellow' if ai_action=='HOLD' else 'red')}"
+    f"<div style='margin-top:10px;color:#dbeafe;font-weight:800;font-size:0.9rem;'>Fundamental View:</div>"
+    f"<div style='color:#cbd5e1;font-size:0.88rem;line-height:1.6;margin-top:4px;'>{fund_summary}</div>"
+    f"<div style='margin-top:10px;color:#dbeafe;font-weight:800;font-size:0.9rem;'>Technical View:</div>"
+    f"<div style='color:#cbd5e1;font-size:0.88rem;line-height:1.6;margin-top:4px;'>{tech_summary}</div>"
+    f"<div style='margin-top:10px;color:#dbeafe;font-weight:800;font-size:0.9rem;'>Analyst Summary:</div>"
+    f"<div style='color:#e2e8f0;font-size:0.9rem;line-height:1.7;margin-top:4px;'>{overall_summary} Current institutional read for <b>{symbol}</b> is <b>{fund_verdict}</b> fundamentally and <b>{tech_verdict}</b> technically, producing a blended conviction score of <b>{overall_ratio_score}/100</b>.</div>"
+    f"</div>",
+    unsafe_allow_html=True
+)
+
+# -------------------------------------------------
 # SIGNAL ENGINE + TRADE PLAN
 # -------------------------------------------------
 sg1, sg2 = st.columns([1.15, 1.85], gap="small")
