@@ -1217,7 +1217,7 @@ if compare_symbols:
 # PDF REPORT EXPORT
 # -------------------------------------------------
 st.markdown("<div class='panel'><div class='panel-title'>PDF Report Export</div><div class='subtle-divider'></div><div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;'><span class='ribbon-chip'>Premium Institutional PDF</span><span class='ribbon-chip'>Trade Plan Ready</span><span class='ribbon-chip'>Client Presentation Safe</span></div></div>", unsafe_allow_html=True)
-pdf_bytes = build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value, fund_verdict, tech_verdict, overall_ratio_score, fund_summary, tech_summary, overall_summary)
+pdf_bytes = build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value, fund_verdict, tech_verdict, overall_ratio_score, fund_summary, tech_summary, overall_summary, intrinsic_value, upside_downside_pct, margin_safety_pct, valuation_zone, valuation_summary)
 if pdf_bytes:
     st.download_button("Download PDF Report", data=pdf_bytes, file_name=f"NILE_{symbol.replace('.NS','')}_Report.pdf", mime="application/pdf")
 else:
