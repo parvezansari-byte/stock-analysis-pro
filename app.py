@@ -51,22 +51,21 @@ st.set_page_config(
 # -------------------------------------------------
 # PREMIUM IMPERIAL TERMINAL CSS
 # -------------------------------------------------
-# =========================
-# PASTE THIS SINGLE BLOCK
-# Put it IMMEDIATELY AFTER st.set_page_config(...)
-# =========================
-
 st.markdown("""
 <style>
 :root{
     --bg0:#040814;
     --bg1:#081022;
     --bg2:#0b1430;
+    --bg3:#10183a;
     --line:rgba(255,255,255,0.08);
     --text:#eef2ff;
+    --muted:#a5b4fc;
 }
 
-/* MAIN APP BACKGROUND */
+/* =========================
+   MAIN APP BACKGROUND
+   ========================= */
 .stApp{
     background:
         radial-gradient(circle at 12% 10%, rgba(255, 0, 153, 0.18), transparent 22%),
@@ -78,23 +77,57 @@ st.markdown("""
     color: var(--text);
 }
 
-/* CONTAINER */
+/* MAIN CONTAINER */
 .block-container{
     max-width: 1720px;
-    padding-top: 0.9rem;
+    padding-top: 0.8rem;
     padding-bottom: 2rem;
 }
 
-/* SIDEBAR */
+/* =========================
+   SIDEBAR
+   ========================= */
 section[data-testid="stSidebar"]{
     background:
         radial-gradient(circle at 20% 10%, rgba(255, 0, 153, 0.10), transparent 24%),
         radial-gradient(circle at 85% 20%, rgba(0, 209, 255, 0.08), transparent 24%),
         linear-gradient(180deg, rgba(5,8,20,0.98), rgba(8,14,34,0.98));
     border-right: 1px solid rgba(255,255,255,0.06);
+    box-shadow: inset -1px 0 0 rgba(255,255,255,0.02);
 }
 
-/* ALL BUTTONS BASE */
+/* Sidebar labels */
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] .stMarkdown,
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span{
+    color:#e9e7ff !important;
+    font-weight:700;
+}
+
+/* Sidebar selectbox / inputs */
+section[data-testid="stSidebar"] div[data-baseweb="select"] > div,
+section[data-testid="stSidebar"] .stNumberInput > div > div,
+section[data-testid="stSidebar"] .stTextInput > div > div{
+    background:
+        linear-gradient(135deg, rgba(18,28,58,0.92), rgba(44,18,90,0.82)) !important;
+    border:1px solid rgba(255,255,255,0.10) !important;
+    border-radius:16px !important;
+    box-shadow:
+        0 10px 24px rgba(0,0,0,0.28),
+        0 0 0 1px rgba(255,255,255,0.02) inset,
+        0 0 14px rgba(168,85,247,0.06);
+    color:white !important;
+}
+
+/* Sidebar sliders */
+section[data-testid="stSidebar"] .stSlider > div[data-baseweb="slider"] > div{
+    color:#f472b6 !important;
+}
+
+/* =========================
+   BUTTONS (SAFE - NO KEY DEPENDENCY)
+   ========================= */
 .stButton > button,
 .stDownloadButton > button{
     width:100%;
@@ -106,14 +139,18 @@ section[data-testid="stSidebar"]{
     padding:0.82rem 1rem !important;
     letter-spacing:0.2px;
     transition: all 0.22s ease-in-out !important;
+    background:
+        linear-gradient(135deg, #3b0764 0%, #6d28d9 28%, #9333ea 58%, #ec4899 100%) !important;
     background-size: 220% 220% !important;
     box-shadow:
         0 14px 30px rgba(0,0,0,0.32),
         0 0 0 1px rgba(255,255,255,0.03) inset,
-        0 0 16px rgba(0,209,255,0.06);
+        0 0 16px rgba(0,209,255,0.06),
+        0 0 14px rgba(255,0,153,0.05);
     animation: nileGlow 8s ease infinite;
 }
 
+/* Button hover */
 .stButton > button:hover,
 .stDownloadButton > button:hover{
     transform: translateY(-2px) scale(1.01);
@@ -125,69 +162,170 @@ section[data-testid="stSidebar"]{
         0 0 18px rgba(255,0,153,0.08);
 }
 
-/* SIDEBAR BUTTON STYLE */
+/* Sidebar buttons more neon */
 section[data-testid="stSidebar"] .stButton > button{
     background:
         linear-gradient(135deg, #5b21b6 0%, #7c3aed 22%, #9333ea 45%, #ec4899 75%, #f43f5e 100%) !important;
-}
-
-/* RUN INSTITUTIONAL SCAN */
-div[data-testid="stButton"][id*="run_scan_btn"] > button{
-    background:
-        linear-gradient(135deg, #0f5132 0%, #16a34a 28%, #22c55e 55%, #86efac 100%) !important;
     box-shadow:
-        0 14px 30px rgba(0,0,0,0.32),
-        0 0 18px rgba(34,197,94,0.14),
+        0 14px 28px rgba(0,0,0,0.34),
+        0 0 18px rgba(236,72,153,0.12),
+        0 0 12px rgba(124,58,237,0.10),
         0 0 0 1px rgba(255,255,255,0.03) inset;
 }
 
-/* FUNDAMENTAL RATIO */
-div[data-testid="stButton"][id*="fundamental_ratio_btn"] > button{
+/* =========================
+   METRIC / CARD LOOK
+   Works with Streamlit metric cards + containers
+   ========================= */
+div[data-testid="stMetric"],
+div[data-testid="metric-container"]{
     background:
-        linear-gradient(135deg, #1d4ed8 0%, #2563eb 30%, #3b82f6 62%, #60a5fa 100%) !important;
+        linear-gradient(180deg, rgba(12,18,40,0.78), rgba(10,16,34,0.64)),
+        radial-gradient(circle at top right, rgba(0,209,255,0.05), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(255,0,153,0.05), transparent 30%);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:22px;
+    padding:12px 14px !important;
     box-shadow:
-        0 14px 30px rgba(0,0,0,0.32),
-        0 0 18px rgba(59,130,246,0.14),
-        0 0 0 1px rgba(255,255,255,0.03) inset;
+        0 16px 36px rgba(0,0,0,0.30),
+        0 0 0 1px rgba(255,255,255,0.02) inset,
+        0 0 18px rgba(0,209,255,0.05),
+        0 0 14px rgba(255,0,153,0.04);
+    backdrop-filter: blur(14px);
 }
 
-/* TECHNICAL RATIO */
-div[data-testid="stButton"][id*="technical_ratio_btn"] > button{
+/* Metric labels */
+div[data-testid="stMetric"] label,
+div[data-testid="metric-container"] label{
+    color:#b9c5ff !important;
+    font-weight:700 !important;
+}
+
+/* Metric values */
+div[data-testid="stMetric"] [data-testid="stMetricValue"],
+div[data-testid="metric-container"] [data-testid="stMetricValue"]{
+    color:#ffffff !important;
+    font-weight:900 !important;
+}
+
+/* =========================
+   DATAFRAMES / TABLES
+   ========================= */
+div[data-testid="stDataFrame"]{
     background:
-        linear-gradient(135deg, #581c87 0%, #7c3aed 28%, #8b5cf6 60%, #c084fc 100%) !important;
+        linear-gradient(180deg, rgba(10,16,34,0.72), rgba(10,16,28,0.62));
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:18px;
+    padding:6px;
     box-shadow:
-        0 14px 30px rgba(0,0,0,0.32),
-        0 0 18px rgba(168,85,247,0.14),
-        0 0 0 1px rgba(255,255,255,0.03) inset;
+        0 14px 30px rgba(0,0,0,0.28),
+        0 0 0 1px rgba(255,255,255,0.02) inset;
 }
 
-/* DOWNLOAD / EXPORT BUTTONS */
-div[data-testid="stDownloadButton"] > button{
+/* =========================
+   TABS (Financial statements etc.)
+   ========================= */
+div[data-baseweb="tab-list"]{
+    gap:8px;
+    margin-bottom:8px;
+}
+
+button[data-baseweb="tab"]{
     background:
-        linear-gradient(135deg, #0f766e 0%, #0891b2 28%, #06b6d4 60%, #67e8f9 100%) !important;
+        linear-gradient(135deg, rgba(20,24,48,0.88), rgba(26,20,58,0.78)) !important;
+    border:1px solid rgba(255,255,255,0.08) !important;
+    border-radius:14px !important;
+    color:#dbeafe !important;
+    font-weight:800 !important;
+    padding:8px 14px !important;
     box-shadow:
-        0 14px 30px rgba(0,0,0,0.32),
-        0 0 18px rgba(34,211,238,0.14),
-        0 0 0 1px rgba(255,255,255,0.03) inset;
+        0 8px 20px rgba(0,0,0,0.20),
+        0 0 0 1px rgba(255,255,255,0.02) inset !important;
 }
 
-/* OPTIONAL EXTRA BUTTON TARGETS */
-div[data-testid="stButton"][id*="compare_btn"] > button{
+button[data-baseweb="tab"][aria-selected="true"]{
     background:
-        linear-gradient(135deg, #4338ca 0%, #6366f1 35%, #8b5cf6 70%, #c084fc 100%) !important;
+        linear-gradient(135deg, rgba(29,78,216,0.35), rgba(124,58,237,0.28), rgba(236,72,153,0.22)) !important;
+    border:1px solid rgba(255,255,255,0.12) !important;
+    box-shadow:
+        0 0 18px rgba(59,130,246,0.08),
+        0 10px 22px rgba(0,0,0,0.24) !important;
 }
 
-div[data-testid="stButton"][id*="portfolio_btn"] > button{
+/* =========================
+   DOWNLOAD BUTTON PANEL FEEL
+   ========================= */
+div[data-testid="stDownloadButton"]{
+    padding:4px;
+    border-radius:18px;
     background:
-        linear-gradient(135deg, #0f766e 0%, #14b8a6 40%, #22d3ee 75%, #67e8f9 100%) !important;
+        linear-gradient(180deg, rgba(8,14,28,0.62), rgba(13,22,40,0.48));
+    border:1px solid rgba(255,255,255,0.05);
+    box-shadow:
+        0 12px 24px rgba(0,0,0,0.22),
+        inset 0 1px 0 rgba(255,255,255,0.02);
 }
 
-div[data-testid="stButton"][id*="alert_btn"] > button{
+/* =========================
+   PLOTLY CHART FRAMES (visual spacing only)
+   ========================= */
+div[data-testid="stPlotlyChart"]{
     background:
-        linear-gradient(135deg, #be123c 0%, #e11d48 35%, #f43f5e 70%, #fb7185 100%) !important;
+        linear-gradient(180deg, rgba(10,16,34,0.42), rgba(10,16,28,0.28));
+    border-radius:18px;
 }
 
-/* BUTTON ANIMATION */
+/* =========================
+   HORIZONTAL RULE / DIVIDER
+   ========================= */
+hr{
+    border:none !important;
+    height:1px !important;
+    background:linear-gradient(90deg, rgba(59,130,246,0.20), rgba(168,85,247,0.14), transparent) !important;
+}
+
+/* =========================
+   OPTIONAL CUSTOM CLASSES
+   (if already used in your file)
+   ========================= */
+.panel,
+.hero-card,
+.breadth-card,
+.metric-card,
+.portfolio-card,
+.scanner-rank-card,
+.watchlist-matrix-card{
+    background:
+        linear-gradient(180deg, rgba(12,18,40,0.78), rgba(10,16,34,0.64)),
+        radial-gradient(circle at top right, rgba(0,209,255,0.05), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(255,0,153,0.05), transparent 30%);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:22px;
+    box-shadow:
+        0 16px 36px rgba(0,0,0,0.30),
+        0 0 0 1px rgba(255,255,255,0.02) inset,
+        0 0 18px rgba(0,209,255,0.05),
+        0 0 14px rgba(255,0,153,0.04);
+    backdrop-filter: blur(14px);
+}
+
+.panel:hover,
+.hero-card:hover,
+.breadth-card:hover,
+.metric-card:hover,
+.portfolio-card:hover,
+.scanner-rank-card:hover,
+.watchlist-matrix-card:hover{
+    box-shadow:
+        0 18px 40px rgba(0,0,0,0.34),
+        0 0 0 1px rgba(255,255,255,0.03) inset,
+        0 0 22px rgba(0,209,255,0.07),
+        0 0 16px rgba(255,0,153,0.05);
+}
+
+/* =========================
+   ANIMATION
+   ========================= */
 @keyframes nileGlow{
     0%{background-position:0% 50%;}
     50%{background-position:100% 50%;}
