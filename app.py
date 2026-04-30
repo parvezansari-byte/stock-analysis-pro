@@ -164,7 +164,8 @@ st.markdown(
             0 24px 46px rgba(0,0,0,0.34),
             0 0 0 1px rgba(255,255,255,0.03) inset,
             0 0 26px rgba(34,211,238,0.08),
-            0 0 20px rgba(139,
+            0 0 20px rgba(139,92,246,0.07);
+    }
     .hero-card::before, .breadth-card::before, .metric-card::before {
         content: "";
         position: absolute;
@@ -712,12 +713,92 @@ with right:
 # -------------------------------------------------
 if show_fundamental_ratio:
     st.markdown("<div class='panel'><div class='panel-title'>Fundamental Ratio</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
-    fr = pd.DataFrame({"Metric": ["P/E", "Forward P/E", "Price/Book", "ROE %", "Debt/Equity", "Profit Margin %"], "Value": [info.get("trailingPE", "N/A"), info.get("forwardPE", "N/A"), info.get("priceToBook", "N/A"), round((info.get("returnOnEquity", 0) or 0) * 100, 2) if info.get("returnOnEquity") is not None else "N/A", info.get("debtToEquity", "N/A"), round((info.get("profitMargins", 0) or 0) * 100, 2) if info.get("profitMargins") is not None else "N/A"]})
-    st.dataframe(fr, use_container_width=True)
+    current_ratio = info.get('currentRatio', 'N/A')
+    quick_ratio = info.get('quickRatio', 'N/A')
+    roe = round((info.get('returnOnEquity', 0) or 0) * 100, 2) if info.get('returnOnEquity') is not None else 'N/A'
+    roa = round((info.get('returnOnAssets', 0) or 0) * 100, 2) if info.get('returnOnAssets') is not None else 'N/A'
+    operating_margin = round((info.get('operatingMargins', 0) or 0) * 100, 2) if info.get('operatingMargins') is not None else 'N/A'
+    profit_margin = round((info.get('profitMargins', 0) or 0) * 100, 2) if info.get('profitMargins') is not None else 'N/A'
+    gross_margin = round((info.get('grossMargins', 0) or 0) * 100, 2) if info.get('grossMargins') is not None else 'N/A'
+    rev_growth = round((info.get('revenueGrowth', 0) or 0) * 100, 2) if info.get('revenueGrowth') is not None else 'N/A'
+    earn_growth = round((info.get('earningsGrowth', 0) or 0) * 100, 2) if info.get('earningsGrowth') is not None else 'N/A'
+    div_yield = round((info.get('dividendYield', 0) or 0) * 100, 2) if info.get('dividendYield') is not None else 'N/A'
+    fund_rows = [
+        {'Category':'Valuation','Metric':'Market Cap (₹ Cr)','Value': round((info.get('marketCap', 0) or 0)/1e7, 2) if info.get('marketCap') is not None else 'N/A'},
+        {'Category':'Valuation','Metric':'Trailing P/E','Value': info.get('trailingPE', 'N/A')},
+        {'Category':'Valuation','Metric':'Forward P/E','Value': info.get('forwardPE', 'N/A')},
+        {'Category':'Valuation','Metric':'PEG Ratio','Value': info.get('pegRatio', 'N/A')},
+        {'Category':'Valuation','Metric':'Price to Book','Value': info.get('priceToBook', 'N/A')},
+        {'Category':'Valuation','Metric':'Enterprise Value','Value': info.get('enterpriseValue', 'N/A')},
+        {'Category':'Profitability','Metric':'ROE %','Value': roe},
+        {'Category':'Profitability','Metric':'ROA %','Value': roa},
+        {'Category':'Profitability','Metric':'Operating Margin %','Value': operating_margin},
+        {'Category':'Profitability','Metric':'Profit Margin %','Value': profit_margin},
+        {'Category':'Profitability','Metric':'Gross Margin %','Value': gross_margin},
+        {'Category':'Growth','Metric':'Revenue Growth %','Value': rev_growth},
+        {'Category':'Growth','Metric':'Earnings Growth %','Value': earn_growth},
+        {'Category':'Growth','Metric':'Book Value','Value': info.get('bookValue', 'N/A')},
+        {'Category':'Growth','Metric':'EPS (TTM)','Value': info.get('trailingEps', 'N/A')},
+        {'Category':'Balance Sheet','Metric':'Debt to Equity','Value': info.get('debtToEquity', 'N/A')},
+        {'Category':'Balance Sheet','Metric':'Current Ratio','Value': current_ratio},
+        {'Category':'Balance Sheet','Metric':'Quick Ratio','Value': quick_ratio},
+        {'Category':'Cash / Shareholder','Metric':'Free Cashflow','Value': info.get('freeCashflow', 'N/A')},
+        {'Category':'Cash / Shareholder','Metric':'Operating Cashflow','Value': info.get('operatingCashflow', 'N/A')},
+        {'Category':'Cash / Shareholder','Metric':'Dividend Yield %','Value': div_yield},
+        {'Category':'Cash / Shareholder','Metric':'Payout Ratio','Value': info.get('payoutRatio', 'N/A')},
+    ]
+    fr = pd.DataFrame(fund_rows)
+    f1, f2, f3, f4 = st.columns(4)
+    with f1: metric_box('P/E', str(info.get('trailingPE', 'N/A')), 'Valuation')
+    with f2: metric_box('ROE %', str(roe), 'Profitability', True if isinstance(roe,(int,float)) and roe >= 15 else None)
+    with f3: metric_box('Debt/Equity', str(info.get('debtToEquity', 'N/A')), 'Leverage')
+    with f4: metric_box('Revenue Growth %', str(rev_growth), 'Growth', True if isinstance(rev_growth,(int,float)) and rev_growth >= 10 else None)
+    st.dataframe(fr.style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'}), use_container_width=True)
+
 if show_technical_ratio:
     st.markdown("<div class='panel'><div class='panel-title'>Technical Ratio</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
-    tr = pd.DataFrame({"Metric": ["SMA20", "SMA50", "RSI14", "MACD", "MACD Signal", "ATR14"], "Value": [round(df.iloc[-1]["SMA20"], 2), round(df.iloc[-1]["SMA50"], 2), round(rsi, 2), round(df.iloc[-1]["MACD"], 2), round(df.iloc[-1]["MACD_SIGNAL"], 2), round(atr, 2)]})
-    st.dataframe(tr, use_container_width=True)
+    high_52 = raw['High'].tail(min(len(raw), 252)).max() if not raw.empty else np.nan
+    low_52 = raw['Low'].tail(min(len(raw), 252)).min() if not raw.empty else np.nan
+    sma20 = round(df.iloc[-1]['SMA20'], 2)
+    sma50 = round(df.iloc[-1]['SMA50'], 2)
+    ema20 = round(df['Close'].ewm(span=20, adjust=False).mean().iloc[-1], 2)
+    ema50 = round(df['Close'].ewm(span=50, adjust=False).mean().iloc[-1], 2)
+    avg_vol20 = round(df['Volume'].tail(20).mean(), 2) if 'Volume' in df.columns else 'N/A'
+    last_vol = round(df['Volume'].iloc[-1], 2) if 'Volume' in df.columns else 'N/A'
+    vol_ratio = round((last_vol / avg_vol20), 2) if isinstance(avg_vol20,(int,float)) and avg_vol20 not in [0,'N/A'] and isinstance(last_vol,(int,float)) else 'N/A'
+    price_vs_sma20 = round(((last_close / sma20) - 1) * 100, 2) if sma20 else np.nan
+    price_vs_sma50 = round(((last_close / sma50) - 1) * 100, 2) if sma50 else np.nan
+    tech_rows = [
+        {'Category':'Trend','Metric':'Last Price','Value': round(last_close, 2)},
+        {'Category':'Trend','Metric':'SMA 20','Value': sma20},
+        {'Category':'Trend','Metric':'SMA 50','Value': sma50},
+        {'Category':'Trend','Metric':'EMA 20','Value': ema20},
+        {'Category':'Trend','Metric':'EMA 50','Value': ema50},
+        {'Category':'Trend','Metric':'Price vs SMA20 %','Value': price_vs_sma20},
+        {'Category':'Trend','Metric':'Price vs SMA50 %','Value': price_vs_sma50},
+        {'Category':'Momentum','Metric':'RSI 14','Value': round(rsi, 2)},
+        {'Category':'Momentum','Metric':'MACD','Value': round(df.iloc[-1]['MACD'], 2)},
+        {'Category':'Momentum','Metric':'MACD Signal','Value': round(df.iloc[-1]['MACD_SIGNAL'], 2)},
+        {'Category':'Momentum','Metric':'Daily Change %','Value': round(change_pct, 2)},
+        {'Category':'Volatility','Metric':'ATR 14','Value': round(atr, 2)},
+        {'Category':'Volatility','Metric':'52W High','Value': round(high_52, 2) if pd.notna(high_52) else 'N/A'},
+        {'Category':'Volatility','Metric':'52W Low','Value': round(low_52, 2) if pd.notna(low_52) else 'N/A'},
+        {'Category':'Levels','Metric':'20D Breakout','Value': round(breakout_level, 2)},
+        {'Category':'Levels','Metric':'20D Support','Value': round(support_level, 2)},
+        {'Category':'Levels','Metric':'Suggested Entry','Value': round(entry, 2)},
+        {'Category':'Levels','Metric':'Stop Loss','Value': round(stop_loss, 2)},
+        {'Category':'Levels','Metric':'Target','Value': round(target, 2)},
+        {'Category':'Volume','Metric':'Last Volume','Value': last_vol},
+        {'Category':'Volume','Metric':'20D Avg Volume','Value': avg_vol20},
+        {'Category':'Volume','Metric':'Volume Ratio','Value': vol_ratio},
+    ]
+    tr = pd.DataFrame(tech_rows)
+    t1, t2, t3, t4 = st.columns(4)
+    with t1: metric_box('RSI 14', f'{rsi:.2f}', 'Momentum', True if 50 <= rsi <= 70 else None)
+    with t2: metric_box('ATR 14', f'{atr:.2f}', 'Volatility')
+    with t3: metric_box('Price vs SMA20 %', f'{price_vs_sma20:+.2f}%', 'Trend', True if price_vs_sma20 >= 0 else False)
+    with t4: metric_box('Volume Ratio', str(vol_ratio), 'Participation', True if isinstance(vol_ratio,(int,float)) and vol_ratio >= 1.2 else None)
+    st.dataframe(tr.style.set_properties(**{'background-color': 'rgba(15,23,42,0.55)', 'color': 'white', 'border-color': 'rgba(255,255,255,0.05)'}), use_container_width=True)
 
 # -------------------------------------------------
 # SIGNAL ENGINE + TRADE PLAN
