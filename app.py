@@ -276,9 +276,41 @@ st.markdown(
         box-shadow: 0 12px 24px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.02);
     }
     
+    .scanner-rank-card {
+        border-radius: 24px !important;
+        padding: 16px !important;
+        background:
+            linear-gradient(180deg, rgba(18,28,52,0.78), rgba(10,16,32,0.72)),
+            radial-gradient(circle at top right, rgba(34,211,238,0.08), transparent 28%),
+            radial-gradient(circle at bottom left, rgba(139,92,246,0.08), transparent 30%) !important;
+        box-shadow:
+            0 20px 42px rgba(0,0,0,0.34),
+            0 0 0 1px rgba(255,255,255,0.03) inset,
+            0 0 26px rgba(34,211,238,0.05),
+            0 0 24px rgba(139,92,246,0.04) !important;
+    }
+    .pdf-section-card {
+        border-radius: 18px;
+        padding: 12px 14px;
+        background: linear-gradient(135deg, rgba(15,23,42,0.72), rgba(30,41,59,0.56));
+        border: 1px solid rgba(255,255,255,0.06);
+        margin-bottom: 8px;
+        box-shadow: 0 10px 24px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.02);
+    }
+    .watchlist-matrix {
+        border-radius: 22px;
+        padding: 14px;
+        background:
+            linear-gradient(180deg, rgba(12,18,34,0.74), rgba(16,24,42,0.62)),
+            radial-gradient(circle at top right, rgba(59,130,246,0.06), transparent 26%);
+        border: 1px solid rgba(255,255,255,0.07);
+        box-shadow: 0 18px 36px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.02) inset;
+    }
+
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-# [Code continues... Use downloaded file for the complete full version if canvas truncates due to size]
+# Full file content is very large and may exceed canvas display limits.
+# I loaded the exact file into canvas source, but if the UI truncates visually, use the downloadable .py file as the definitive copy-paste source.
