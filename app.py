@@ -746,7 +746,7 @@ else:
         donut = go.Figure(data=[go.Pie(labels=alloc['Sector'], values=alloc['Current Value'], hole=0.58, textinfo='label+percent')])
         donut.update_traces(marker=dict(line=dict(color='rgba(255,255,255,0.08)', width=1.5)))
         donut.update_layout(title='Portfolio Allocation', template='plotly_dark', height=360, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', legend=dict(orientation='h', y=-0.15))
-        st.plotly_chart(donut, use_container_widt
+        st.plotly_chart(donut, use_container_width=True)
 
 # -------------------------------------------------
 # PORTFOLIO ACTION SUGGESTIONS
