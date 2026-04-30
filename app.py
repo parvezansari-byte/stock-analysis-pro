@@ -540,85 +540,17 @@ def pdf_table(data, col_widths=None, header_bg="#0F172A"):
     ]))
     return tbl
 
-def build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value, fund_verdict='N/A', tech_verdict='N/A', overall_ratio_score='N/A', fund_summary='N/A', tech_summary='N/A', overall_summary='N/A', intrinsic_value='N/A', upside_downside_pct='N/A', margin_safety_pct='N/A', valuation_zone='N/A', valuation_summary='N/A'):
+def build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value):
     if not PDF_AVAILABLE: return None
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, leftMargin=14 * mm, rightMargin=14 * mm, topMargin=12 * mm, bottomMargin=12 * mm)
     s = pdf_styles(); story = []
-    story.append(Paragraph("NILE", s["title"]))
-    story.append(Paragraph("Premium Stock Research Report", s["subtitle"]))
-    story.append(Spacer(1, 6))
-
-    summary = [
-        ["Field", "Value"],
-        ["Symbol", symbol],
-        ["Current Price", rupee(last_close)],
-        ["Daily Change", f"{change_pct:+.2f}%"],
-        ["AI Signal", ai_action],
-        ["Conviction", f"{conviction_score}/100"],
-        ["Institutional Score", f"{score}/100"],
-        ["RSI", f"{rsi:.2f}"],
-    ]
-    story.append(Paragraph("Stock Summary", s["section"]))
-    story.append(pdf_table(summary, col_widths=[60 * mm, 110 * mm]))
-    story.append(Spacer(1, 6))
-
-    ratio_table = [
-        ["Ratio Interpretation", "Verdict / Score"],
-        ["Fundamental Verdict", str(fund_verdict)],
-        ["Technical Verdict", str(tech_verdict)],
-        ["Overall Combined Score", f"{overall_ratio_score}/100" if overall_ratio_score != 'N/A' else 'N/A'],
-    ]
-    story.append(Paragraph("Ratio Interpretation Engine", s["section"]))
-    story.append(pdf_table(ratio_table, col_widths=[70 * mm, 100 * mm], header_bg="#1E3A8A"))
-    story.append(Spacer(1, 6))
-
-    chip_table = [
-        ["Signal Chips", "Status"],
-        ["Fundamental", str(fund_verdict)],
-        ["Technical", str(tech_verdict)],
-        ["Overall", f"{overall_ratio_score}/100" if overall_ratio_score != 'N/A' else 'N/A'],
-        ["AI Action", str(ai_action)],
-    ]
-    story.append(Paragraph("Decision Chips (PDF Translation)", s["section"]))
-    story.append(pdf_table(chip_table, col_widths=[60 * mm, 110 * mm], header_bg="#0F766E"))
-    story.append(Spacer(1, 6))
-
-    trade = [
-        ["Trade Plan", "Value"],
-        ["Entry", rupee(entry)],
-        ["Stop", rupee(stop_loss)],
-        ["Target", rupee(target)],
-        ["Qty", str(qty)],
-        ["Position Size", rupee(position_value)],
-    ]
-    valuation_table = [
-        ['Valuation Engine', 'Value'],
-        ['Intrinsic Value', rupee(intrinsic_value) if intrinsic_value != 'N/A' and pd.notna(intrinsic_value) else 'N/A'],
-        ['Upside / Downside %', f'{upside_downside_pct:+.2f}%' if upside_downside_pct != 'N/A' and pd.notna(upside_downside_pct) else 'N/A'],
-        ['Margin of Safety %', f'{margin_safety_pct:+.2f}%' if margin_safety_pct != 'N/A' and pd.notna(margin_safety_pct) else 'N/A'],
-        ['Valuation Zone', str(valuation_zone)],
-    ]
-    story.append(Paragraph('Professional Valuation Engine', s['section']))
-    story.append(pdf_table(valuation_table, col_widths=[70 * mm, 100 * mm], header_bg='#7C3AED'))
-    story.append(Spacer(1, 6))
-
-    story.append(Paragraph("Professional Trade Plan", s["section"]))
-    story.append(pdf_table(trade, col_widths=[60 * mm, 110 * mm], header_bg="#0F172A"))
-    story.append(Spacer(1, 6))
-
-    story.append(Paragraph("Analyst Summary", s["section"]))
-    story.append(Paragraph(f"<b>Fundamental View:</b> {fund_summary}", s["body"]))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph(f"<b>Technical View:</b> {tech_summary}", s["body"]))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph(f"<b>Overall View:</b> {overall_summary}", s["body"]))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph(f"<b>Valuation View:</b> {valuation_summary}", s["body"]))
-
-    doc.build(story)
-    buffer.seek(0)
-    return buffer.getvalue()
+    story.append(Paragraph("NILE", s["title"])); story.append(Paragraph("Premium Stock Research Report", s["subtitle"])); story.append(Spacer(1, 6))
+    summary = [["Field", "Value"], ["Symbol", symbol], ["Current Price", rupee(last_close)], ["Daily Change", f"{change_pct:+.2f}%"], ["AI Signal", ai_action], ["Conviction", f"{conviction_score}/100"], ["Score", f"{score}/100"], ["RSI", f"{rsi:.2f}"]]
+    story.append(Paragraph("Stock Summary", s["section"])); story.append(pdf_table(summary, col_widths=[60 * mm, 110 * mm])); story.append(Spacer(1, 6))
+    trade = [["Trade Plan", "Value"], ["Entry", rupee(entry)], ["Stop", rupee(stop_loss)], ["Target", rupee(target)], ["Qty", str(qty)], ["Position Size", rupee(position_value)]]
+    story.append(Paragraph("Professional Trade Plan", s["section"])); story.append(pdf_table(trade, col_widths=[60 * mm, 110 * mm], header_bg="#0F766E"))
+    doc.build(story); buffer.seek(0); return buffer.getvalue()
 
 # -------------------------------------------------
 # SESSION STATE
@@ -937,58 +869,6 @@ def get_technical_interpretation(last_close, sma20, sma50, rsi, macd, macd_signa
         verdict = 'Risky'; tone = 'red'; summary = 'Trend or momentum quality is weak; capital protection should take priority.'
     return score_t, verdict, tone, summary
 
-def safe_div(a, b):
-    try:
-        return a / b if b not in [0, None] and not pd.isna(b) else np.nan
-    except Exception:
-        return np.nan
-
-def get_valuation_engine(info, last_close):
-    pe = to_num(info.get('trailingPE'))
-    pb = to_num(info.get('priceToBook'))
-    eps = to_num(info.get('trailingEps'))
-    book = to_num(info.get('bookValue'))
-    roe_v = to_num((info.get('returnOnEquity', np.nan) or np.nan) * 100 if info.get('returnOnEquity') is not None else np.nan)
-    growth = to_num((info.get('earningsGrowth', np.nan) or np.nan) * 100 if info.get('earningsGrowth') is not None else np.nan)
-
-    # Simple blended fair value model (cloud-safe, explainable)
-    pe_target = 18
-    if pd.notna(roe_v):
-        if roe_v >= 20: pe_target = 24
-        elif roe_v >= 15: pe_target = 20
-        elif roe_v >= 10: pe_target = 16
-        else: pe_target = 12
-    if pd.notna(growth):
-        if growth >= 15: pe_target += 3
-        elif growth <= 0: pe_target -= 2
-    pe_target = max(8, min(30, pe_target))
-
-    pe_fair = eps * pe_target if pd.notna(eps) else np.nan
-    graham_fair = np.sqrt(max(22.5 * eps * book, 0)) if pd.notna(eps) and pd.notna(book) and eps > 0 and book > 0 else np.nan
-    pb_fair = book * (3.0 if pd.notna(roe_v) and roe_v >= 18 else 2.3 if pd.notna(roe_v) and roe_v >= 12 else 1.7) if pd.notna(book) else np.nan
-
-    vals = [v for v in [pe_fair, graham_fair, pb_fair] if pd.notna(v) and v > 0]
-    intrinsic = round(float(np.mean(vals)), 2) if vals else np.nan
-    upside = round(((intrinsic / last_close) - 1) * 100, 2) if pd.notna(intrinsic) and last_close else np.nan
-    margin_safety = round(((intrinsic - last_close) / intrinsic) * 100, 2) if pd.notna(intrinsic) and intrinsic else np.nan
-
-    if pd.isna(upside):
-        zone, tone = 'N/A', 'neutral'
-    elif upside >= 15:
-        zone, tone = 'Undervalued', 'green'
-    elif upside >= -10:
-        zone, tone = 'Fairly Valued', 'yellow'
-    else:
-        zone, tone = 'Overvalued', 'red'
-
-    summary = (
-        f"Estimated intrinsic value is {rupee(intrinsic)} with {upside:+.2f}% upside/downside from current price. "
-        f"Margin of safety is {margin_safety:+.2f}%, placing the stock in the {zone} zone."
-        if pd.notna(intrinsic) else
-        "Insufficient fundamental inputs (EPS / Book Value) to derive a stable intrinsic value estimate."
-    )
-    return intrinsic, upside, margin_safety, zone, tone, summary
-
 fund_score, fund_verdict, fund_tone, fund_summary = get_fundamental_interpretation(info)
 tech_sma20 = round(df.iloc[-1]['SMA20'], 2)
 tech_sma50 = round(df.iloc[-1]['SMA50'], 2)
@@ -1001,7 +881,6 @@ tech_score, tech_verdict, tech_tone, tech_summary = get_technical_interpretation
 overall_ratio_score = round((fund_score * 0.5) + (tech_score * 0.5), 1)
 overall_tone = 'green' if overall_ratio_score >= 70 else 'yellow' if overall_ratio_score >= 50 else 'red'
 overall_summary = 'High-conviction alignment across business quality and price structure.' if overall_ratio_score >= 70 else 'Balanced but selective setup; wait for stronger confirmation on weaker side.' if overall_ratio_score >= 50 else 'Risk-reward is currently weak unless price or fundamentals improve materially.'
-intrinsic_value, upside_downside_pct, margin_safety_pct, valuation_zone, valuation_tone, valuation_summary = get_valuation_engine(info, last_close)
 
 st.markdown("<div class='panel'><div class='panel-title'>Ratio Interpretation Engine</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
 ri1, ri2, ri3 = st.columns(3)
@@ -1009,26 +888,8 @@ with ri1: metric_box('Fundamental Score', f'{fund_score}/100', fund_verdict, pos
 with ri2: metric_box('Technical Score', f'{tech_score}/100', tech_verdict, positive=True if tech_tone=='green' else False if tech_tone=='red' else None)
 with ri3: metric_box('Overall Combined', f'{overall_ratio_score}/100', 'Blended ratio score', positive=True if overall_tone=='green' else False if overall_tone=='red' else None)
 
-st.markdown("<div class='panel'><div class='panel-title'>Professional Valuation Engine</div><div class='subtle-divider'></div></div>", unsafe_allow_html=True)
-ve1, ve2, ve3, ve4 = st.columns(4)
-with ve1: metric_box('Intrinsic Value', rupee(intrinsic_value) if pd.notna(intrinsic_value) else 'N/A', 'Simple fair value model', positive=(pd.notna(intrinsic_value) and intrinsic_value >= last_close) if pd.notna(intrinsic_value) else None)
-with ve2: metric_box('Upside / Downside %', f'{upside_downside_pct:+.2f}%' if pd.notna(upside_downside_pct) else 'N/A', 'Vs current price', positive=(pd.notna(upside_downside_pct) and upside_downside_pct >= 0) if pd.notna(upside_downside_pct) else None)
-with ve3: metric_box('Margin of Safety %', f'{margin_safety_pct:+.2f}%' if pd.notna(margin_safety_pct) else 'N/A', 'Safety buffer', positive=(pd.notna(margin_safety_pct) and margin_safety_pct >= 0) if pd.notna(margin_safety_pct) else None)
-with ve4: metric_box('Valuation Zone', valuation_zone, 'Undervalued / Fair / Overvalued', positive=True if valuation_tone=='green' else False if valuation_tone=='red' else None)
-
 st.markdown(
     f"<div class='panel'>"
-    f"<div class='panel-title'>Valuation Summary</div>"
-    f"<div class='subtle-divider'></div>"
-    f"{chip_html('Intrinsic Value: ' + (rupee(intrinsic_value) if pd.notna(intrinsic_value) else 'N/A'), 'blue')}"
-    f"{chip_html('Upside/Downside: ' + (f'{upside_downside_pct:+.2f}%' if pd.notna(upside_downside_pct) else 'N/A'), 'green' if valuation_tone=='green' else 'yellow' if valuation_tone=='yellow' else 'red')}"
-    f"{chip_html('Margin of Safety: ' + (f'{margin_safety_pct:+.2f}%' if pd.notna(margin_safety_pct) else 'N/A'), 'green' if valuation_tone=='green' else 'yellow' if valuation_tone=='yellow' else 'red')}"
-    f"{chip_html('Valuation Zone: ' + valuation_zone, valuation_tone)}"
-    f"<div style='margin-top:10px;color:#e2e8f0;font-size:0.9rem;line-height:1.7;'>{valuation_summary}</div>"
-    f"</div>", unsafe_allow_html=True)
-
-st.markdown(
-    f\"<div class='panel'>\"
     f"<div class='panel-title'>Instant Analyst-Style Summary</div>"
     f"<div class='subtle-divider'></div>"
     f"{chip_html('Fundamental Verdict: ' + fund_verdict, fund_tone)}"
@@ -1217,7 +1078,7 @@ if compare_symbols:
 # PDF REPORT EXPORT
 # -------------------------------------------------
 st.markdown("<div class='panel'><div class='panel-title'>PDF Report Export</div><div class='subtle-divider'></div><div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;'><span class='ribbon-chip'>Premium Institutional PDF</span><span class='ribbon-chip'>Trade Plan Ready</span><span class='ribbon-chip'>Client Presentation Safe</span></div></div>", unsafe_allow_html=True)
-pdf_bytes = build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value, fund_verdict, tech_verdict, overall_ratio_score, fund_summary, tech_summary, overall_summary, intrinsic_value, upside_downside_pct, margin_safety_pct, valuation_zone, valuation_summary)
+pdf_bytes = build_stock_pdf(symbol, last_close, change_pct, ai_action, conviction_score, score, rsi, entry, stop_loss, target, qty, position_value)
 if pdf_bytes:
     st.download_button("Download PDF Report", data=pdf_bytes, file_name=f"NILE_{symbol.replace('.NS','')}_Report.pdf", mime="application/pdf")
 else:
