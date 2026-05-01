@@ -56,61 +56,67 @@ st.markdown("""
 :root{
     --bg0:#040814;
     --bg1:#081022;
-    --bg2:#0b1430;
-    --bg3:#10183a;
+    --bg2:#0a1230;
+    --bg3:#0b1638;
     --line:rgba(255,255,255,0.08);
     --text:#eef2ff;
-    --muted:#a5b4fc;
+    --muted:#b7c4ff;
+    --pink:#ff3ea5;
+    --violet:#8b5cf6;
+    --cyan:#00d4ff;
+    --green:#00ff9d;
+    --amber:#ffb703;
 }
 
-/* =========================
-   MAIN APP BACKGROUND
-   ========================= */
+/* =========================================================
+   APP BACKGROUND
+   ========================================================= */
 .stApp{
     background:
-        radial-gradient(circle at 12% 10%, rgba(255, 0, 153, 0.18), transparent 22%),
-        radial-gradient(circle at 82% 16%, rgba(0, 209, 255, 0.16), transparent 24%),
-        radial-gradient(circle at 48% 24%, rgba(138, 43, 226, 0.12), transparent 18%),
-        radial-gradient(circle at 30% 72%, rgba(255, 102, 196, 0.08), transparent 18%),
-        radial-gradient(circle at 76% 70%, rgba(0, 255, 200, 0.06), transparent 18%),
-        linear-gradient(135deg, #040814 0%, #081022 28%, #0a1230 58%, #0c1638 78%, #0b1128 100%);
+        radial-gradient(circle at 10% 8%, rgba(255, 0, 153, 0.16), transparent 22%),
+        radial-gradient(circle at 85% 12%, rgba(0, 212, 255, 0.14), transparent 24%),
+        radial-gradient(circle at 48% 24%, rgba(139, 92, 246, 0.10), transparent 18%),
+        radial-gradient(circle at 24% 72%, rgba(255, 62, 165, 0.08), transparent 18%),
+        radial-gradient(circle at 76% 70%, rgba(0, 255, 157, 0.05), transparent 18%),
+        linear-gradient(135deg, #040814 0%, #081022 28%, #0a1230 58%, #0b1638 78%, #0b1128 100%);
     color: var(--text);
+    background-attachment: fixed;
 }
 
-/* MAIN CONTAINER */
+/* Main page width */
 .block-container{
-    max-width: 1720px;
-    padding-top: 0.8rem;
+    max-width: 1760px;
+    padding-top: 0.75rem;
     padding-bottom: 2rem;
 }
 
-/* =========================
+/* =========================================================
    SIDEBAR
-   ========================= */
+   ========================================================= */
 section[data-testid="stSidebar"]{
     background:
-        radial-gradient(circle at 20% 10%, rgba(255, 0, 153, 0.10), transparent 24%),
-        radial-gradient(circle at 85% 20%, rgba(0, 209, 255, 0.08), transparent 24%),
+        radial-gradient(circle at 18% 10%, rgba(255, 0, 153, 0.10), transparent 24%),
+        radial-gradient(circle at 84% 20%, rgba(0, 212, 255, 0.08), transparent 24%),
         linear-gradient(180deg, rgba(5,8,20,0.98), rgba(8,14,34,0.98));
     border-right: 1px solid rgba(255,255,255,0.06);
     box-shadow: inset -1px 0 0 rgba(255,255,255,0.02);
 }
 
-/* Sidebar labels */
+/* Sidebar text */
 section[data-testid="stSidebar"] label,
 section[data-testid="stSidebar"] .stMarkdown,
 section[data-testid="stSidebar"] p,
-section[data-testid="stSidebar"] span{
-    color:#e9e7ff !important;
-    font-weight:700;
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] div{
+    color:#e8ecff !important;
 }
 
-/* Sidebar selectbox / inputs */
+/* Sidebar inputs */
 section[data-testid="stSidebar"] div[data-baseweb="select"] > div,
 section[data-testid="stSidebar"] .stNumberInput > div > div,
 section[data-testid="stSidebar"] .stTextInput > div > div{
     background:
-        linear-gradient(135deg, rgba(18,28,58,0.92), rgba(44,18,90,0.82)) !important;
+        linear-gradient(135deg, rgba(18,28,58,0.94), rgba(44,18,90,0.84)) !important;
     border:1px solid rgba(255,255,255,0.10) !important;
     border-radius:16px !important;
     box-shadow:
@@ -120,14 +126,68 @@ section[data-testid="stSidebar"] .stTextInput > div > div{
     color:white !important;
 }
 
-/* Sidebar sliders */
-section[data-testid="stSidebar"] .stSlider > div[data-baseweb="slider"] > div{
-    color:#f472b6 !important;
+/* Sidebar slider */
+section[data-testid="stSidebar"] .stSlider [data-baseweb="slider"]{
+    padding-top: 0.2rem;
+}
+section[data-testid="stSidebar"] .stSlider [role="slider"]{
+    box-shadow: 0 0 12px rgba(255,62,165,0.18);
 }
 
-/* =========================
-   BUTTONS (SAFE - NO KEY DEPENDENCY)
-   ========================= */
+/* =========================================================
+   GENERIC GLASS PANELS / CONTAINERS
+   ========================================================= */
+div[data-testid="stVerticalBlock"] > div:has(> div[data-testid="element-container"]),
+div[data-testid="stHorizontalBlock"] > div{
+    border-radius: 20px;
+}
+
+/* Optional custom classes if already used in your app */
+.panel,
+.hero-card,
+.metric-card,
+.breadth-card,
+.live-card,
+.portfolio-card,
+.scanner-rank-card,
+.compare-card,
+.watchlist-matrix-card,
+.summary-card{
+    background:
+        linear-gradient(180deg, rgba(12,18,40,0.78), rgba(10,16,34,0.64)),
+        radial-gradient(circle at top right, rgba(0,212,255,0.05), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(255,62,165,0.05), transparent 30%);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:22px;
+    box-shadow:
+        0 16px 36px rgba(0,0,0,0.30),
+        0 0 0 1px rgba(255,255,255,0.02) inset,
+        0 0 18px rgba(0,212,255,0.05),
+        0 0 14px rgba(255,62,165,0.04);
+    backdrop-filter: blur(14px);
+}
+
+.panel:hover,
+.hero-card:hover,
+.metric-card:hover,
+.breadth-card:hover,
+.live-card:hover,
+.portfolio-card:hover,
+.scanner-rank-card:hover,
+.compare-card:hover,
+.watchlist-matrix-card:hover,
+.summary-card:hover{
+    box-shadow:
+        0 18px 40px rgba(0,0,0,0.34),
+        0 0 0 1px rgba(255,255,255,0.03) inset,
+        0 0 22px rgba(0,212,255,0.07),
+        0 0 16px rgba(255,62,165,0.05);
+}
+
+/* =========================================================
+   BUTTONS / DOWNLOAD BUTTONS
+   (SAFE: styles existing buttons only)
+   ========================================================= */
 .stButton > button,
 .stDownloadButton > button{
     width:100%;
@@ -145,12 +205,11 @@ section[data-testid="stSidebar"] .stSlider > div[data-baseweb="slider"] > div{
     box-shadow:
         0 14px 30px rgba(0,0,0,0.32),
         0 0 0 1px rgba(255,255,255,0.03) inset,
-        0 0 16px rgba(0,209,255,0.06),
-        0 0 14px rgba(255,0,153,0.05);
+        0 0 16px rgba(0,212,255,0.06),
+        0 0 14px rgba(255,62,165,0.05);
     animation: nileGlow 8s ease infinite;
 }
 
-/* Button hover */
 .stButton > button:hover,
 .stDownloadButton > button:hover{
     transform: translateY(-2px) scale(1.01);
@@ -158,11 +217,11 @@ section[data-testid="stSidebar"] .stSlider > div[data-baseweb="slider"] > div{
     box-shadow:
         0 18px 36px rgba(0,0,0,0.38),
         0 0 0 1px rgba(255,255,255,0.04) inset,
-        0 0 22px rgba(0,209,255,0.10),
-        0 0 18px rgba(255,0,153,0.08);
+        0 0 22px rgba(0,212,255,0.10),
+        0 0 18px rgba(255,62,165,0.08);
 }
 
-/* Sidebar buttons more neon */
+/* Sidebar buttons slightly stronger */
 section[data-testid="stSidebar"] .stButton > button{
     background:
         linear-gradient(135deg, #5b21b6 0%, #7c3aed 22%, #9333ea 45%, #ec4899 75%, #f43f5e 100%) !important;
@@ -173,44 +232,77 @@ section[data-testid="stSidebar"] .stButton > button{
         0 0 0 1px rgba(255,255,255,0.03) inset;
 }
 
-/* =========================
-   METRIC / CARD LOOK
-   Works with Streamlit metric cards + containers
-   ========================= */
+/* =========================================================
+   METRICS (works for st.metric)
+   ========================================================= */
 div[data-testid="stMetric"],
 div[data-testid="metric-container"]{
     background:
         linear-gradient(180deg, rgba(12,18,40,0.78), rgba(10,16,34,0.64)),
-        radial-gradient(circle at top right, rgba(0,209,255,0.05), transparent 30%),
-        radial-gradient(circle at bottom left, rgba(255,0,153,0.05), transparent 30%);
+        radial-gradient(circle at top right, rgba(0,212,255,0.05), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(255,62,165,0.05), transparent 30%);
     border:1px solid rgba(255,255,255,0.08);
     border-radius:22px;
     padding:12px 14px !important;
     box-shadow:
         0 16px 36px rgba(0,0,0,0.30),
         0 0 0 1px rgba(255,255,255,0.02) inset,
-        0 0 18px rgba(0,209,255,0.05),
-        0 0 14px rgba(255,0,153,0.04);
+        0 0 18px rgba(0,212,255,0.05),
+        0 0 14px rgba(255,62,165,0.04);
     backdrop-filter: blur(14px);
+    transition: all 0.2s ease;
 }
 
-/* Metric labels */
+div[data-testid="stMetric"]:hover,
+div[data-testid="metric-container"]:hover{
+    transform: translateY(-1px);
+    box-shadow:
+        0 18px 40px rgba(0,0,0,0.34),
+        0 0 0 1px rgba(255,255,255,0.03) inset,
+        0 0 20px rgba(0,212,255,0.06);
+}
+
+/* Metric label */
 div[data-testid="stMetric"] label,
 div[data-testid="metric-container"] label{
     color:#b9c5ff !important;
     font-weight:700 !important;
 }
 
-/* Metric values */
+/* Metric value */
 div[data-testid="stMetric"] [data-testid="stMetricValue"],
 div[data-testid="metric-container"] [data-testid="stMetricValue"]{
     color:#ffffff !important;
     font-weight:900 !important;
 }
 
-/* =========================
+/* Metric delta */
+div[data-testid="stMetric"] [data-testid="stMetricDelta"],
+div[data-testid="metric-container"] [data-testid="stMetricDelta"]{
+    font-weight:800 !important;
+}
+
+/* =========================================================
+   TOP LIVE CARD FEEL (works when using st.container / st.columns + metrics)
+   ========================================================= */
+.live-strip,
+.top-ribbon,
+.market-ribbon{
+    background:
+        linear-gradient(90deg, rgba(20,28,64,0.75), rgba(17,24,39,0.62)),
+        radial-gradient(circle at left center, rgba(255,62,165,0.08), transparent 18%),
+        radial-gradient(circle at right center, rgba(0,212,255,0.08), transparent 18%);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:20px;
+    box-shadow:
+        0 14px 30px rgba(0,0,0,0.24),
+        inset 0 1px 0 rgba(255,255,255,0.03),
+        0 0 18px rgba(139,92,246,0.05);
+}
+
+/* =========================================================
    DATAFRAMES / TABLES
-   ========================= */
+   ========================================================= */
 div[data-testid="stDataFrame"]{
     background:
         linear-gradient(180deg, rgba(10,16,34,0.72), rgba(10,16,28,0.62));
@@ -222,9 +314,37 @@ div[data-testid="stDataFrame"]{
         0 0 0 1px rgba(255,255,255,0.02) inset;
 }
 
-/* =========================
-   TABS (Financial statements etc.)
-   ========================= */
+/* Make dataframe container cleaner */
+div[data-testid="stDataFrame"] iframe{
+    border-radius:14px !important;
+}
+
+/* Generic table markdown look */
+table{
+    border-collapse: separate !important;
+    border-spacing: 0 8px !important;
+    width:100%;
+}
+
+thead tr th{
+    background: rgba(18,26,56,0.82) !important;
+    color:#dbeafe !important;
+    border:none !important;
+    font-weight:800 !important;
+    padding:10px 12px !important;
+}
+
+tbody tr td{
+    background: rgba(10,16,34,0.66) !important;
+    color:#eef2ff !important;
+    border-top:1px solid rgba(255,255,255,0.03) !important;
+    border-bottom:1px solid rgba(255,255,255,0.03) !important;
+    padding:10px 12px !important;
+}
+
+/* =========================================================
+   TABS (financial statements etc.)
+   ========================================================= */
 div[data-baseweb="tab-list"]{
     gap:8px;
     margin-bottom:8px;
@@ -243,6 +363,10 @@ button[data-baseweb="tab"]{
         0 0 0 1px rgba(255,255,255,0.02) inset !important;
 }
 
+button[data-baseweb="tab"]:hover{
+    filter: brightness(1.05);
+}
+
 button[data-baseweb="tab"][aria-selected="true"]{
     background:
         linear-gradient(135deg, rgba(29,78,216,0.35), rgba(124,58,237,0.28), rgba(236,72,153,0.22)) !important;
@@ -252,9 +376,23 @@ button[data-baseweb="tab"][aria-selected="true"]{
         0 10px 22px rgba(0,0,0,0.24) !important;
 }
 
-/* =========================
-   DOWNLOAD BUTTON PANEL FEEL
-   ========================= */
+/* =========================================================
+   EXPANDERS
+   ========================================================= */
+div[data-testid="stExpander"]{
+    border:1px solid rgba(255,255,255,0.08) !important;
+    border-radius:18px !important;
+    overflow:hidden !important;
+    background:
+        linear-gradient(180deg, rgba(12,18,40,0.70), rgba(10,16,34,0.58)) !important;
+    box-shadow:
+        0 14px 28px rgba(0,0,0,0.24),
+        0 0 0 1px rgba(255,255,255,0.02) inset;
+}
+
+/* =========================================================
+   DOWNLOAD BUTTON WRAPPER
+   ========================================================= */
 div[data-testid="stDownloadButton"]{
     padding:4px;
     border-radius:18px;
@@ -266,66 +404,70 @@ div[data-testid="stDownloadButton"]{
         inset 0 1px 0 rgba(255,255,255,0.02);
 }
 
-/* =========================
-   PLOTLY CHART FRAMES (visual spacing only)
-   ========================= */
+/* =========================================================
+   PLOTLY CHART FRAMES
+   ========================================================= */
 div[data-testid="stPlotlyChart"]{
     background:
         linear-gradient(180deg, rgba(10,16,34,0.42), rgba(10,16,28,0.28));
     border-radius:18px;
+    padding:4px;
 }
 
-/* =========================
-   HORIZONTAL RULE / DIVIDER
-   ========================= */
+/* =========================================================
+   CHECKBOX / RADIO / MULTISELECT polish
+   ========================================================= */
+.stCheckbox, .stRadio, .stMultiSelect{
+    color:#e8ecff !important;
+}
+
+/* =========================================================
+   DIVIDERS / HR
+   ========================================================= */
 hr{
     border:none !important;
     height:1px !important;
-    background:linear-gradient(90deg, rgba(59,130,246,0.20), rgba(168,85,247,0.14), transparent) !important;
+    background:linear-gradient(
+        90deg,
+        rgba(59,130,246,0.18),
+        rgba(168,85,247,0.14),
+        rgba(236,72,153,0.10),
+        transparent
+    ) !important;
+    margin-top:0.8rem !important;
+    margin-bottom:0.8rem !important;
 }
 
-/* =========================
-   OPTIONAL CUSTOM CLASSES
-   (if already used in your file)
-   ========================= */
-.panel,
-.hero-card,
-.breadth-card,
-.metric-card,
-.portfolio-card,
-.scanner-rank-card,
-.watchlist-matrix-card{
-    background:
-        linear-gradient(180deg, rgba(12,18,40,0.78), rgba(10,16,34,0.64)),
-        radial-gradient(circle at top right, rgba(0,209,255,0.05), transparent 30%),
-        radial-gradient(circle at bottom left, rgba(255,0,153,0.05), transparent 30%);
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:22px;
-    box-shadow:
-        0 16px 36px rgba(0,0,0,0.30),
-        0 0 0 1px rgba(255,255,255,0.02) inset,
-        0 0 18px rgba(0,209,255,0.05),
-        0 0 14px rgba(255,0,153,0.04);
-    backdrop-filter: blur(14px);
+/* =========================================================
+   SCROLLBAR (subtle)
+   ========================================================= */
+::-webkit-scrollbar{
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track{
+    background: rgba(8,12,24,0.7);
+}
+::-webkit-scrollbar-thumb{
+    background: linear-gradient(180deg, rgba(124,58,237,0.7), rgba(236,72,153,0.7));
+    border-radius: 10px;
 }
 
-.panel:hover,
-.hero-card:hover,
-.breadth-card:hover,
-.metric-card:hover,
-.portfolio-card:hover,
-.scanner-rank-card:hover,
-.watchlist-matrix-card:hover{
-    box-shadow:
-        0 18px 40px rgba(0,0,0,0.34),
-        0 0 0 1px rgba(255,255,255,0.03) inset,
-        0 0 22px rgba(0,209,255,0.07),
-        0 0 16px rgba(255,0,153,0.05);
+/* =========================================================
+   OPTIONAL TITLE / MARKDOWN polish
+   ========================================================= */
+h1,h2,h3,h4{
+    color:#f8fbff !important;
+    letter-spacing:0.2px;
 }
 
-/* =========================
-   ANIMATION
-   ========================= */
+p, li{
+    color:#dfe7ff !important;
+}
+
+/* =========================================================
+   SAFE GLOW ANIMATION
+   ========================================================= */
 @keyframes nileGlow{
     0%{background-position:0% 50%;}
     50%{background-position:100% 50%;}
