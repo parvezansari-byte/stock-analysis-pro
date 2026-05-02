@@ -1,32 +1,39 @@
 import streamlit as st
 
-from modules.data import get_stock_data, get_stock_info
-from modules.technical import compute_technical
-from modules.fundamental import extract_fundamentals
-from modules.scoring import technical_score
-from modules.trade import trade_setup
-from modules.ai import ai_decision
+from modules.data_engine import get_history, get_info
+from modules.technical_engine import compute_indicators
+from modules.scoring_engine import score_stock
+from modules.ai_engine import ai_decision
+from modules.trade_engine import trade_setup
 
-st.title("Split Wise Stock Analysis")
+st.title("NILE V16 - Modular Terminal")
 
-symbol = st.text_input("Enter Stock", "RELIANCE.NS")
+symbol = st.text_input("Stock", "RELIANCE.NS")
 
 if st.button("Analyze"):
 
-    df = get_stock_data(symbol)
-    info = get_stock_info(symbol)
+    df = get_history(symbol)
+    info = get_info(symbol)
 
-    df = compute_technical(df)
-    fundamentals = extract_fundamentals(info)
+    df = compute_indicators(df)
 
-    score = technical_score(df)
-    decision = ai_decision(score)
+    last = df.iloc[-1]
 
-    entry, stop, target, qty = trade_setup(df, 100000, 1)
+    metrics = {
+        "close": last["Close"],
+        "sma20": last["SMA20"],
+        "sma50": last["SMA50"],
+        "rsi": last["RSI"],
+        "macd": last["MACD"],
+        "macd_signal": last["MACD_SIGNAL"]
+    }
+
+    score = score_stock(metrics)
+
+    decision = ai_decision(score, metrics["rsi"])
+
+    entry, stop, target, qty = trade_setup(df, 100000, 1, 2)
 
     st.write("Score:", score)
     st.write("Decision:", decision)
-    st.write("Entry:", entry)
-    st.write("Stop:", stop)
-    st.write("Target:", target)
-    st.write("Qty:", qty)
+    st.write("Trade:", entry, stop, target, qty)
