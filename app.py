@@ -7,6 +7,7 @@ from modules.ai_engine import ai_decision
 from modules.trade_engine import trade_setup
 from modules.scanner_engine import run_scan
 from modules.report_engine import generate_pdf
+from modules.market_engine import analyze_universe, market_breadth, sector_distribution
 
 st.set_page_config(page_title="Nile V16", layout="wide")
 
@@ -69,3 +70,47 @@ with tabs[1]:
         results = run_scan(stocks)
 
         st.dataframe(results)
+# ---------------- UI INTEGRATION ----------------
+with st.tab("Market Analysis"):
+
+    universe = st.selectbox(
+        "Universe",
+        ["NIFTY 50", "NIFTY NEXT 50", "FULL 100"]
+    )
+
+    if universe == "NIFTY 50":
+        stocks = NIFTY_50
+    elif universe == "NIFTY NEXT 50":
+        stocks = NIFTY_NEXT_50
+    else:
+        stocks = NIFTY_50 + NIFTY_NEXT_50
+
+    if st.button("Run Market Analysis"):
+
+        results = analyze_universe(stocks)
+
+        # 🔹 Breadth
+        breadth = market_breadth(results)
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Advancers", breadth["Advancers"])
+        col2.metric("Decliners", breadth["Decliners"])
+        col3.metric("Neutral", breadth["Neutral"])
+        col4.metric("Strength %", breadth["Strength %"])
+
+        # 🔹 Sector
+        sector = sector_distribution(results)
+
+        st.subheader("Sector Strength")
+        st.bar_chart(sector)
+
+        # 🔹 Top Stocks
+        st.subheader("Top 10 Stocks")
+        top = sorted(results, key=lambda x: x["Score"], reverse=True)[:10]
+        st.dataframe(top)
+
+        # 🔹 Weak Stocks
+        st.subheader("Weak Stocks")
+        weak = sorted(results, key=lambda x: x["Score"])[:10]
+        st.dataframe(weak)
+        
