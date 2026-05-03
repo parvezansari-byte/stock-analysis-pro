@@ -19,11 +19,11 @@ def analyze_universe(stocks):
         last = df.iloc[-1]
 
         m = {
-            "close": last["Close"],
-            "sma20": last["SMA20"],
-            "sma50": last["SMA50"],
-            "rsi": last["RSI"]
-        }
+    "close": float(last["Close"]),
+    "sma20": float(last["SMA20"]),
+    "sma50": float(last["SMA50"]),
+    "rsi": float(last["RSI"])
+}
 
         score = score_stock(m)
         trend = "Bullish" if last["SMA20"] > last["SMA50"] else "Bearish"
