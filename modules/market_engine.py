@@ -1,21 +1,27 @@
-# modules/market_engine.py
-
 from modules.data_engine import get_history
 from modules.technical_engine import compute_indicators
 from modules.scoring_engine import score_stock
 import numpy as np
 
+# 🔹 Sector Mapping
+SECTOR_MAP = {
+    "RELIANCE.NS": "Energy",
+    "TCS.NS": "IT",
+    "INFY.NS": "IT",
+    "HDFCBANK.NS": "Banking",
+    "ICICIBANK.NS": "Banking",
+}
 
 # -----------------------------------
-# 🔹 MAIN UNIVERSE ANALYSIS
+# 🔹 Analyze Stocks
 # -----------------------------------
-def analyze_universe(stock_list):
+def analyze_universe(stocks):
 
     results = []
 
-    for s in stock_list:
+    for s in stocks:
 
-        df = get_history(s, "6mo")
+        df = get_history(s)
 
         if df.empty or len(df) < 50:
             continue
@@ -45,17 +51,12 @@ def analyze_universe(stock_list):
 
 
 # -----------------------------------
-# 🔹 MARKET BREADTH ENGINE
+# 🔹 Market Breadth
 # -----------------------------------
 def market_breadth(results):
 
     if not results:
-        return {
-            "Advancers": 0,
-            "Decliners": 0,
-            "Neutral": 0,
-            "Strength %": 0
-        }
+        return 0, 0, 0, 0
 
     adv = sum(1 for r in results if r["Score"] >= 60)
     dec = sum(1 for r in results if r["Score"] < 40)
@@ -63,47 +64,21 @@ def market_breadth(results):
 
     strength = (adv / len(results)) * 100
 
-    return {
-        "Advancers": adv,
-        "Decliners": dec,
-        "Neutral": neutral,
-        "Strength %": round(strength, 2)
-    }
+    return adv, dec, neutral, round(strength, 2)
 
 
 # -----------------------------------
-# 🔹 SECTOR DISTRIBUTION ENGINE
+# 🔹 Sector Distribution
 # -----------------------------------
-SECTOR_MAP = {
-    "RELIANCE.NS": "Energy",
-    "ONGC.NS": "Energy",
-    "TCS.NS": "IT",
-    "INFY.NS": "IT",
-    "HCLTECH.NS": "IT",
-    "HDFCBANK.NS": "Banking",
-    "ICICIBANK.NS": "Banking",
-    "SBIN.NS": "Banking",
-    "MARUTI.NS": "Auto",
-    "TATAMOTORS.NS": "Auto",
-}
-
 def sector_distribution(results):
 
     sector_data = {}
 
     for r in results:
+        sector = SECTOR_MAP.get(r["Stock"], "Others")
+        sector_data.setdefault(sector, []).append(r["Score"])
 
-        stock = r["Stock"]
-        score = r["Score"]
-
-        sector = SECTOR_MAP.get(stock, "Others")
-
-        sector_data.setdefault(sector, []).append(score)
-
-    # Average score per sector
-    sector_strength = {
+    return {
         sec: round(np.mean(scores), 2)
         for sec, scores in sector_data.items()
     }
-
-    return sector_strength
