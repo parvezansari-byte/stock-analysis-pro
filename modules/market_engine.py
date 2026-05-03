@@ -1,20 +1,9 @@
-from modules.data_engine import get_history
+from modules.data_engine import get_history, get_sector
 from modules.technical_engine import compute_indicators
 from modules.scoring_engine import score_stock
 import numpy as np
 
-# 🔹 Sector Mapping
-SECTOR_MAP = {
-    "RELIANCE.NS": "Energy",
-    "TCS.NS": "IT",
-    "INFY.NS": "IT",
-    "HDFCBANK.NS": "Banking",
-    "ICICIBANK.NS": "Banking",
-}
 
-# -----------------------------------
-# 🔹 Analyze Stocks
-# -----------------------------------
 def analyze_universe(stocks):
 
     results = []
@@ -37,22 +26,22 @@ def analyze_universe(stocks):
         }
 
         score = score_stock(m)
-
         trend = "Bullish" if last["SMA20"] > last["SMA50"] else "Bearish"
+
+        # 🔥 AUTO SECTOR
+        sector = get_sector(s)
 
         results.append({
             "Stock": s,
             "Score": score,
             "RSI": round(m["rsi"], 2),
-            "Trend": trend
+            "Trend": trend,
+            "Sector": sector
         })
 
     return results
 
 
-# -----------------------------------
-# 🔹 Market Breadth
-# -----------------------------------
 def market_breadth(results):
 
     if not results:
@@ -67,15 +56,12 @@ def market_breadth(results):
     return adv, dec, neutral, round(strength, 2)
 
 
-# -----------------------------------
-# 🔹 Sector Distribution
-# -----------------------------------
 def sector_distribution(results):
 
     sector_data = {}
 
     for r in results:
-        sector = SECTOR_MAP.get(r["Stock"], "Others")
+        sector = r["Sector"]
         sector_data.setdefault(sector, []).append(r["Score"])
 
     return {
